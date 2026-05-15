@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>診療報酬明細書</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "MS Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    font-size: 7pt;
+    background: #e0e0e0;
+    padding: 20px;
+  }
+  .page-wrapper {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .page-label {
+    text-align: center;
+    font-size: 9pt;
+    color: #555;
+    margin-bottom: 6px;
+    font-family: sans-serif;
+  }
+
+  /* ========== FORM BASE ========== */
+  .form {
+    background: white;
+    width: 420px;
+    padding: 6px;
+    border: 1px solid #aaa;
+    font-size: 6.5pt;
+    line-height: 1.3;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  td, th {
+    border: 1px solid #555;
+    padding: 1px 2px;
+    vertical-align: middle;
+    font-size: 6.5pt;
+  }
+  .no-border td { border: none; }
+  .dashed-bottom { border-bottom: 1px dashed #888 !important; }
+
+  /* ========== HEADER ========== */
+  .form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 3px;
+  }
+  .form-title h1 {
+    font-size: 11pt;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .form-title p {
+    font-size: 7pt;
+    text-align: center;
+  }
+  .form-title .date-line {
+    font-size: 7pt;
+    margin-top: 2px;
+  }
+  .header-right {
+    display: flex;
+    gap: 4px;
+    align-items: flex-start;
+  }
+  .pref-code {
+    font-size: 5.5pt;
+    border: 1px solid #555;
+    padding: 2px;
+    text-align: center;
+    min-width: 40px;
+  }
+  .pref-code div { font-size: 5pt; }
+  .clinic-code-box {
+    font-size: 5.5pt;
+    border: 1px solid #555;
+    padding: 2px;
+    text-align: center;
+    min-width: 60px;
+  }
+  .type-grid {
+    border: 1px solid #555;
+    font-size: 5pt;
+  }
+  .type-grid table { font-size: 5pt; }
+  .type-grid td { padding: 0px 2px; border-color: #555; }
+
+  /* ========== INSURANCE INFO ========== */
+  .ins-section {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 3px;
+  }
+  .ins-left { flex: 1; }
+  .ins-right { width: 160px; }
+
+  .hoken-grid table td { font-size: 5.5pt; }
+
+  .patient-card-box {
+    border: 1px solid #555;
+    padding: 2px;
+    font-size: 6pt;
+    min-height: 30px;
+  }
+
+  /* ========== NAME / INFO ========== */
+  .name-row {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 2px;
+  }
+  .name-box {
+    flex: 1;
+    border: 1px solid #555;
+    padding: 2px;
+    min-height: 28px;
+  }
+  .tokki-box {
+    width: 100px;
+    border: 1px solid #555;
+    padding: 2px;
+    font-size: 5.5pt;
+  }
+  .hosp-info-box {
+    border: 1px solid #555;
+    padding: 2px;
+    font-size: 6pt;
+    line-height: 1.6;
+  }
+
+  /* ========== ILLNESS / DATES ========== */
+  .illness-section {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 2px;
+  }
+  .illness-left { flex: 1; }
+  .illness-right { width: 170px; }
+
+  /* ========== MEDICAL DETAIL TABLE ========== */
+  .detail-table td { padding: 0px 2px; font-size: 6pt; }
+  .detail-table .label-col { width: 80px; }
+  .detail-table .mid-col { width: 100px; }
+  .detail-table .pts-col { width: 35px; text-align: right; }
+  .detail-table .cnt-col { width: 28px; text-align: center; }
+  .detail-table .pub-col { width: 50px; }
+
+  .section-header {
+    background: #f0f0f0;
+    font-weight: bold;
+    font-size: 6pt;
+    padding: 1px 3px;
+  }
+
+  /* ========== BOTTOM TOTALS ========== */
+  .totals-row td { font-size: 6pt; }
+
+  .gray-bg { background: #f5f5f5; }
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .bold { font-weight: bold; }
+  .small { font-size: 5pt; }
+
+  .underline-row td { border-bottom: 1px solid #555; }
+  .no-top { border-top: none !important; }
+  .no-bottom { border-bottom: none !important; }
+  .no-left { border-left: none !important; }
+  .no-right { border-right: none !important; }
+
+  .circle { 
+    display: inline-block;
+    border: 1px solid #333;
+    border-radius: 50%;
+    width: 10px; height: 10px;
+    font-size: 5pt;
+    text-align: center;
+    line-height: 10px;
+  }
+
+  hr.dashed { border: none; border-top: 1px dashed #999; margin: 2px 0; }
+  hr.solid { border: none; border-top: 1px solid #555; margin: 2px 0; }
+
+  /* ========== PAGE SEPARATOR ========== */
+  .page-sep { 
+    width: 100%;
+    text-align: center;
+    margin: 10px 0;
+    font-family: sans-serif;
+    font-size: 10pt;
+    color: #666;
+    font-weight: bold;
+  }
+
+  /* Inpatient specialty row */
+  .specialty-row {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 2px;
+  }
+  .spec-box {
+    border: 1px solid #555;
+    padding: 1px 4px;
+    font-size: 6pt;
+    text-align: center;
+  }
+
+  @media print {
+    body { background: white; padding: 0; }
+    .page-label { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!--  PAGE 1 & 2: 医科入院外 (Outpatient) x2                     -->
+<!-- ============================================================ -->
+<div class="page-label">ページ 1・2 ? 診療報酬明細書（医科入院外）</div>
+<div class="page-wrapper">
+
+  <!-- PAGE 1: 医科入院外 -->
+  <div class="form" id="page1">
+
+    <!-- HEADER -->
+    <div class="form-header">
+      <div class="form-title">
+        <h1>診療報酬明細書</h1>
+        <p>（医科入院外）</p>
+        <p class="date-line">平成&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;月分</p>
+      </div>
+      <div class="header-right">
+        <div>
+          <div class="pref-code" style="font-size:5pt">都道府<br>県番号</div>
+        </div>
+        <div class="clinic-code-box" style="font-size:5pt">医療機関コード</div>
+        <div class="type-grid">
+          <table>
+            <tr>
+              <td rowspan="3" style="writing-mode:vertical-rl;text-align:center;font-size:5.5pt;padding:0 2px">医<br>科</td>
+              <td style="background:#ddd">1</td><td>1単独</td><td>2本外</td><td>8高外一</td>
+            </tr>
+            <tr>
+              <td>2</td><td>2?</td><td>4六外</td><td></td>
+            </tr>
+            <tr>
+              <td>3</td><td>3?</td><td>6家外</td><td>0高外7</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSURANCE NUMBER ROW -->
+    <table style="margin-bottom:2px">
+      <tr>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="6" style="font-size:5.5pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="2"></td>
+        <td style="width:60px;font-size:5pt">保険者<br>番号</td>
+        <td colspan="4"></td>
+        <td style="font-size:5pt;width:25px">1098<br>7（）</td>
+      </tr>
+    </table>
+
+    <!-- 公費 rows -->
+    <table style="margin-bottom:2px;font-size:5.5pt">
+      <tr>
+        <td style="width:55px">公費負担<br>者番号①</td>
+        <td colspan="3" style="min-width:80px"></td>
+        <td style="width:55px">公費負担<br>者番号④</td>
+        <td colspan="3" style="min-width:80px"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号①</td>
+        <td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号④</td>
+        <td colspan="3"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>者番号②</td>
+        <td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>者番号⑤</td>
+        <td colspan="3"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号②</td>
+        <td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号⑤</td>
+        <td colspan="3"></td>
+      </tr>
+    </table>
+
+    <!-- 被保険者証 -->
+    <div class="patient-card-box" style="margin-bottom:2px">
+      被保険者証・被保険者<br>
+      手帳等の記号・番号
+    </div>
+
+    <!-- NAME + 特記 + 保健医 -->
+    <div class="name-row">
+      <div style="flex:1">
+        <div class="name-box">
+          <div>氏</div>
+          <div style="margin-top:8px">名</div>
+          <div style="font-size:5.5pt;margin-top:2px">１男 ２女 １明 ２大 ３昭 ４平 &nbsp;・&nbsp; 生</div>
+          <div style="font-size:5pt">職務上の事由 1.職務上 2.下船後3月以内 3.通勤災害</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div class="tokki-box">特記事項</div>
+        <div class="hosp-info-box" style="flex:1">
+          保健医<br>療機関<br>の所在<br>地及び<br>名&nbsp;称
+          <div style="font-size:5pt;margin-top:4px">（&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;床）</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ILLNESS + DATES -->
+    <table class="detail-table" style="margin-bottom:2px">
+      <tr>
+        <td rowspan="3" style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">傷<br>病<br>名</td>
+        <td style="width:12px;font-size:5.5pt">（1）</td>
+        <td colspan="3"></td>
+        <td rowspan="3" style="width:90px;font-size:5pt">
+          （1）年　月　日<br>
+          （2）年　月　日<br>
+          （3）年　月　日
+        </td>
+        <td style="font-size:5pt;width:15px">転帰</td>
+        <td style="font-size:5pt;width:14px">死C</td>
+        <td style="font-size:5pt;width:14px">中止</td>
+        <td rowspan="3" style="width:35px;font-size:5pt">保険<br>　　日<br>公費<br>　　日<br>公費<br>　　日</td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">（2）</td>
+        <td colspan="3"></td>
+        <td colspan="3"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">（3）</td>
+        <td colspan="3"></td>
+        <td colspan="3"></td>
+      </tr>
+    </table>
+
+    <!-- INITIAL VISIT -->
+    <table class="detail-table" style="margin-bottom:0">
+      <tr class="gray-bg">
+        <td colspan="2" style="font-size:5.5pt">⑪ 初&nbsp;&nbsp;&nbsp;診</td>
+        <td colspan="2" style="font-size:5.5pt">時間外・休日・深夜&nbsp;&nbsp;回</td>
+        <td style="font-size:5.5pt">点</td>
+        <td colspan="2" style="font-size:5.5pt">公費分点数</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:5.5pt">再&nbsp;&nbsp;診</td>
+        <td colspan="2" style="font-size:5.5pt"></td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:5.5pt">外来管理加算</td>
+        <td colspan="2"></td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">再</td>
+        <td style="font-size:5.5pt">時間外</td>
+        <td style="font-size:5.5pt">×</td>
+        <td style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">診</td>
+        <td style="font-size:5.5pt">休　日</td>
+        <td style="font-size:5.5pt">×</td>
+        <td style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">深</td>
+        <td style="font-size:5.5pt">深　夜</td>
+        <td style="font-size:5.5pt">×</td>
+        <td style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+    </table>
+
+    <!-- 医学管理 -->
+    <div style="border:1px solid #555;border-top:none;padding:1px 2px;font-size:5.5pt;font-weight:bold">⑬医学管理</div>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="6" style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">在<br>宅</td>
+        <td style="font-size:5.5pt">往&nbsp;&nbsp;&nbsp;診</td>
+        <td colspan="2" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">夜　間</td>
+        <td colspan="2" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">深夜・緊急</td>
+        <td colspan="2" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">在宅患者訪問診療</td>
+        <td colspan="2" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">その他</td>
+        <td colspan="2"></td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">薬&nbsp;&nbsp;&nbsp;剤</td>
+        <td colspan="2"></td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+    </table>
+
+    <!-- 投薬 section -->
+    <table class="detail-table">
+      <tr>
+        <td rowspan="9" style="width:10px;writing-mode:vertical-rl;font-size:5pt">投<br>薬</td>
+        <td style="font-size:5.5pt;width:16px">⑳内服</td>
+        <td style="font-size:5.5pt">薬剤</td>
+        <td style="font-size:5.5pt">単位</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td style="font-size:5.5pt">調剤</td>
+        <td style="font-size:5.5pt">×</td>
+        <td style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">?屯服</td>
+        <td style="font-size:5.5pt">薬剤</td>
+        <td style="font-size:5.5pt">単位</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td style="font-size:5.5pt">薬剤</td>
+        <td style="font-size:5.5pt">単位</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">?外用</td>
+        <td style="font-size:5.5pt">薬剤</td>
+        <td></td>
+        <td style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td style="font-size:5.5pt">調剤</td>
+        <td style="font-size:5.5pt">×</td>
+        <td style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">?処方</td>
+        <td colspan="2" style="font-size:5.5pt">×</td>
+        <td style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">?麻毒</td>
+        <td colspan="2"></td>
+        <td></td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">?調基</td>
+        <td colspan="2"></td>
+        <td></td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+    </table>
+
+    <!-- 注射 -->
+    <table class="detail-table">
+      <tr>
+        <td rowspan="3" style="width:10px;writing-mode:vertical-rl;font-size:5pt">注<br>射</td>
+        <td style="font-size:5.5pt">?皮下筋肉内</td>
+        <td colspan="2" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">?静脈内</td>
+        <td colspan="2" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">?その他</td>
+        <td colspan="2" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+    </table>
+
+    <!-- 処置/手術/検査/画診 etc. -->
+    <table class="detail-table">
+      <tr>
+        <td style="font-size:5.5pt;width:35px">処置<br>薬剤</td>
+        <td colspan="3" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">手術<br>薬剤</td>
+        <td colspan="3" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt"><span class="circle">検</span>薬剤</td>
+        <td colspan="3" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt"><span class="circle">画</span>薬剤</td>
+        <td colspan="3" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">⑩処方せん</td>
+        <td colspan="3" style="font-size:5.5pt">回</td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">その他<br>薬剤</td>
+        <td colspan="3"></td>
+        <td></td>
+        <td colspan="2"></td>
+      </tr>
+    </table>
+
+    <!-- TOTALS -->
+    <table class="detail-table" style="margin-top:2px">
+      <tr>
+        <td colspan="3" class="gray-bg" style="font-size:5.5pt">請&nbsp;&nbsp;求&nbsp;&nbsp;点</td>
+        <td style="font-size:5.5pt">＊</td>
+        <td style="font-size:5.5pt">決定</td>
+        <td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="2" style="font-size:5.5pt">一部負担金額</td>
+        <td style="font-size:5.5pt">円</td>
+      </tr>
+    </table>
+    <div style="font-size:5pt;text-align:right">職務 (円) 受診・支払額等</div>
+    <table class="detail-table">
+      <tr>
+        <td style="font-size:5.5pt;width:20px">公</td>
+        <td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">＊</td>
+        <td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="5" style="font-size:5.5pt">円</td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">公</td>
+        <td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">＊</td>
+        <td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="2" style="font-size:5.5pt">円&nbsp;高額療養費</td>
+        <td style="font-size:5.5pt">円</td>
+        <td style="font-size:5.5pt">公費負担点数</td>
+        <td style="font-size:5.5pt">公費負担点数</td>
+      </tr>
+    </table>
+
+  </div><!-- end page1 -->
+
+  <!-- PAGE 2: 医科入院外 (identical layout) -->
+  <div class="form" id="page2">
+    <!-- Identical to page 1 structure -->
+    <div class="form-header">
+      <div class="form-title">
+        <h1>診療報酬明細書</h1>
+        <p>（医科入院外）</p>
+        <p class="date-line">平成&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;月分</p>
+      </div>
+      <div class="header-right">
+        <div class="pref-code" style="font-size:5pt">都道府<br>県番号</div>
+        <div class="clinic-code-box" style="font-size:5pt">医療機関コード</div>
+        <div class="type-grid">
+          <table>
+            <tr>
+              <td rowspan="3" style="writing-mode:vertical-rl;font-size:5.5pt;padding:0 2px">医<br>科</td>
+              <td style="background:#ddd">1</td><td>1単独</td><td>2本外</td><td>8高外一</td>
+            </tr>
+            <tr><td>2</td><td>2?</td><td>4六外</td><td></td></tr>
+            <tr><td>3</td><td>3?</td><td>6家外</td><td>0高外7</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <table style="margin-bottom:2px">
+      <tr>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="6" style="font-size:5.5pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="2"></td>
+        <td style="width:60px;font-size:5pt">保険者<br>番号</td>
+        <td colspan="4"></td>
+        <td style="font-size:5pt;width:25px">1098<br>7（）</td>
+      </tr>
+    </table>
+    <table style="margin-bottom:2px;font-size:5.5pt">
+      <tr>
+        <td style="width:55px">公費負担<br>者番号①</td><td colspan="3" style="min-width:80px"></td>
+        <td style="width:55px">公費負担<br>者番号④</td><td colspan="3" style="min-width:80px"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号①</td><td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号④</td><td colspan="3"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>者番号②</td><td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>者番号⑤</td><td colspan="3"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号②</td><td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号⑤</td><td colspan="3"></td>
+      </tr>
+    </table>
+    <div class="patient-card-box" style="margin-bottom:2px">被保険者証・被保険者<br>手帳等の記号・番号</div>
+    <div class="name-row">
+      <div style="flex:1">
+        <div class="name-box">
+          <div>氏</div>
+          <div style="margin-top:8px">名</div>
+          <div style="font-size:5.5pt;margin-top:2px">１男 ２女 １明 ２大 ３昭 ４平 &nbsp;・&nbsp; 生</div>
+          <div style="font-size:5pt">職務上の事由 1.職務上 2.下船後3月以内 3.通勤災害</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div class="tokki-box">特記事項</div>
+        <div class="hosp-info-box" style="flex:1">保健医<br>療機関<br>の所在<br>地及び<br>名&nbsp;称<div style="font-size:5pt;margin-top:4px">（&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;床）</div></div>
+      </div>
+    </div>
+    <table class="detail-table" style="margin-bottom:2px">
+      <tr>
+        <td rowspan="3" style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">傷<br>病<br>名</td>
+        <td style="width:12px;font-size:5.5pt">（1）</td><td colspan="3"></td>
+        <td rowspan="3" style="width:90px;font-size:5pt">（1）年　月　日<br>（2）年　月　日<br>（3）年　月　日</td>
+        <td style="font-size:5pt;width:15px">転帰</td>
+        <td style="font-size:5pt;width:14px">死C</td>
+        <td style="font-size:5pt;width:14px">中止</td>
+        <td rowspan="3" style="width:35px;font-size:5pt">保険<br>　　日<br>公費<br>　　日<br>公費<br>　　日</td>
+      </tr>
+      <tr><td style="font-size:5.5pt">（2）</td><td colspan="3"></td><td colspan="3"></td></tr>
+      <tr><td style="font-size:5.5pt">（3）</td><td colspan="3"></td><td colspan="3"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr class="gray-bg"><td colspan="2" style="font-size:5.5pt">⑪ 初&nbsp;&nbsp;&nbsp;診</td><td colspan="2">時間外・休日・深夜&nbsp;&nbsp;回</td><td>点</td><td colspan="2">公費分点数</td></tr>
+      <tr><td colspan="2" style="font-size:5.5pt">再&nbsp;&nbsp;診</td><td colspan="2"></td><td></td><td colspan="2"></td></tr>
+      <tr><td colspan="2" style="font-size:5.5pt">外来管理加算</td><td colspan="2"></td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">再</td><td style="font-size:5.5pt">時間外</td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">診</td><td style="font-size:5.5pt">休　日</td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">深</td><td style="font-size:5.5pt">深　夜</td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+    </table>
+    <div style="border:1px solid #555;border-top:none;padding:1px 2px;font-size:5.5pt;font-weight:bold">⑬医学管理</div>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="6" style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">在<br>宅</td>
+        <td style="font-size:5.5pt">往&nbsp;&nbsp;&nbsp;診</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td>
+      </tr>
+      <tr><td style="font-size:5.5pt">夜　間</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">深夜・緊急</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">在宅患者訪問診療</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">その他</td><td colspan="2"></td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">薬&nbsp;&nbsp;&nbsp;剤</td><td colspan="2"></td><td></td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="9" style="width:10px;writing-mode:vertical-rl;font-size:5pt">投<br>薬</td>
+        <td style="font-size:5.5pt;width:16px">⑳内服</td><td style="font-size:5.5pt">薬剤</td><td style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td>
+      </tr>
+      <tr><td></td><td style="font-size:5.5pt">調剤</td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?屯服</td><td style="font-size:5.5pt">薬剤</td><td style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">薬剤</td><td style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?外用</td><td style="font-size:5.5pt">薬剤</td><td></td><td style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">調剤</td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?処方</td><td colspan="2" style="font-size:5.5pt">×</td><td style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?麻毒</td><td colspan="2"></td><td></td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?調基</td><td colspan="2"></td><td></td><td></td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="3" style="width:10px;writing-mode:vertical-rl;font-size:5pt">注<br>射</td>
+        <td style="font-size:5.5pt">?皮下筋肉内</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td>
+      </tr>
+      <tr><td style="font-size:5.5pt">?静脈内</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?その他</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr><td style="font-size:5.5pt;width:35px">処置<br>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">手術<br>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt"><span class="circle">検</span>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt"><span class="circle">画</span>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt">⑩処方せん</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt">その他<br>薬剤</td><td colspan="3"></td><td></td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table" style="margin-top:2px">
+      <tr>
+        <td colspan="3" class="gray-bg" style="font-size:5.5pt">請&nbsp;&nbsp;求&nbsp;&nbsp;点</td>
+        <td style="font-size:5.5pt">＊</td><td style="font-size:5.5pt">決定</td>
+        <td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="2" style="font-size:5.5pt">一部負担金額</td>
+        <td style="font-size:5.5pt">円</td>
+      </tr>
+    </table>
+    <div style="font-size:5pt;text-align:right">職務 (円) 受診・支払額等</div>
+    <table class="detail-table">
+      <tr>
+        <td style="font-size:5.5pt;width:20px">公</td><td style="font-size:5.5pt">点</td><td style="font-size:5.5pt">＊</td>
+        <td colspan="2" style="font-size:5.5pt">点</td><td colspan="5" style="font-size:5.5pt">円</td>
+      </tr>
+      <tr>
+        <td style="font-size:5.5pt">公</td><td style="font-size:5.5pt">点</td><td style="font-size:5.5pt">＊</td>
+        <td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="2" style="font-size:5.5pt">円&nbsp;高額療養費</td>
+        <td style="font-size:5.5pt">円</td>
+        <td style="font-size:5.5pt">公費負担点数</td>
+        <td style="font-size:5.5pt">公費負担点数</td>
+      </tr>
+    </table>
+  </div><!-- end page2 -->
+
+</div><!-- end page 1+2 wrapper -->
+
+
+<!-- ============================================================ -->
+<!--  PAGE 3 & 4: 医科入院 (Inpatient) x2                        -->
+<!-- ============================================================ -->
+<div class="page-label" style="margin-top:16px">ページ 3・4 ? 診療報酬明細書（医科入院）</div>
+<div class="page-wrapper">
+
+  <!-- PAGE 3: 医科入院 -->
+  <div class="form" id="page3">
+
+    <div class="form-header">
+      <div class="form-title">
+        <h1>診療報酬明細書</h1>
+        <p>（医科入院）</p>
+        <p class="date-line">平成&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;月分</p>
+      </div>
+      <div class="header-right">
+        <div class="pref-code" style="font-size:5pt">都道府<br>県番号</div>
+        <div class="clinic-code-box" style="font-size:5pt">医療機関コード</div>
+        <div class="type-grid">
+          <table>
+            <tr>
+              <td rowspan="3" style="writing-mode:vertical-rl;font-size:5.5pt;padding:0 2px">医<br>科</td>
+              <td style="background:#ddd">1</td><td>1単独</td><td>1本人</td><td>7高入一</td>
+            </tr>
+            <tr><td>2</td><td>2?</td><td>6六人</td><td></td></tr>
+            <tr><td>3</td><td>3?</td><td>5家人</td><td>9高入7</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <table style="margin-bottom:2px">
+      <tr>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="6" style="font-size:5.5pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="2"></td>
+        <td style="width:60px;font-size:5pt">保険者<br>番号</td>
+        <td colspan="4"></td>
+        <td style="font-size:5pt;width:25px">1098<br>7（）</td>
+      </tr>
+    </table>
+
+    <table style="margin-bottom:2px;font-size:5.5pt">
+      <tr>
+        <td style="width:55px">公費負担<br>者番号①</td><td colspan="3" style="min-width:80px"></td>
+        <td style="width:55px">公費負担<br>者番号④</td><td colspan="3" style="min-width:80px"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号①</td><td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号④</td><td colspan="3"></td>
+      </tr>
+    </table>
+
+    <div class="patient-card-box" style="margin-bottom:2px">被保険者証・被保険者<br>手帳等の記号・番号</div>
+
+    <!-- Specialty row (入院 specific) -->
+    <div style="display:flex;gap:4px;margin-bottom:2px;align-items:center">
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 3px">区分</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 6px">精　神</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 6px">結　核</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 6px">療　養</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 12px;flex:1">特記事項</div>
+    </div>
+
+    <div class="name-row">
+      <div style="flex:1">
+        <div class="name-box">
+          <div>氏</div>
+          <div style="margin-top:8px">名</div>
+          <div style="font-size:5.5pt;margin-top:2px">１男 ２女 １明 ２大 ３昭 ４平 &nbsp;・&nbsp; 生</div>
+          <div style="font-size:5pt">職務上の事由 1.職務上 2.下船後3月以内 3.通勤災害</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div class="hosp-info-box" style="flex:1">保健医<br>療機関<br>の所在<br>地及び<br>名&nbsp;称</div>
+      </div>
+    </div>
+
+    <!-- Illness + dates for 入院 -->
+    <table class="detail-table" style="margin-bottom:2px">
+      <tr>
+        <td rowspan="3" style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">傷<br>病<br>名</td>
+        <td style="width:12px;font-size:5.5pt">（1）</td><td colspan="3"></td>
+        <td rowspan="3" style="width:90px;font-size:5pt">（1）年　月　日<br>（2）年　月　日<br>（3）年　月　日</td>
+        <td style="font-size:5pt;width:12px">転帰</td>
+        <td style="font-size:5pt;width:12px">死C</td>
+        <td style="font-size:5pt;width:12px">中止</td>
+        <td rowspan="3" style="width:35px;font-size:5pt">保険<br>　　日<br>公費<br>　　日</td>
+      </tr>
+      <tr><td style="font-size:5.5pt">（2）</td><td colspan="3"></td><td colspan="3"></td></tr>
+      <tr><td style="font-size:5.5pt">（3）</td><td colspan="3"></td><td colspan="3"></td></tr>
+    </table>
+
+    <!-- 初診・医学管理 -->
+    <table class="detail-table">
+      <tr class="gray-bg">
+        <td colspan="2" style="font-size:5.5pt">⑪初診&nbsp;時間外・休日・深夜</td>
+        <td style="font-size:5.5pt">回</td><td style="font-size:5.5pt">点</td>
+        <td colspan="2" style="font-size:5.5pt">公費分点数</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:5.5pt">⑬医学管理</td>
+        <td></td><td></td><td colspan="2"></td>
+      </tr>
+    </table>
+
+    <!-- 在宅 -->
+    <table class="detail-table">
+      <tr>
+        <td style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">在<br>宅</td>
+        <td colspan="3" style="font-size:5.5pt">主</td>
+        <td></td><td colspan="2"></td>
+      </tr>
+    </table>
+
+    <!-- 投薬 -->
+    <table class="detail-table">
+      <tr>
+        <td rowspan="7" style="width:10px;writing-mode:vertical-rl;font-size:5pt">投<br>薬</td>
+        <td style="font-size:5.5pt">⑳内&nbsp;&nbsp;服</td><td colspan="2" style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td>
+      </tr>
+      <tr><td style="font-size:5.5pt">?屯服</td><td colspan="2" style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?外用</td><td colspan="2" style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?調剤</td><td colspan="2" style="font-size:5.5pt">日</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?麻毒</td><td colspan="2" style="font-size:5.5pt">日</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?調基</td><td colspan="2"></td><td></td><td colspan="2"></td></tr>
+    </table>
+
+    <!-- 注射 -->
+    <table class="detail-table">
+      <tr>
+        <td rowspan="3" style="width:10px;writing-mode:vertical-rl;font-size:5pt">注<br>射</td>
+        <td style="font-size:5.5pt">?皮下筋肉内</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td>
+      </tr>
+      <tr><td style="font-size:5.5pt">?静脈内</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?その他</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+    </table>
+
+    <!-- 手術・処置 etc. -->
+    <table class="detail-table">
+      <tr><td style="font-size:5.5pt;width:35px">処置<br>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">手術<br>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt"><span class="circle">検</span>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt"><span class="circle">画</span>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt"><span class="circle">そ</span><br>の他</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt">薬&nbsp;&nbsp;剤</td><td colspan="3"></td><td></td><td colspan="2"></td></tr>
+    </table>
+
+    <!-- 入院 specific -->
+    <div style="border:1px solid #555;border-top:none;padding:1px 3px;font-size:5.5pt">入院年月日&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;月&nbsp;&nbsp;日</div>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="6" style="width:10px;writing-mode:vertical-rl;font-size:5pt">入<br>院</td>
+        <td style="font-size:5.5pt" colspan="2">?診　⑯入院基本料・加算</td>
+        <td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="2"></td>
+      </tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="2" style="width:10px;writing-mode:vertical-rl;font-size:5pt">院</td>
+        <td colspan="4" style="font-size:5.5pt">?特定入院料・その他</td>
+        <td colspan="2"></td>
+      </tr>
+      <tr><td colspan="4"></td><td colspan="2"></td></tr>
+    </table>
+
+    <!-- 食事 -->
+    <div style="display:flex;gap:3px;margin-top:2px">
+      <div style="flex:1">
+        <table class="detail-table">
+          <tr>
+            <td colspan="5" style="font-size:5.5pt">※高額療養費</td>
+            <td style="font-size:5.5pt">円</td>
+            <td style="font-size:5.5pt">※公費負担点数</td>
+            <td style="font-size:5.5pt">点</td>
+          </tr>
+          <tr>
+            <td rowspan="3" style="writing-mode:vertical-rl;font-size:5pt">食<br>事</td>
+            <td style="font-size:5pt">⑨基準</td>
+            <td style="font-size:5.5pt">円×</td>
+            <td style="font-size:5.5pt">回</td>
+            <td rowspan="3" style="font-size:5pt">※公費負担点数<br>点</td>
+          </tr>
+          <tr>
+            <td style="font-size:5pt">特別</td>
+            <td style="font-size:5.5pt">円×</td>
+            <td style="font-size:5.5pt">回</td>
+          </tr>
+          <tr>
+            <td style="font-size:5pt">食堂</td>
+            <td style="font-size:5.5pt">円×</td>
+            <td style="font-size:5.5pt">日間</td>
+          </tr>
+        </table>
+        <div style="font-size:5pt;text-align:right">負担(生)&nbsp;制(（生）)・1・8・3月組</div>
+      </div>
+    </div>
+
+    <!-- Bottom totals -->
+    <table class="detail-table" style="margin-top:2px">
+      <tr>
+        <td colspan="2" class="gray-bg" style="font-size:5.5pt">請求</td>
+        <td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">＊</td>
+        <td style="font-size:5.5pt">決定</td>
+        <td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">負担金額</td>
+        <td colspan="2" style="font-size:5.5pt">円</td>
+      </tr>
+    </table>
+    <div style="font-size:5pt;text-align:right">職務 (円) 受診・支払額等</div>
+    <table class="detail-table">
+      <tr>
+        <td style="font-size:5pt">食<br>事</td>
+        <td style="font-size:5.5pt">固</td>
+        <td style="font-size:5.5pt">請求</td>
+        <td style="font-size:5.5pt">円</td>
+        <td style="font-size:5.5pt">※決定</td>
+        <td style="font-size:5.5pt">円</td>
+        <td colspan="2" style="font-size:5pt">（標準負担額）</td>
+        <td style="font-size:5.5pt">円</td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">生<br>活</td>
+        <td></td>
+        <td style="font-size:5.5pt">回</td>
+        <td style="font-size:5.5pt">円</td>
+        <td></td>
+        <td style="font-size:5.5pt">円</td>
+        <td colspan="3" style="font-size:5pt">円</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:5.5pt">公</td>
+        <td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">＊</td>
+        <td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="3" style="font-size:5.5pt">円</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:5.5pt">公</td>
+        <td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">＊</td>
+        <td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="3" style="font-size:5.5pt">円</td>
+      </tr>
+    </table>
+
+  </div><!-- end page3 -->
+
+  <!-- PAGE 4: 医科入院 (identical to page 3) -->
+  <div class="form" id="page4">
+    <div class="form-header">
+      <div class="form-title">
+        <h1>診療報酬明細書</h1>
+        <p>（医科入院）</p>
+        <p class="date-line">平成&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;月分</p>
+      </div>
+      <div class="header-right">
+        <div class="pref-code" style="font-size:5pt">都道府<br>県番号</div>
+        <div class="clinic-code-box" style="font-size:5pt">医療機関コード</div>
+        <div class="type-grid">
+          <table>
+            <tr>
+              <td rowspan="3" style="writing-mode:vertical-rl;font-size:5.5pt;padding:0 2px">医<br>科</td>
+              <td style="background:#ddd">1</td><td>1単独</td><td>1本人</td><td>7高入一</td>
+            </tr>
+            <tr><td>2</td><td>2?</td><td>6六人</td><td></td></tr>
+            <tr><td>3</td><td>3?</td><td>5家人</td><td>9高入7</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <table style="margin-bottom:2px">
+      <tr>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="6"></td>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="2"></td>
+        <td style="width:60px;font-size:5pt">保険者<br>番号</td>
+        <td colspan="4"></td>
+        <td style="font-size:5pt;width:25px">1098<br>7（）</td>
+      </tr>
+    </table>
+    <table style="margin-bottom:2px;font-size:5.5pt">
+      <tr>
+        <td style="width:55px">公費負担<br>者番号①</td><td colspan="3" style="min-width:80px"></td>
+        <td style="width:55px">公費負担<br>者番号④</td><td colspan="3" style="min-width:80px"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号①</td><td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号④</td><td colspan="3"></td>
+      </tr>
+    </table>
+    <div class="patient-card-box" style="margin-bottom:2px">被保険者証・被保険者<br>手帳等の記号・番号</div>
+    <div style="display:flex;gap:4px;margin-bottom:2px;align-items:center">
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 3px">区分</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 6px">精　神</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 6px">結　核</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 6px">療　養</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 12px;flex:1">特記事項</div>
+    </div>
+    <div class="name-row">
+      <div style="flex:1">
+        <div class="name-box">
+          <div>氏</div><div style="margin-top:8px">名</div>
+          <div style="font-size:5.5pt;margin-top:2px">１男 ２女 １明 ２大 ３昭 ４平 &nbsp;・&nbsp; 生</div>
+          <div style="font-size:5pt">職務上の事由 1.職務上 2.下船後3月以内 3.通勤災害</div>
+        </div>
+      </div>
+      <div><div class="hosp-info-box">保健医<br>療機関<br>の所在<br>地及び<br>名&nbsp;称</div></div>
+    </div>
+    <table class="detail-table" style="margin-bottom:2px">
+      <tr>
+        <td rowspan="3" style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">傷<br>病<br>名</td>
+        <td style="width:12px;font-size:5.5pt">（1）</td><td colspan="3"></td>
+        <td rowspan="3" style="width:90px;font-size:5pt">（1）年　月　日<br>（2）年　月　日<br>（3）年　月　日</td>
+        <td style="font-size:5pt;width:12px">転帰</td><td style="font-size:5pt;width:12px">死C</td>
+        <td style="font-size:5pt;width:12px">中止</td>
+        <td rowspan="3" style="width:35px;font-size:5pt">保険<br>　　日<br>公費<br>　　日</td>
+      </tr>
+      <tr><td style="font-size:5.5pt">（2）</td><td colspan="3"></td><td colspan="3"></td></tr>
+      <tr><td style="font-size:5.5pt">（3）</td><td colspan="3"></td><td colspan="3"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr class="gray-bg"><td colspan="2" style="font-size:5.5pt">⑪初診&nbsp;時間外・休日・深夜</td><td style="font-size:5.5pt">回</td><td style="font-size:5.5pt">点</td><td colspan="2" style="font-size:5.5pt">公費分点数</td></tr>
+      <tr><td colspan="2" style="font-size:5.5pt">⑬医学管理</td><td></td><td></td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr><td style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">在<br>宅</td><td colspan="3" style="font-size:5.5pt">主</td><td></td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="6" style="width:10px;writing-mode:vertical-rl;font-size:5pt">投<br>薬</td>
+        <td style="font-size:5.5pt">⑳内&nbsp;&nbsp;服</td><td colspan="2" style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td>
+      </tr>
+      <tr><td style="font-size:5.5pt">?屯服</td><td colspan="2" style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?外用</td><td colspan="2" style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?調剤</td><td colspan="2" style="font-size:5.5pt">日</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?麻毒</td><td colspan="2" style="font-size:5.5pt">日</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?調基</td><td colspan="2"></td><td></td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="3" style="width:10px;writing-mode:vertical-rl;font-size:5pt">注<br>射</td>
+        <td style="font-size:5.5pt">?皮下筋肉内</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td>
+      </tr>
+      <tr><td style="font-size:5.5pt">?静脈内</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">?その他</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr><td style="font-size:5.5pt;width:35px">処置<br>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5.5pt">手術<br>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt"><span class="circle">検</span>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt"><span class="circle">画</span>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt"><span class="circle">そ</span><br>の他</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+      <tr><td style="font-size:5pt">薬&nbsp;&nbsp;剤</td><td colspan="3"></td><td></td><td colspan="2"></td></tr>
+    </table>
+    <div style="border:1px solid #555;border-top:none;padding:1px 3px;font-size:5.5pt">入院年月日&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;月&nbsp;&nbsp;日</div>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="6" style="width:10px;writing-mode:vertical-rl;font-size:5pt">入<br>院</td>
+        <td style="font-size:5.5pt" colspan="2">?診　⑯入院基本料・加算</td>
+        <td colspan="2" style="font-size:5.5pt">点</td><td colspan="2"></td>
+      </tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+      <tr><td></td><td style="font-size:5.5pt">×</td><td colspan="2" style="font-size:5.5pt">日間</td><td colspan="2"></td></tr>
+    </table>
+    <table class="detail-table">
+      <tr>
+        <td rowspan="2" style="width:10px;writing-mode:vertical-rl;font-size:5pt">院</td>
+        <td colspan="4" style="font-size:5.5pt">?特定入院料・その他</td><td colspan="2"></td>
+      </tr>
+      <tr><td colspan="4"></td><td colspan="2"></td></tr>
+    </table>
+    <div style="display:flex;gap:3px;margin-top:2px">
+      <div style="flex:1">
+        <table class="detail-table">
+          <tr>
+            <td colspan="5" style="font-size:5.5pt">※高額療養費</td><td style="font-size:5.5pt">円</td>
+            <td style="font-size:5.5pt">※公費負担点数</td><td style="font-size:5.5pt">点</td>
+          </tr>
+          <tr>
+            <td rowspan="3" style="writing-mode:vertical-rl;font-size:5pt">食<br>事</td>
+            <td style="font-size:5pt">⑨基準</td>
+            <td style="font-size:5.5pt">円×</td><td style="font-size:5.5pt">回</td>
+            <td rowspan="3" style="font-size:5pt">※公費負担点数<br>点</td>
+          </tr>
+          <tr><td style="font-size:5pt">特別</td><td style="font-size:5.5pt">円×</td><td style="font-size:5.5pt">回</td></tr>
+          <tr><td style="font-size:5pt">食堂</td><td style="font-size:5.5pt">円×</td><td style="font-size:5.5pt">日間</td></tr>
+        </table>
+        <div style="font-size:5pt;text-align:right">負担(生)&nbsp;制(（生）)・1・8・3月組</div>
+      </div>
+    </div>
+    <table class="detail-table" style="margin-top:2px">
+      <tr>
+        <td colspan="2" class="gray-bg" style="font-size:5.5pt">請求</td>
+        <td style="font-size:5.5pt">点</td><td style="font-size:5.5pt">＊</td>
+        <td style="font-size:5.5pt">決定</td><td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">負担金額</td><td colspan="2" style="font-size:5.5pt">円</td>
+      </tr>
+    </table>
+    <div style="font-size:5pt;text-align:right">職務 (円) 受診・支払額等</div>
+    <table class="detail-table">
+      <tr>
+        <td style="font-size:5pt">食<br>事</td>
+        <td style="font-size:5.5pt">固</td><td style="font-size:5.5pt">請求</td>
+        <td style="font-size:5.5pt">円</td><td style="font-size:5.5pt">※決定</td>
+        <td style="font-size:5.5pt">円</td>
+        <td colspan="2" style="font-size:5pt">（標準負担額）</td><td style="font-size:5.5pt">円</td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">生<br>活</td><td></td><td style="font-size:5.5pt">回</td>
+        <td style="font-size:5.5pt">円</td><td></td><td style="font-size:5.5pt">円</td>
+        <td colspan="3" style="font-size:5pt">円</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:5.5pt">公</td><td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">＊</td><td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="3" style="font-size:5.5pt">円</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:5.5pt">公</td><td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">＊</td><td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="3" style="font-size:5.5pt">円</td>
+      </tr>
+    </table>
+  </div><!-- end page4 -->
+
+</div><!-- end page 3+4 wrapper -->
+
+
+<!-- ============================================================ -->
+<!--  PAGE 5: 医科入院 (Single page)                              -->
+<!-- ============================================================ -->
+<div class="page-label" style="margin-top:16px">ページ 5 ? 診療報酬明細書（医科入院・単票）</div>
+<div class="page-wrapper">
+
+  <div class="form" id="page5" style="width:500px">
+
+    <div class="form-header">
+      <div class="form-title">
+        <h1>診療報酬明細書</h1>
+        <p>（医科入院）</p>
+        <p class="date-line">平成&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;月分</p>
+      </div>
+      <div class="header-right">
+        <div class="pref-code" style="font-size:5pt">都道府<br>県番号</div>
+        <div class="clinic-code-box" style="font-size:5pt">医療機関コード</div>
+        <div class="type-grid">
+          <table>
+            <tr>
+              <td rowspan="3" style="writing-mode:vertical-rl;font-size:5.5pt;padding:0 2px">医<br>科</td>
+              <td style="background:#ddd">1</td><td>1単独</td><td>1本人</td><td>7高入一</td>
+            </tr>
+            <tr><td>2</td><td>2?</td><td>6六人</td><td></td></tr>
+            <tr><td>3</td><td>3?</td><td>5家人</td><td>9高入7</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <table style="margin-bottom:2px">
+      <tr>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="6" style="font-size:5.5pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+        <td style="width:20px;font-size:5pt" class="center">?</td>
+        <td colspan="2"></td>
+        <td style="width:60px;font-size:5pt">保険者<br>番号</td>
+        <td colspan="4"></td>
+        <td style="font-size:5pt;width:25px">1098<br>7（）</td>
+      </tr>
+    </table>
+
+    <table style="margin-bottom:2px;font-size:5.5pt">
+      <tr>
+        <td style="width:55px">公費負担<br>者番号①</td><td colspan="3" style="min-width:80px"></td>
+        <td style="width:55px">公費負担<br>者番号④</td><td colspan="3" style="min-width:80px"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号①</td><td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号④</td><td colspan="3"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>者番号②</td><td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>者番号⑤</td><td colspan="3"></td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号②</td><td colspan="3"></td>
+        <td style="font-size:5pt">公費負担<br>医療の<br>受給者<br>番号⑤</td><td colspan="3"></td>
+      </tr>
+    </table>
+
+    <div class="patient-card-box" style="margin-bottom:2px">被保険者証・被保険者<br>手帳等の記号・番号</div>
+
+    <div style="display:flex;gap:4px;margin-bottom:2px;align-items:center">
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 3px">区分</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 6px">精　神</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 6px">結　核</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 6px">療　養</div>
+      <div style="font-size:5.5pt;border:1px solid #555;padding:1px 12px;flex:1">特記事項</div>
+      <div class="hosp-info-box" style="width:130px;font-size:5.5pt">保健医療機関<br>の所在地及び<br>名&nbsp;称</div>
+    </div>
+
+    <div class="name-row">
+      <div style="flex:1">
+        <div class="name-box">
+          <div>氏</div><div style="margin-top:8px">名</div>
+          <div style="font-size:5.5pt;margin-top:2px">１男 ２女 １明 ２大 ３昭 ４平 &nbsp;・&nbsp; 生</div>
+          <div style="font-size:5pt">職務上の事由 1.職務上 2.下船後3月以内 3.通勤災害</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two-column layout for page 5 -->
+    <div style="display:flex;gap:4px">
+      <!-- LEFT column: medical items -->
+      <div style="flex:1">
+        <table class="detail-table" style="margin-bottom:2px">
+          <tr>
+            <td rowspan="3" style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">傷<br>病<br>名</td>
+            <td style="width:12px;font-size:5.5pt">（1）</td><td colspan="2"></td>
+            <td rowspan="3" style="width:70px;font-size:5pt">（1）年　月　日<br>（2）年　月　日<br>（3）年　月　日</td>
+            <td style="font-size:5pt;width:12px">転帰</td><td style="font-size:5pt;width:12px">死C</td>
+            <td style="font-size:5pt;width:12px">中止</td>
+            <td rowspan="3" style="width:28px;font-size:5pt">保険<br>　日<br>公費<br>　日</td>
+          </tr>
+          <tr><td style="font-size:5.5pt">（2）</td><td colspan="2"></td><td colspan="3"></td></tr>
+          <tr><td style="font-size:5.5pt">（3）</td><td colspan="2"></td><td colspan="3"></td></tr>
+        </table>
+
+        <table class="detail-table">
+          <tr class="gray-bg">
+            <td colspan="2" style="font-size:5.5pt">⑪初診&nbsp;時間外・休日・深夜</td>
+            <td style="font-size:5.5pt">回</td><td style="font-size:5.5pt">点</td>
+            <td colspan="2" style="font-size:5.5pt">公費分点数</td>
+          </tr>
+          <tr><td colspan="2" style="font-size:5.5pt">⑬医学管理</td><td></td><td></td><td colspan="2"></td></tr>
+        </table>
+        <table class="detail-table">
+          <tr><td style="width:16px;writing-mode:vertical-rl;font-size:5.5pt">在<br>宅</td><td colspan="3" style="font-size:5.5pt">主</td><td></td><td colspan="2"></td></tr>
+        </table>
+        <table class="detail-table">
+          <tr>
+            <td rowspan="6" style="width:10px;writing-mode:vertical-rl;font-size:5pt">投<br>薬</td>
+            <td style="font-size:5.5pt">⑳内&nbsp;&nbsp;服</td><td colspan="2" style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td>
+          </tr>
+          <tr><td style="font-size:5.5pt">?屯服</td><td colspan="2" style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5.5pt">?外用</td><td colspan="2" style="font-size:5.5pt">単位</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5.5pt">?調剤</td><td colspan="2" style="font-size:5.5pt">日</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5.5pt">?麻毒</td><td colspan="2" style="font-size:5.5pt">日</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5.5pt">?調基</td><td colspan="2"></td><td></td><td colspan="2"></td></tr>
+        </table>
+        <table class="detail-table">
+          <tr>
+            <td rowspan="3" style="width:10px;writing-mode:vertical-rl;font-size:5pt">注<br>射</td>
+            <td style="font-size:5.5pt">?皮下筋肉内</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td>
+          </tr>
+          <tr><td style="font-size:5.5pt">?静脈内</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5.5pt">?その他</td><td colspan="2" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+        </table>
+        <table class="detail-table">
+          <tr><td style="font-size:5.5pt;width:35px">処置<br>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5.5pt">手術<br>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5pt"><span class="circle">検</span>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5pt"><span class="circle">画</span>薬剤</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5pt"><span class="circle">そ</span><br>の他</td><td colspan="3" style="font-size:5.5pt">回</td><td></td><td colspan="2"></td></tr>
+          <tr><td style="font-size:5pt">薬&nbsp;&nbsp;剤</td><td colspan="3"></td><td></td><td colspan="2"></td></tr>
+        </table>
+      </div>
+
+      <!-- RIGHT column: 入院 data -->
+      <div style="width:220px">
+        <div style="border:1px solid #555;padding:1px 3px;font-size:5.5pt">入院年月日&nbsp;&nbsp;年&nbsp;月&nbsp;日</div>
+        <table class="detail-table">
+          <tr>
+            <td rowspan="6" style="width:10px;writing-mode:vertical-rl;font-size:5pt">入<br>院</td>
+            <td colspan="2" style="font-size:5.5pt">?診　⑯入院基本料・加算</td>
+            <td style="font-size:5.5pt">点</td><td></td>
+          </tr>
+          <tr><td></td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">日間</td><td></td></tr>
+          <tr><td></td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">日間</td><td></td></tr>
+          <tr><td></td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">日間</td><td></td></tr>
+          <tr><td></td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">日間</td><td></td></tr>
+          <tr><td></td><td style="font-size:5.5pt">×</td><td style="font-size:5.5pt">日間</td><td></td></tr>
+        </table>
+        <table class="detail-table">
+          <tr>
+            <td rowspan="2" style="width:10px;writing-mode:vertical-rl;font-size:5pt">院</td>
+            <td colspan="3" style="font-size:5.5pt">?特定入院料・その他</td>
+          </tr>
+          <tr><td colspan="3"></td></tr>
+        </table>
+        <table class="detail-table" style="margin-top:4px">
+          <tr>
+            <td colspan="4" style="font-size:5.5pt">※高額療養費</td>
+            <td style="font-size:5.5pt">円</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="font-size:5pt">※公費負担点数</td>
+            <td colspan="3" style="font-size:5.5pt">点</td>
+          </tr>
+          <tr>
+            <td rowspan="3" style="writing-mode:vertical-rl;font-size:5pt">食<br>事</td>
+            <td style="font-size:5pt">⑨基準</td>
+            <td style="font-size:5.5pt">円×</td>
+            <td style="font-size:5.5pt">回</td>
+            <td rowspan="3" style="font-size:5pt">負担<br>(生)<br>制</td>
+          </tr>
+          <tr><td style="font-size:5pt">特別</td><td style="font-size:5.5pt">円×</td><td style="font-size:5.5pt">回</td></tr>
+          <tr><td style="font-size:5pt">食堂</td><td style="font-size:5.5pt">円×</td><td style="font-size:5.5pt">日間</td></tr>
+        </table>
+        <div style="font-size:5pt">（（生）)・1・8・3月組</div>
+        <div style="font-size:5pt">※公費負担点数&nbsp;点</div>
+      </div>
+    </div>
+
+    <!-- Bottom totals -->
+    <table class="detail-table" style="margin-top:4px">
+      <tr>
+        <td colspan="2" class="gray-bg" style="font-size:5.5pt">請求</td>
+        <td style="font-size:5.5pt">点</td><td style="font-size:5.5pt">＊</td>
+        <td style="font-size:5.5pt">決定</td><td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">負担金額</td><td colspan="2" style="font-size:5.5pt">円</td>
+      </tr>
+    </table>
+    <div style="font-size:5pt;text-align:right">職務 (円) 受診・支払額等</div>
+    <table class="detail-table">
+      <tr>
+        <td style="font-size:5pt">食<br>事</td>
+        <td style="font-size:5.5pt">固</td><td style="font-size:5.5pt">請求</td>
+        <td style="font-size:5.5pt">円</td><td style="font-size:5.5pt">※決定</td>
+        <td style="font-size:5.5pt">円</td>
+        <td colspan="2" style="font-size:5pt">（標準負担額）</td><td style="font-size:5.5pt">円</td>
+      </tr>
+      <tr>
+        <td style="font-size:5pt">生<br>活</td><td></td><td style="font-size:5.5pt">回</td>
+        <td style="font-size:5.5pt">円</td><td></td><td style="font-size:5.5pt">円</td>
+        <td colspan="3" style="font-size:5pt">円</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:5.5pt">公</td><td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">＊</td><td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="3" style="font-size:5.5pt">円</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="font-size:5.5pt">公</td><td style="font-size:5.5pt">点</td>
+        <td style="font-size:5.5pt">＊</td><td colspan="2" style="font-size:5.5pt">点</td>
+        <td colspan="3" style="font-size:5.5pt">円</td>
+      </tr>
+    </table>
+
+  </div><!-- end page5 -->
+
+</div><!-- end page5 wrapper -->
+
+</body>
+</html>
