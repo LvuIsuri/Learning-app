@@ -1,19 +1,2 @@
-
-AP_DATA		/nfs/data1/RE/RE01
-API_KEY		01234567890asdfghjkl
-QUEUE_CONF_PATH		/kikin_on/home/RE/RE01/etc/apInfra/queueConf.xml
-set AP_DATA=/nfs/data1/RE/RE01
-set API_KEY=01234567890asdfghjkl
-set QUEUE_CONF_PATH=/kikin_on/home/RE/RE01/etc/apInfra/queueConf.xml
-
-mvn spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
-PS C:\Users\use> curl -X POST -H "apikey: 01234567890asdfghjkl" -F "seiqkbn=1" -F "seiqiraino=5071113101234561001" -F "transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17" -F "filename=@202511_15071113101234561001.zip" -OJ http://localhost:8082/ON_SeikyuIrai
-Invoke-WebRequest : パラメーター 'Headers' をバインドできません。"apikey: 01234567890asdfghjkl" の値を "System.String"
-型から "System.Collections.IDictionary" 型に変換できません。
-発生場所 行:1 文字:17
-+ curl -X POST -H "apikey: 01234567890asdfghjkl" -F "seiqkbn=1" -F "sei ...
-+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : InvalidArgument: (:) [Invoke-WebRequest]、ParameterBindingException
-    + FullyQualifiedErrorId : CannotConvertArgumentNoMessage,Microsoft.PowerShell.Commands.InvokeWebRequestCommand
-
-PS C:\Users\use>
+date:2026-05-22 11:35:10.268	thread:http-nio-8082-exec-3	X-Track:641cea9f-54de-4ba9-81e0-3d8aa77982e2	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�髢句ｧ� POST /ON_SeikyuIrai param: seiqkbn=1, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip
+date:2026-05-22 11:35:10.268	thread:http-nio-8082-exec-3	X-Track:641cea9f-54de-4ba9-81e0-3d8aa77982e2	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�螳御ｺ� POST /ON_SeikyuIrai param: seiqkbn=1, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip (蜃ｦ逅�譎る俣: 0ms)
