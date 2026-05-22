@@ -1,3 +1,8 @@
 AP_DATA		/nfs/data1/RE/RE01
 API_KEY		01234567890asdfghjkl
 QUEUE_CONF_PATH		/kikin_on/home/RE/RE01/etc/apInfra/queueConf.xml
+set AP_DATA=/nfs/data1/RE/RE01
+set API_KEY=01234567890asdfghjkl
+set QUEUE_CONF_PATH=/kikin_on/home/RE/RE01/etc/apInfra/queueConf.xml
+
+mvn spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
