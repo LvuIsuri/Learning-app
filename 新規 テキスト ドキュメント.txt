@@ -1,2 +1,13 @@
-date:2026-05-22 11:35:10.268	thread:http-nio-8082-exec-3	X-Track:641cea9f-54de-4ba9-81e0-3d8aa77982e2	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�髢句ｧ� POST /ON_SeikyuIrai param: seiqkbn=1, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip
-date:2026-05-22 11:35:10.268	thread:http-nio-8082-exec-3	X-Track:641cea9f-54de-4ba9-81e0-3d8aa77982e2	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�螳御ｺ� POST /ON_SeikyuIrai param: seiqkbn=1, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip (蜃ｦ逅�譎る俣: 0ms)
+請求依頼
+　ログはキャプチャではなく行全体をコピーしてExcelに貼ってほしいです。
+　test7～9
+　　シートがtest6になっている
+　test7、10
+　　修正前の検証物が上がっている
+　test11
+　　SQS登録用の引数がない
+　test12、13、14、15、16
+　　入力値のキャプチャにエラーメッセージが出ている
+　　(23)Failure writing output to destination
+　test17
+　　ファイル名が文字化けしています。→私の方で検証物を取得します。
