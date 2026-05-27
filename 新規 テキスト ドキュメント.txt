@@ -35,4 +35,3 @@ date:2026-05-27 10:50:54.824	thread:main	X-Track:	level:INFO 	logger:o.s.b.w.s.c
 10:50:54,873 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@1c628f6a - End of configuration.
 10:50:54,873 |-INFO in ch.qos.logback.access.common.joran.JoranConfigurator@9b47400 - Registering current configuration as safe fallback point
 10:50:54,873 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Done configuring
-https://www.facebook.com/share/1834fUYZGs/?mibextid=wwXIfr
