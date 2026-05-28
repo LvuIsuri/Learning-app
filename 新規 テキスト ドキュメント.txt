@@ -1,37 +1,17 @@
-10:50:54,058 |-WARN in ch.qos.logback.core.model.processor.AppenderModelHandler - Appender named [CONSOLE] not referenced. Skipping further processing.
-
-  .   ____          _            __ _ _
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-  '  |____| .__|_| |_|_| |_\__, | / / / /
- =========|_|==============|___/=/_/_/_/
-
-[32m :: Spring Boot :: [39m              [2m (v3.5.6)[0;39m
-
-date:2026-05-27 10:50:54.152	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:Starting SeikyusienApi using Java 21.0.2 with PID 5320 (C:\pleiades\2023-12\workspace\seikyusien\target\classes started by use in C:\pleiades\2023-12\workspace\seikyusien)
-date:2026-05-27 10:50:54.155	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:No active profile set, falling back to 1 default profile: "default"
-date:2026-05-27 10:50:54.745	thread:main	X-Track:	level:INFO 	logger:o.s.boot.web.embedded.tomcat.TomcatWebServer    	message:Tomcat initialized with port 8082 (http)
-date:2026-05-27 10:50:54.754	thread:main	X-Track:	level:INFO 	logger:org.apache.catalina.core.StandardService        	message:Starting service [Tomcat]
-date:2026-05-27 10:50:54.755	thread:main	X-Track:	level:INFO 	logger:org.apache.catalina.core.StandardEngine         	message:Starting Servlet engine: [Apache Tomcat/10.1.46]
-date:2026-05-27 10:50:54.824	thread:main	X-Track:	level:INFO 	logger:o.a.c.c.ContainerBase.[Tomcat].[localhost].[/]  	message:Initializing Spring embedded WebApplicationContext
-date:2026-05-27 10:50:54.824	thread:main	X-Track:	level:INFO 	logger:o.s.b.w.s.c.ServletWebServerApplicationContext  	message:Root WebApplicationContext: initialization completed in 644 ms
-10:50:54,855 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Could NOT find configuration file [C:\Users\use\AppData\Local\Temp\tomcat.8082.17795754219464933886\logback-access.xml] using property "catalina.base"
-10:50:54,855 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Could NOT find configuration file [C:\Users\use\AppData\Local\Temp\tomcat.8082.17795754219464933886\logback-access.xml] using property "catalina.home"
-10:50:54,855 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Found [logback-access.xml] as a resource.
-10:50:54,860 |-INFO in ch.qos.logback.access.common.model.processor.ConfigurationModelHandler - debug attribute not set
-10:50:54,860 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ACCESS_STDOUT]
-10:50:54,860 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
-10:50:54,860 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.access.common.PatternLayoutEncoder] for [encoder] property
-10:50:54,872 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
-10:50:54,872 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - console in production environments, especially in high volume systems.
-10:50:54,872 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
-10:50:54,872 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ACCESS_FILE]
-10:50:54,872 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.FileAppender]
-10:50:54,872 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.access.common.PatternLayoutEncoder] for [encoder] property
-10:50:54,873 |-INFO in ch.qos.logback.core.FileAppender[ACCESS_FILE] - File property is set to [/var/log/tomcat/access_log.txt]
-10:50:54,873 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [ACCESS_STDOUT] to ch.qos.logback.access.tomcat.LogbackValve[null]
-10:50:54,873 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [ACCESS_FILE] to ch.qos.logback.access.tomcat.LogbackValve[null]
-10:50:54,873 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@1c628f6a - End of configuration.
-10:50:54,873 |-INFO in ch.qos.logback.access.common.joran.JoranConfigurator@9b47400 - Registering current configuration as safe fallback point
-10:50:54,873 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Done configuring
+請求結果連携(SeikyuKekka)
+　　
+　　test11
+　　　body.txtの中身とログにあるリクエストの内容が異なっている
+　　test12
+　　　seiqnengetuの値が異なっている(2026051が20260511になっている)
+　　test19
+　　　seiqiraino=5071113101234563001
+　　test20
+　　　入力値の値がおかしい
+　　test26、test27、test28、test29
+　　　タイムスタンプは4ms、2msではない。レスポンスで返却したzipファイルの内容がテキストC:/Users/use/202511_150711131012345610010.zipだけでレスポンスファイルの情報がない
+　　test30
+　　　body,txtのirainaiyoukbnの値が0となっている。検証物にはその時取得した物を貼ってください
+　　　irainaiyoukbnが1なので添付ファイル名は202511_150711131012345610010.zipではありません。
+　　test31
+　　　irainaiyoukbnが4なので添付ファイル名は202511_150711131012345610010.zipではありません。
