@@ -1,17 +1,22 @@
-請求結果連携(SeikyuKekka)
-　　
-　　test11
-　　　body.txtの中身とログにあるリクエストの内容が異なっている
-　　test12
-　　　seiqnengetuの値が異なっている(2026051が20260511になっている)
-　　test19
-　　　seiqiraino=5071113101234563001
-　　test20
-　　　入力値の値がおかしい
-　　test26、test27、test28、test29
-　　　タイムスタンプは4ms、2msではない。レスポンスで返却したzipファイルの内容がテキストC:/Users/use/202511_150711131012345610010.zipだけでレスポンスファイルの情報がない
-　　test30
-　　　body,txtのirainaiyoukbnの値が0となっている。検証物にはその時取得した物を貼ってください
-　　　irainaiyoukbnが1なので添付ファイル名は202511_150711131012345610010.zipではありません。
-　　test31
-　　　irainaiyoukbnが4なので添付ファイル名は202511_150711131012345610010.zipではありません。
+Kính gửi anh/chị,
+
+Em xin phép được báo cáo một việc cá nhân rất quan trọng và mong nhận được sự hỗ trợ từ phía công ty.
+
+Gần đây, em vừa nhận được thông tin vợ em đang mang thai. Đây là tin vui đối với gia đình em, tuy nhiên cũng đến khá đột ngột và khiến em rất lo lắng vì hiện tại vợ em vẫn đang ở Việt Nam, còn em thì đang làm việc và sinh sống một mình tại Nhật.
+
+Hiện tại, em đang ở nhà công ty (shataku) và đang tham gia bảo hiểm thông qua công ty. Vì sức khỏe của vợ và con trong giai đoạn thai kỳ là điều em đặc biệt quan tâm, em rất mong muốn được bảo lãnh vợ sang Nhật càng sớm càng tốt để em có thể trực tiếp chăm sóc, hỗ trợ vợ trong thời gian mang thai và sinh con.
+
+Do thời gian khá gấp và tình huống này xảy ra bất ngờ, em kính mong anh/chị cho phép em được hỏi và hướng dẫn thêm về:
+- Các thủ tục và giấy tờ cần thiết để bảo lãnh vợ sang Nhật
+- Các chế độ liên quan (bảo hiểm, chế độ nghỉ chăm con – papakyu, v.v.)
+- Việc sắp xếp sinh hoạt và làm việc trong thời gian đầu khi vợ mới sang (trong trường hợp cần điều chỉnh)
+
+Nếu có thể, em rất mong các giấy tờ hoặc biểu mẫu liên quan được cung cấp sớm và dưới dạng file PDF để em có thể chuẩn bị và nộp hồ sơ online kịp thời, tránh ảnh hưởng đến tiến độ bảo lãnh và sức khỏe của vợ.
+
+Em hiểu đây là việc cá nhân, tuy nhiên trong hoàn cảnh hiện tại, em thực sự mong nhận được sự thấu hiểu và hỗ trợ từ phía công ty.
+
+Em xin chân thành cảm ơn anh/chị đã dành thời gian xem xét và hỗ trợ cho trường hợp của em.
+Rất mong nhận được phản hồi từ anh/chị.
+
+Trân trọng,
+[Họ tên của bạn]
