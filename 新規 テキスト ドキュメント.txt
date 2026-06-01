@@ -1,1 +1,4 @@
-　点数表が2の場合の試験なのに1のpatternで試験を実施している。直っていない。アップロードファイルを間違えているのでc:\users\use配下のzipファイルを削除後試験した方が良さそうだと思います。
+date:2026-06-01 13:53:54.742	thread:http-nio-8082-exec-23	X-Track:8b1a9ff7-4f15-467f-a8fe-eb6241f2c9d7	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP処理開始 POST /ON_SeikyuIrai param: seiqkbn=1, seiqiraino=5071113101234561001, transactionid=118cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=�ｼ抵ｼ撰ｼ抵ｼ包ｼ托ｼ狙150711131012345610010.zip
+date:2026-06-01 13:53:54.742	thread:http-nio-8082-exec-23	X-Track:8b1a9ff7-4f15-467f-a8fe-eb6241f2c9d7	level:WARN 	logger:j.o.k.s.controller.SeikyusienAPIController      	message:添付ファイル名が誤っています:�ｼ抵ｼ撰ｼ抵ｼ包ｼ托ｼ狙150711131012345610010.zip
+date:2026-06-01 13:53:54.742	thread:http-nio-8082-exec-23	X-Track:8b1a9ff7-4f15-467f-a8fe-eb6241f2c9d7	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP処理完了 POST /ON_SeikyuIrai param: seiqkbn=1, seiqiraino=5071113101234561001, transactionid=118cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=�ｼ抵ｼ撰ｼ抵ｼ包ｼ托ｼ狙150711131012345610010.zip (処理時間: 0ms)
+[ACCESS] - 0:0:0:0:0:0:0:1 - - POST /ON_SeikyuIrai HTTP/1.1 2026-06-01 13:53:54.742 200 2 8 ms
