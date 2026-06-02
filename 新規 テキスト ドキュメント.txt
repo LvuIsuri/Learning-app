@@ -1,5 +1,4 @@
-	if (value == null || value.isEmpty()) {
-			context.buildConstraintViolationWithTemplate("添付ファイルが存在しません")
-					.addConstraintViolation();
-			return false;
-		}
+明日は台風が来るのでテレワークとします。作業内容はクラス設計書を作成してください。
+作業をやるにあたって先週の金曜日に無かった朝9時、15時、作業終了時の作業内容の報告を私と幸川さんにお願いします。
+不明点などがあり作業が止まる等ある場合はチャットで教えてください。
+ 
