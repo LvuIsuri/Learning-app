@@ -1,2 +1,5 @@
-curl -X POST -H "apikey: 01234567890asdfghjkl" -F "seiqkbn=<seiqkbn.txt;type=text/plain; charset=Windows-31J" -F "seiqiraino=<seiqiraino.txt;type=txt/plain; charset=Windows-31J" -F "transactionid=<transactionid.txt;type=txt/plain; charset=Windows-31J" -F "filename=@202511_15071113101234561001.zip;type=application/zip" -OJ http://localhost:8082/ON_SeikyuIrai
-
+	if (value == null || value.isEmpty()) {
+			context.buildConstraintViolationWithTemplate("添付ファイルが存在しません")
+					.addConstraintViolation();
+			return false;
+		}
