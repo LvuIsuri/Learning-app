@@ -1,1 +1,19 @@
-curl -X POST -H "apikey: 01234567890asdfghjkl" -F "seiqkbn=<seiqkbn.txt;type=text/plain; charset=Windows-31J" -F "seiqiraino=<seiqiraino.txt;type=txt/plain; charset=Windows-31J" -F "transactionid=<transactionid.txt;type=txt/plain; charset=Windows-31J" -F "filename=@202511_15071113101234561001.zip;type=application/zip" -OJ http://localhost:8082/ON_SeikyuIrai
+Thread Name:Thread Group 1-1
+Sample Start:2026-06-12 15:18:59 JST
+Load time:0
+Connect Time:0
+Latency:0
+Size in bytes:2555
+Sent bytes:0
+Headers size in bytes:0
+Body size in bytes:2555
+Sample Count:1
+Error Count:1
+Data type ("text"|"bin"|""):text
+Response code:Non HTTP response code: org.apache.http.conn.HttpHostConnectException
+Response message:Non HTTP response message: Connect to localhost:8082 [localhost/127.0.0.1] failed: Connection refused
+
+
+HTTPSampleResult fields:
+ContentType: 
+DataEncoding: null
