@@ -1,19 +1,324 @@
-観点名	概要	パターン	試験項目
-データの組み合わせの網羅性	入力要素の組み合わせを網羅的に確認する。	"入力要素が複数存在する場合にその組み合わせについてパターン化して確認する。
-ファイルコピー、ファイルリネームのみ対象となる。
-また、ローカル⇒ローカルのようにクライアントとサーバが連携せず終了するパターンについては単体テストの範囲とし、対象外とする。"	"■ファイルコピーについて下記要素の組み合わせで項目を作成する。
-・ファイルアップロード/ダウンロード
-・コピー元パスがファイルパス、ディレクトリパス、ワイルドカードを含むパス
-・コピー先がファイルパス/ディレクトリパス
-・上書きオプションがfalse/trueでコピー先にファイルが存在する場合
-・ファイルアップロード時、コピー先のディレクトリとファイルの所有者と権限について確認する
+#include "REcomnCmnAPBaseFileSvrPvtDef.h"
+// システム毎に読み込むヘッダーファイルを変える
+#if defined(_APINFRA_RG_SYSTEM_)
+// RG用
+#include "REcomnDev.h"
+#elif defined(_APINFRA_RS_SYSTEM_)
+// RS用
+#include "SOcomnDev.h"
+#else
+// ON,KK,SJ用
+#include "REcomnCmn.h"
+#endif
 
-■ファイルリネーム
-・ファイルが存在する/しない
-・ファイルパスがディレクトリ/ワイルドカード
-・対象パスの所有者、グループ、権限が想定と異なる。
+using namespace System;
+using namespace System::IO;
+using namespace System::Net::Http;
+using namespace System::Net::Http::Headers;
+using namespace System::Text;
+using namespace System::Collections::Generic;
+using namespace System::Runtime::Serialization::Json;
+using namespace System::Diagnostics;
+using namespace System::Threading;
 
-サーバ上のファイルリネームの正常パターン。変更前ファイルパスが書き込み権限のあるファイルとして存在し、変更後ファイルパスが存在せず、親ディレクトリは存在する。
-・サーバ上に変更後ファイルパスが既に存在する異常パターン。
-・サーバ上に変更後ファイルパスの親ディレクトリが存在しない異常パターン。
-"
+#if defined(_APINFRA_RS_SYSTEM_)
+using namespace  SOcomn;
+#else
+using namespace REcomn;
+#endif	
+
+// コンストラクタ（認証情報あり）
+CREcomnAPBaseFileSvrUtils::CREcomnAPBaseFileSvrUtils(
+	String^ userName,
+	String^ password
+) {
+	this->authUserName = userName;
+	this->authPassword = password;
+}
+
+// インスタンス取得
+CREcomnAPBaseFileSvrUtils^ CREcomnAPBaseFileSvrUtils::getInstance() {
+	if (CREcomnAPBaseFileSvrUtils::instance == nullptr) {
+		CREcomnAPBaseFileSvrUtils::instance = gcnew CREcomnAPBaseFileSvrUtils();
+	}
+
+	return CREcomnAPBaseFileSvrUtils::instance;
+}
+
+
+
+// ホスト名・リクエストパス取得
+int CREcomnAPBaseFileSvrUtils::GetHostNameAndPath(
+	String^ filePath,
+	String^% hostname,
+	String^% requestPath,
+	String^% error
+) {
+	int secondBackslashIndex = filePath->IndexOf("\\", 2);
+	if (secondBackslashIndex == -1) {
+		error = "パスが無効です：" + filePath;
+		return -1;
+	}
+	hostname = filePath->Substring(2, secondBackslashIndex - 2);
+	requestPath = filePath->Substring(secondBackslashIndex);
+
+	return 0;
+}
+
+//ディレクトリ判定（非static）
+int CREcomnAPBaseFileSvrUtils::NonStaticIsDirectory(
+	String^ filePath,
+	bool% result,
+	String^% error
+) {
+	try {
+		int callResult = 0;
+
+		// ローカルディレクトリの場合
+		if (!filePath->StartsWith("\\\\")) {
+			result = Directory::Exists(filePath);
+			return 0;
+		}
+
+		// ネットワークディレクトリの場合
+
+		// ホスト名、パスを抽出
+		String^ hostname = nullptr;
+		String^ requestPath = nullptr;
+		callResult = this->GetHostNameAndPath(filePath, hostname, requestPath, error);
+		if (callResult != 0) {
+			return -1;
+		}
+
+		String^ url = "http://" + hostname + "/is-directory";
+
+		Dictionary<String^, String^>^ values = gcnew Dictionary<String^, String^>;
+		values->Add("filePath", requestPath);
+
+		// リクエスト処理
+		array<Byte>^ resBody = this->SendFormUrlEncodedRequest(url, values);
+		// レスポンスの解析
+		String^ body = Encoding::UTF8->GetString(resBody);
+		// Json解析
+		MemoryStream^ ms = nullptr;
+		try {
+			ms = gcnew MemoryStream(Encoding::UTF8->GetBytes(body));
+			DataContractJsonSerializer^ serializer = gcnew DataContractJsonSerializer(CREcomnAPBaseFileSvrUtils::InnerBooleanResponsModel::typeid);
+			CREcomnAPBaseFileSvrUtils::InnerBooleanResponsModel^ resModel =
+				safe_cast<CREcomnAPBaseFileSvrUtils::InnerBooleanResponsModel^>(serializer->ReadObject(ms));
+			result = resModel->result;
+		}
+		finally{
+			// リソース解放
+			if (ms != nullptr) {
+				delete ms;
+			}
+		}
+
+		return 0;
+
+	}
+	catch (Exception^ e) {
+		String^ errmsg = e->ToString();
+		// エラーログ出力
+		if (filePath->StartsWith("\\\\")) {
+			this->ErrorLogRequest(filePath, errmsg);
+		}
+		error = errmsg;
+		return -1;
+	}
+}
+
+
+// エラーログ送信
+void CREcomnAPBaseFileSvrUtils::ErrorLogRequest(
+	String^ filePath,
+	String^ message
+) {
+	int callResult = 0;
+
+	if (filePath->StartsWith("\\\\")) {
+		String^ hostname = nullptr;
+		String^ requestPath = nullptr;
+		String^ error = nullptr;
+
+		callResult = this->GetHostNameAndPath(filePath, hostname, requestPath, error);
+		if (callResult != 0) {
+			return;
+		}
+
+		String^ url = "http://" + hostname + "/errorlog";
+		Dictionary<String^, String^>^ values = gcnew Dictionary<String^, String^>;
+		values->Add("errorlog", "端末：" + Environment::MachineName + ",ログ：" + message);
+		try {
+			this->SendFormUrlEncodedRequest(url, values);
+		}
+		catch (Exception^) {
+			// Nothing
+		}
+	}
+}
+
+// フォームリクエスト送信
+array<Byte>^ CREcomnAPBaseFileSvrUtils::SendFormUrlEncodedRequest(
+	String^ url,
+	Dictionary<String^, String^>^ values
+) {
+	Dictionary<String^, String^>^ files = nullptr;
+	HttpResponseHeaders^ header = nullptr;
+
+	return this->SendRetyRequest(url, values, files, header);
+}
+
+// フォームリクエスト送信
+array<Byte>^ CREcomnAPBaseFileSvrUtils::SendFormUrlEncodedRequest(
+	String^ url,
+	Dictionary<String^, String^>^ values,
+	HttpResponseHeaders^% responseHeaders
+) {
+	Dictionary<String^, String^>^ files = nullptr;
+	return this->SendRetyRequest(url, values, files, responseHeaders);
+}
+
+// マルチパートリクエスト送信
+array<Byte>^ CREcomnAPBaseFileSvrUtils::SendMultipartFormDataRequest(
+	String^ url,
+	Dictionary<String^, String^>^ values,
+	Dictionary<String^, String^>^ files
+) {
+	HttpResponseHeaders^ header = nullptr;
+	return this->SendRetyRequest(url, values, files, header);
+	
+}
+
+// リクエスト共通
+array<Byte>^ CREcomnAPBaseFileSvrUtils::SendRetyRequest(
+	String^ url,
+	Dictionary<String^, String^>^ values,
+	Dictionary<String^, String^>^ files,
+	HttpResponseHeaders^% responseHeaders
+) {
+	int retryCount = 0;
+
+	bool httpRes = false;
+	array<Byte>^ result = nullptr;
+	DateTime epoch = DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind::Utc);
+	this->setHttpClient();
+	Exception^ innerEx = nullptr;
+	Random^ random = gcnew Random();
+
+	HttpResponseMessage^ response = nullptr;
+	while (retryCount < MAX_REQUEST) {
+		HttpContent^ content = nullptr;
+		if (files != nullptr) {
+			// リクエストボディを生成
+			MultipartFormDataContent^ multiContent = gcnew MultipartFormDataContent();
+			// アップロードファイル
+			for each(KeyValuePair<String^, String^>^ file in files) {
+				String^ fileName = Path::GetFileName(file->Value);
+				StreamContent^ fileContent = gcnew StreamContent(File::OpenRead(file->Value));
+				multiContent->Add(fileContent, file->Key, fileName);
+				// ファイルサイズをヘッダーに設定
+				TimeSpan diff = File::GetLastWriteTimeUtc(file->Value) - epoch;
+				multiContent->Headers->Add("File-TimeStamp", ((long long)diff.Ticks * 100).ToString());
+
+			}
+			// Postパラメータ
+			for each(KeyValuePair<String^, String^>^ param in values) {
+				multiContent->Add(gcnew StringContent(param->Value), param->Key);
+			}
+			content = multiContent;
+		}
+		else {
+			content = gcnew FormUrlEncodedContent(values);
+		}
+
+		// HTTP通信共通
+		try {
+			response = this->httpClient->PostAsync(url, content)->Result;
+			
+			if (response->StatusCode == System::Net::HttpStatusCode::OK) {
+				responseHeaders = response->Headers;
+				return response->Content->ReadAsByteArrayAsync()->Result;
+			}
+		}
+		catch (HttpRequestException^ e) {
+			innerEx = e;
+		}
+/		catch (AggregateException^ e) {
+			// HttpRequestException以外の場合は再スロー
+			bool httpErrorFlg = false;
+			for each(Exception^ ie in e->InnerExceptions) {
+				if (dynamic_cast<HttpRequestException^>(ie) != nullptr) {
+					httpErrorFlg = true;
+					innerEx = e;
+					break;
+				}
+				if (!httpErrorFlg) {
+					throw e;
+				}
+			}
+		}
+
+		// 通信結果が異常終了（HTTPステータスが200以外またはHttpRequestExceptionが発生）の場合、一定時間待機
+		retryCount++;
+		if (retryCount < MAX_REQUEST) {
+			// エクスポネンシャルバックオフの計算
+			double delay = Math::Min((double)RETRY_MAX_DELAY, (double)RETRY_BASE_DELAY * Math::Pow(2, retryCount - 1));
+			// ジッターの追加（0%から20%のランダムな値）
+			delay = delay * (1.0 + (random->NextDouble() * 0.2));
+			Threading::Thread::Sleep(static_cast<int>(delay));
+			
+		}
+	}
+	// 最大回数リトライしても失敗した場合、サーバー側のエラー内容を取得し、例外のエラーメッセージに設定
+	// サーバーメッセージ取得
+	MemoryStream^ ms = nullptr;
+	String^ svrRes = "なし";
+	int statusCode = 0;
+	try {
+		if (response != nullptr) {
+			statusCode = (int)response->StatusCode;
+			String^ body = Encoding::UTF8->GetString(response->Content->ReadAsByteArrayAsync()->Result);
+			ms = gcnew MemoryStream(Encoding::UTF8->GetBytes(body));
+			DataContractJsonSerializer^ serializer = gcnew DataContractJsonSerializer(CREcomnAPBaseFileSvrUtils::InnerStringResponsModel::typeid);
+			CREcomnAPBaseFileSvrUtils::InnerStringResponsModel^ resModel =
+				safe_cast<CREcomnAPBaseFileSvrUtils::InnerStringResponsModel^>(serializer->ReadObject(ms));
+			// レスポンスボディからメッセージを取得
+			svrRes = resModel->result;
+			
+		}
+	}
+	catch (Exception^) {
+		// 取得に失敗した場合はサーバー側メッセージの設定はしない
+	}
+	finally{
+		// リソース解放
+		if (ms != nullptr) {
+			delete ms;
+		}
+	}
+
+	throw gcnew TimeoutException("リトライ回数を超過しました。 HTTPステータス：" + statusCode + " サーバー側メッセージ:" + svrRes, innerEx);
+
+}
+
+// HTTPクライアント設定
+void CREcomnAPBaseFileSvrUtils::setHttpClient() {
+	if (this->httpClient != nullptr) {
+		return;
+	}
+
+	this->httpClient = gcnew HttpClient();
+	// タイムアウトはしない
+	httpClient->Timeout = Timeout::InfiniteTimeSpan;
+
+	// Basic認証設定
+	if (this->authUserName != nullptr && this->authPassword != nullptr){
+		httpClient->DefaultRequestHeaders->Add("userAuth", authUserName + ":" + authPassword);
+		//auto byteArray = Encoding::ASCII->GetBytes(this->authUserName + ":" + this->authPassword);
+		//httpClient->DefaultRequestHeaders->Authorization = 
+		//gcnew AuthenticationHeaderValue("Basic", Convert::ToBase64String(byteArray));
+	}
+
+}
