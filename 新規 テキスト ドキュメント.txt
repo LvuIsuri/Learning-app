@@ -1,324 +1,74 @@
-#include "REcomnCmnAPBaseFileSvrPvtDef.h"
-// システム毎に読み込むヘッダーファイルを変える
-#if defined(_APINFRA_RG_SYSTEM_)
-// RG用
-#include "REcomnDev.h"
-#elif defined(_APINFRA_RS_SYSTEM_)
-// RS用
-#include "SOcomnDev.h"
-#else
-// ON,KK,SJ用
-#include "REcomnCmn.h"
-#endif
-
-using namespace System;
-using namespace System::IO;
-using namespace System::Net::Http;
-using namespace System::Net::Http::Headers;
-using namespace System::Text;
-using namespace System::Collections::Generic;
-using namespace System::Runtime::Serialization::Json;
-using namespace System::Diagnostics;
-using namespace System::Threading;
-
-#if defined(_APINFRA_RS_SYSTEM_)
-using namespace  SOcomn;
-#else
-using namespace REcomn;
-#endif	
-
-// コンストラクタ（認証情報あり）
-CREcomnAPBaseFileSvrUtils::CREcomnAPBaseFileSvrUtils(
-	String^ userName,
-	String^ password
-) {
-	this->authUserName = userName;
-	this->authPassword = password;
-}
-
-// インスタンス取得
-CREcomnAPBaseFileSvrUtils^ CREcomnAPBaseFileSvrUtils::getInstance() {
-	if (CREcomnAPBaseFileSvrUtils::instance == nullptr) {
-		CREcomnAPBaseFileSvrUtils::instance = gcnew CREcomnAPBaseFileSvrUtils();
-	}
-
-	return CREcomnAPBaseFileSvrUtils::instance;
-}
-
-
-
-// ホスト名・リクエストパス取得
-int CREcomnAPBaseFileSvrUtils::GetHostNameAndPath(
-	String^ filePath,
-	String^% hostname,
-	String^% requestPath,
-	String^% error
-) {
-	int secondBackslashIndex = filePath->IndexOf("\\", 2);
-	if (secondBackslashIndex == -1) {
-		error = "パスが無効です：" + filePath;
-		return -1;
-	}
-	hostname = filePath->Substring(2, secondBackslashIndex - 2);
-	requestPath = filePath->Substring(secondBackslashIndex);
-
-	return 0;
-}
-
-//ディレクトリ判定（非static）
-int CREcomnAPBaseFileSvrUtils::NonStaticIsDirectory(
-	String^ filePath,
-	bool% result,
-	String^% error
-) {
-	try {
-		int callResult = 0;
-
-		// ローカルディレクトリの場合
-		if (!filePath->StartsWith("\\\\")) {
-			result = Directory::Exists(filePath);
-			return 0;
-		}
-
-		// ネットワークディレクトリの場合
-
-		// ホスト名、パスを抽出
-		String^ hostname = nullptr;
-		String^ requestPath = nullptr;
-		callResult = this->GetHostNameAndPath(filePath, hostname, requestPath, error);
-		if (callResult != 0) {
-			return -1;
-		}
-
-		String^ url = "http://" + hostname + "/is-directory";
-
-		Dictionary<String^, String^>^ values = gcnew Dictionary<String^, String^>;
-		values->Add("filePath", requestPath);
-
-		// リクエスト処理
-		array<Byte>^ resBody = this->SendFormUrlEncodedRequest(url, values);
-		// レスポンスの解析
-		String^ body = Encoding::UTF8->GetString(resBody);
-		// Json解析
-		MemoryStream^ ms = nullptr;
-		try {
-			ms = gcnew MemoryStream(Encoding::UTF8->GetBytes(body));
-			DataContractJsonSerializer^ serializer = gcnew DataContractJsonSerializer(CREcomnAPBaseFileSvrUtils::InnerBooleanResponsModel::typeid);
-			CREcomnAPBaseFileSvrUtils::InnerBooleanResponsModel^ resModel =
-				safe_cast<CREcomnAPBaseFileSvrUtils::InnerBooleanResponsModel^>(serializer->ReadObject(ms));
-			result = resModel->result;
-		}
-		finally{
-			// リソース解放
-			if (ms != nullptr) {
-				delete ms;
-			}
-		}
-
-		return 0;
-
-	}
-	catch (Exception^ e) {
-		String^ errmsg = e->ToString();
-		// エラーログ出力
-		if (filePath->StartsWith("\\\\")) {
-			this->ErrorLogRequest(filePath, errmsg);
-		}
-		error = errmsg;
-		return -1;
-	}
-}
-
-
-// エラーログ送信
-void CREcomnAPBaseFileSvrUtils::ErrorLogRequest(
-	String^ filePath,
-	String^ message
-) {
-	int callResult = 0;
-
-	if (filePath->StartsWith("\\\\")) {
-		String^ hostname = nullptr;
-		String^ requestPath = nullptr;
-		String^ error = nullptr;
-
-		callResult = this->GetHostNameAndPath(filePath, hostname, requestPath, error);
-		if (callResult != 0) {
-			return;
-		}
-
-		String^ url = "http://" + hostname + "/errorlog";
-		Dictionary<String^, String^>^ values = gcnew Dictionary<String^, String^>;
-		values->Add("errorlog", "端末：" + Environment::MachineName + ",ログ：" + message);
-		try {
-			this->SendFormUrlEncodedRequest(url, values);
-		}
-		catch (Exception^) {
-			// Nothing
-		}
-	}
-}
-
-// フォームリクエスト送信
-array<Byte>^ CREcomnAPBaseFileSvrUtils::SendFormUrlEncodedRequest(
-	String^ url,
-	Dictionary<String^, String^>^ values
-) {
-	Dictionary<String^, String^>^ files = nullptr;
-	HttpResponseHeaders^ header = nullptr;
-
-	return this->SendRetyRequest(url, values, files, header);
-}
-
-// フォームリクエスト送信
-array<Byte>^ CREcomnAPBaseFileSvrUtils::SendFormUrlEncodedRequest(
-	String^ url,
-	Dictionary<String^, String^>^ values,
-	HttpResponseHeaders^% responseHeaders
-) {
-	Dictionary<String^, String^>^ files = nullptr;
-	return this->SendRetyRequest(url, values, files, responseHeaders);
-}
-
-// マルチパートリクエスト送信
-array<Byte>^ CREcomnAPBaseFileSvrUtils::SendMultipartFormDataRequest(
-	String^ url,
-	Dictionary<String^, String^>^ values,
-	Dictionary<String^, String^>^ files
-) {
-	HttpResponseHeaders^ header = nullptr;
-	return this->SendRetyRequest(url, values, files, header);
-	
-}
-
-// リクエスト共通
-array<Byte>^ CREcomnAPBaseFileSvrUtils::SendRetyRequest(
-	String^ url,
-	Dictionary<String^, String^>^ values,
-	Dictionary<String^, String^>^ files,
-	HttpResponseHeaders^% responseHeaders
-) {
-	int retryCount = 0;
-
-	bool httpRes = false;
-	array<Byte>^ result = nullptr;
-	DateTime epoch = DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind::Utc);
-	this->setHttpClient();
-	Exception^ innerEx = nullptr;
-	Random^ random = gcnew Random();
-
-	HttpResponseMessage^ response = nullptr;
-	while (retryCount < MAX_REQUEST) {
-		HttpContent^ content = nullptr;
-		if (files != nullptr) {
-			// リクエストボディを生成
-			MultipartFormDataContent^ multiContent = gcnew MultipartFormDataContent();
-			// アップロードファイル
-			for each(KeyValuePair<String^, String^>^ file in files) {
-				String^ fileName = Path::GetFileName(file->Value);
-				StreamContent^ fileContent = gcnew StreamContent(File::OpenRead(file->Value));
-				multiContent->Add(fileContent, file->Key, fileName);
-				// ファイルサイズをヘッダーに設定
-				TimeSpan diff = File::GetLastWriteTimeUtc(file->Value) - epoch;
-				multiContent->Headers->Add("File-TimeStamp", ((long long)diff.Ticks * 100).ToString());
-
-			}
-			// Postパラメータ
-			for each(KeyValuePair<String^, String^>^ param in values) {
-				multiContent->Add(gcnew StringContent(param->Value), param->Key);
-			}
-			content = multiContent;
-		}
-		else {
-			content = gcnew FormUrlEncodedContent(values);
-		}
-
-		// HTTP通信共通
-		try {
-			response = this->httpClient->PostAsync(url, content)->Result;
-			
-			if (response->StatusCode == System::Net::HttpStatusCode::OK) {
-				responseHeaders = response->Headers;
-				return response->Content->ReadAsByteArrayAsync()->Result;
-			}
-		}
-		catch (HttpRequestException^ e) {
-			innerEx = e;
-		}
-/		catch (AggregateException^ e) {
-			// HttpRequestException以外の場合は再スロー
-			bool httpErrorFlg = false;
-			for each(Exception^ ie in e->InnerExceptions) {
-				if (dynamic_cast<HttpRequestException^>(ie) != nullptr) {
-					httpErrorFlg = true;
-					innerEx = e;
-					break;
-				}
-				if (!httpErrorFlg) {
-					throw e;
-				}
-			}
-		}
-
-		// 通信結果が異常終了（HTTPステータスが200以外またはHttpRequestExceptionが発生）の場合、一定時間待機
-		retryCount++;
-		if (retryCount < MAX_REQUEST) {
-			// エクスポネンシャルバックオフの計算
-			double delay = Math::Min((double)RETRY_MAX_DELAY, (double)RETRY_BASE_DELAY * Math::Pow(2, retryCount - 1));
-			// ジッターの追加（0%から20%のランダムな値）
-			delay = delay * (1.0 + (random->NextDouble() * 0.2));
-			Threading::Thread::Sleep(static_cast<int>(delay));
-			
-		}
-	}
-	// 最大回数リトライしても失敗した場合、サーバー側のエラー内容を取得し、例外のエラーメッセージに設定
-	// サーバーメッセージ取得
-	MemoryStream^ ms = nullptr;
-	String^ svrRes = "なし";
-	int statusCode = 0;
-	try {
-		if (response != nullptr) {
-			statusCode = (int)response->StatusCode;
-			String^ body = Encoding::UTF8->GetString(response->Content->ReadAsByteArrayAsync()->Result);
-			ms = gcnew MemoryStream(Encoding::UTF8->GetBytes(body));
-			DataContractJsonSerializer^ serializer = gcnew DataContractJsonSerializer(CREcomnAPBaseFileSvrUtils::InnerStringResponsModel::typeid);
-			CREcomnAPBaseFileSvrUtils::InnerStringResponsModel^ resModel =
-				safe_cast<CREcomnAPBaseFileSvrUtils::InnerStringResponsModel^>(serializer->ReadObject(ms));
-			// レスポンスボディからメッセージを取得
-			svrRes = resModel->result;
-			
-		}
-	}
-	catch (Exception^) {
-		// 取得に失敗した場合はサーバー側メッセージの設定はしない
-	}
-	finally{
-		// リソース解放
-		if (ms != nullptr) {
-			delete ms;
-		}
-	}
-
-	throw gcnew TimeoutException("リトライ回数を超過しました。 HTTPステータス：" + statusCode + " サーバー側メッセージ:" + svrRes, innerEx);
-
-}
-
-// HTTPクライアント設定
-void CREcomnAPBaseFileSvrUtils::setHttpClient() {
-	if (this->httpClient != nullptr) {
-		return;
-	}
-
-	this->httpClient = gcnew HttpClient();
-	// タイムアウトはしない
-	httpClient->Timeout = Timeout::InfiniteTimeSpan;
-
-	// Basic認証設定
-	if (this->authUserName != nullptr && this->authPassword != nullptr){
-		httpClient->DefaultRequestHeaders->Add("userAuth", authUserName + ":" + authPassword);
-		//auto byteArray = Encoding::ASCII->GetBytes(this->authUserName + ":" + this->authPassword);
-		//httpClient->DefaultRequestHeaders->Authorization = 
-		//gcnew AuthenticationHeaderValue("Basic", Convert::ToBase64String(byteArray));
-	}
-
-}
+2026-06-17T01:23:11.794317Z 00O [0KRunning with gitlab-runner 18.9.0 (07e534ba)[0;m
+2026-06-17T01:23:11.794335Z 00O [0K  on ONUCIS0002 c7yMwypzL, system ID: s_b4cee031c9a6[0;m
+2026-06-17T01:23:11.794393Z 00O section_start:1781659391:prepare_executor
+2026-06-17T01:23:11.794396Z 00O+[0K[0K[36;1mPreparing the "docker" executor[0;m[0;m
+2026-06-17T01:23:11.815099Z 00O [0KUsing Docker executor with image java-build:1.0.0 ...[0;m
+2026-06-17T01:23:13.514923Z 00O [0KUsing effective pull policy of [if-not-present] for container java-build:1.0.0[0;m
+2026-06-17T01:23:13.516009Z 00O [0KUsing locally found image version due to "if-not-present" pull policy[0;m
+2026-06-17T01:23:13.516019Z 00O [0KUsing docker image sha256:985d6199dca3427534651665dc7c384a454e9488f7c83299ecf896819254b7a4 for java-build:1.0.0 ...[0;m
+2026-06-17T01:23:13.516026Z 00O section_end:1781659393:prepare_executor
+2026-06-17T01:23:13.516028Z 00O+[0Ksection_start:1781659393:prepare_script
+2026-06-17T01:23:13.516151Z 00O+[0K[0K[36;1mPreparing environment[0;m[0;m
+2026-06-17T01:23:13.516980Z 00O [0KUsing effective pull policy of [if-not-present] for container sha256:abd6c9ed008c387bba5a3cf0d9c5d96b35a66581118eb16ac2a14869f88fea5a[0;m
+2026-06-17T01:23:13.969351Z 01O Running on runner-c7ymwypzl-project-20-concurrent-0 via ONUCIS0002...
+2026-06-17T01:23:14.272738Z 00O section_end:1781659394:prepare_script
+2026-06-17T01:23:14.272747Z 00O+[0Ksection_start:1781659394:get_sources
+2026-06-17T01:23:14.274218Z 00O+[0K[0K[36;1mGetting source from Git repository[0;m[0;m
+2026-06-17T01:23:14.640721Z 01O [32;1mGitaly correlation ID: 01KV9JSN92KNGZBB1WKAQ8BPXD[0;m
+2026-06-17T01:23:14.646929Z 01O [32;1mFetching changes with git depth set to 20...[0;m
+2026-06-17T01:23:14.649281Z 01O Reinitialized existing Git repository in /builds/on-Biz2/apOnCalc/.git/
+2026-06-17T01:23:14.651363Z 01O [32;1mCreated fresh repository.[0;m
+2026-06-17T01:23:14.876899Z 01O [32;1mChecking out 4671ae45 as detached HEAD (ref is main)...[0;m
+2026-06-17T01:23:14.898352Z 01O Removing settings.xml
+2026-06-17T01:23:14.957923Z 01O 
+2026-06-17T01:23:14.957934Z 01O [32;1mSkipping Git submodules setup[0;m
+2026-06-17T01:23:15.276306Z 00O section_end:1781659395:get_sources
+2026-06-17T01:23:15.276319Z 00O+[0Ksection_start:1781659395:step_script
+2026-06-17T01:23:15.277983Z 00O+[0K[0K[36;1mExecuting "step_script" stage of the job script[0;m[0;m
+2026-06-17T01:23:15.278011Z 00O [0KUsing effective pull policy of [if-not-present] for container java-build:1.0.0[0;m
+2026-06-17T01:23:15.280726Z 00O [0KUsing docker image sha256:985d6199dca3427534651665dc7c384a454e9488f7c83299ecf896819254b7a4 for java-build:1.0.0 ...[0;m
+2026-06-17T01:23:15.692670Z 01O [32;1m$ TZ='Asia/Tokyo' date '+%Y/%m/%d %H:%M:%S'[0;m
+2026-06-17T01:23:15.695216Z 01O 2026/06/17 10:23:15
+2026-06-17T01:23:15.695556Z 01O [32;1m$ curl -k -OL ${GITLAB_URL}/gitlab-ci-yml/-/raw/main/settings.xml[0;m
+2026-06-17T01:23:15.728469Z 01E   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+2026-06-17T01:23:15.728497Z 01E                                  Dload  Upload   Total   Spent    Left  Speed
+2026-06-17T01:23:15.730268Z 01E 
+2026-06-17T01:23:15.730270Z 01E+  0     0   0     0   0     0     0     0  --:--:-- --:--:-- --:--:--     0
+100  3101 100  3101   0     0 36585     0  --:--:-- --:--:-- --:--:-- 36482
+100  3101 100  3101   0     0 36545     0  --:--:-- --:--:-- --:--:-- 36482
+2026-06-17T01:23:15.814834Z 01O [32;1m$ export HTTPS_PROXY=http://10.0.4.149:8080[0;m
+2026-06-17T01:23:15.814844Z 01O [32;1m$ export HTTP_PROXY=http://10.0.4.149:8080[0;m
+2026-06-17T01:23:15.814864Z 01O [32;1m$ export NO_PROXY=169.254.169.254,assets-660291247815-ap-northeast-1.s3.ap-northeast-1.amazonaws.com[0;m
+2026-06-17T01:23:15.814866Z 01O [32;1m$ export AWS_PAGER=""[0;m
+2026-06-17T01:23:15.814867Z 01O [32;1m$ export CODEARTIFACT_AUTH_TOKEN=`aws codeartifact get-authorization-token --domain ${AWS_CODEAF_DOMAIN} --domain-owner ${AWS_CODEAF_OWNER} --query authorizationToken --region ap-northeast-1 --output text`[0;m
+2026-06-17T01:23:16.884346Z 01O [32;1m$ mvn clean install -s ./settings.xml -Dmaven.test.skip=true[0;m
+2026-06-17T01:23:19.481893Z 01O [WARNING] 
+2026-06-17T01:23:19.482256Z 01O [WARNING] Some problems were encountered while building the effective settings
+2026-06-17T01:23:19.487210Z 01O [WARNING] 'proxies.proxy.id' must be unique but found duplicate proxy with id codeaf @ /builds/on-Biz2/apOnCalc/settings.xml
+2026-06-17T01:23:19.487221Z 01O [WARNING] 
+2026-06-17T01:23:19.610633Z 01O [INFO] Scanning for projects...
+2026-06-17T01:23:19.794171Z 01O [INFO] ------------------------------------------------------------------------
+2026-06-17T01:23:19.794362Z 01O [INFO] BUILD FAILURE
+2026-06-17T01:23:19.794367Z 01O [INFO] ------------------------------------------------------------------------
+2026-06-17T01:23:19.794992Z 01O [INFO] Total time:  0.262 s
+2026-06-17T01:23:19.802766Z 01O [INFO] Finished at: 2026-06-17T01:23:19Z
+2026-06-17T01:23:19.802952Z 01O [INFO] ------------------------------------------------------------------------
+2026-06-17T01:23:19.803973Z 01O [ERROR] The goal you specified requires a project to execute but there is no POM in this directory (/builds/on-Biz2/apOnCalc). Please verify you invoked Maven from the correct directory. -> [Help 1]
+2026-06-17T01:23:19.804131Z 01O [ERROR] 
+2026-06-17T01:23:19.804262Z 01O [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+2026-06-17T01:23:19.804397Z 01O [ERROR] Re-run Maven using the -X switch to enable full debug logging.
+2026-06-17T01:23:19.804650Z 01O [ERROR] 
+2026-06-17T01:23:19.804790Z 01O [ERROR] For more information about the errors and possible solutions, please read the following articles:
+2026-06-17T01:23:19.804943Z 01O [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MissingProjectException
+2026-06-17T01:23:20.104921Z 00O section_end:1781659400:step_script
+2026-06-17T01:23:20.104928Z 00O+[0Ksection_start:1781659400:after_script
+2026-06-17T01:23:20.105490Z 00O+[0K[0K[36;1mRunning after_script[0;m[0;m
+2026-06-17T01:23:20.470968Z 01O [32;1mRunning after script...[0;m
+2026-06-17T01:23:20.470992Z 01O [32;1m$ TZ='Asia/Tokyo' date '+%Y/%m/%d %H:%M:%S'[0;m
+2026-06-17T01:23:20.473300Z 01O 2026/06/17 10:23:20
+2026-06-17T01:23:20.762403Z 00O section_end:1781659400:after_script
+2026-06-17T01:23:20.762411Z 00O+[0Ksection_start:1781659400:cleanup_file_variables
+2026-06-17T01:23:20.763301Z 00O+[0K[0K[36;1mCleaning up project directory and file based variables[0;m[0;m
+2026-06-17T01:23:21.448740Z 00O section_end:1781659401:cleanup_file_variables
+2026-06-17T01:23:21.448749Z 00O+[0K
+2026-06-17T01:23:21.465939Z 00O [31;1mERROR: Job failed: exit code 1[0;m
