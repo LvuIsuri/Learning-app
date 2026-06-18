@@ -1,121 +1,62 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.6</version>
-		<!--<version>2.7.18</version> -->
-		<relativePath/> <!-- lookup parent from repository -->
-	</parent>
-	<groupId>jp.or.kikin</groupId>
-	<artifactId>seikyusien-server</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>seikyusien-server</name>
-
-	<properties>
-		<!-- <java.version>17</java.version> -->
-		<java.version>21</java.version>
-		<commons-lang3.version>3.20.0</commons-lang3.version>
-	</properties>
-	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-		
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
-		
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-validation</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-thymeleaf</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
-			<version>2.16.1</version>
-		</dependency>
-		<!-- アクセスログ出力用 -->
-		<dependency>
-			<groupId>ch.qos.logback.access</groupId>
-			<artifactId>logback-access-tomcat</artifactId>
-			<version>2.0.6</version>
-		</dependency>
-		
-		<!-- Junit -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.vintage</groupId>
-            <artifactId>junit-vintage-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-
-        <dependency>
-            <groupId>org.junit.platform</groupId>
-            <artifactId>junit-platform-launcher</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-<!--            <version>3.20.0</version>-->
-        </dependency>
-	</dependencies>
-
-	<build>
-		<finalName>${project.artifactId}</finalName>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-		</plugins>
-	</build>
-
-</project>
+2026-06-18T08:02:25.361218Z 00O Running with gitlab-runner 18.9.0 (07e534ba)
+2026-06-18T08:02:25.361385Z 00O   on ONUCIS0002 c7yMwypzL, system ID: s_b4cee031c9a6
+2026-06-18T08:02:25.361482Z 00O section_start:1781769745:prepare_executor
+2026-06-18T08:02:25.361484Z 00O+Preparing the "docker" executor
+2026-06-18T08:02:25.393644Z 00O Using Docker executor with image java-build:1.0.0 ...
+2026-06-18T08:02:27.808935Z 00O Using effective pull policy of [if-not-present] for container java-build:1.0.0
+2026-06-18T08:02:27.810337Z 00O Using locally found image version due to "if-not-present" pull policy
+2026-06-18T08:02:27.810349Z 00O Using docker image sha256:985d6199dca3427534651665dc7c384a454e9488f7c83299ecf896819254b7a4 for java-build:1.0.0 ...
+2026-06-18T08:02:27.810358Z 00O section_end:1781769747:prepare_executor
+2026-06-18T08:02:27.810360Z 00O+section_start:1781769747:prepare_script
+2026-06-18T08:02:27.810533Z 00O+Preparing environment
+2026-06-18T08:02:27.811492Z 00O Using effective pull policy of [if-not-present] for container sha256:abd6c9ed008c387bba5a3cf0d9c5d96b35a66581118eb16ac2a14869f88fea5a
+2026-06-18T08:02:28.379259Z 01O Running on runner-c7ymwypzl-project-20-concurrent-0 via ONUCIS0002...
+2026-06-18T08:02:28.761695Z 00O section_end:1781769748:prepare_script
+2026-06-18T08:02:28.761703Z 00O+section_start:1781769748:get_sources
+2026-06-18T08:02:28.762641Z 00O+Getting source from Git repository
+2026-06-18T08:02:29.568772Z 01O Gitaly correlation ID: 01KVCW1C7TWDH7GBG34228SQ9N
+2026-06-18T08:02:29.584007Z 01O Fetching changes with git depth set to 20...
+2026-06-18T08:02:29.586576Z 01O Reinitialized existing Git repository in /builds/on-Biz2/apOnCalc/.git/
+2026-06-18T08:02:29.602408Z 01O Created fresh repository.
+2026-06-18T08:02:30.081008Z 01O Checking out f0ad26b8 as detached HEAD (ref is main)...
+2026-06-18T08:02:30.091994Z 01O Removing settings.xml
+2026-06-18T08:02:30.095449Z 01O Removing target/
+2026-06-18T08:02:30.231351Z 01O 
+2026-06-18T08:02:30.231595Z 01O Skipping Git submodules setup
+2026-06-18T08:02:30.559969Z 00O section_end:1781769750:get_sources
+2026-06-18T08:02:30.559978Z 00O+section_start:1781769750:step_script
+2026-06-18T08:02:30.561973Z 00O+Executing "step_script" stage of the job script
+2026-06-18T08:02:30.562000Z 00O Using effective pull policy of [if-not-present] for container java-build:1.0.0
+2026-06-18T08:02:30.563519Z 00O Using docker image sha256:985d6199dca3427534651665dc7c384a454e9488f7c83299ecf896819254b7a4 for java-build:1.0.0 ...
+2026-06-18T08:02:30.974144Z 01O $ TZ='Asia/Tokyo' date '+%Y/%m/%d %H:%M:%S'
+2026-06-18T08:02:30.976465Z 01O 2026/06/18 17:02:30
+2026-06-18T08:02:30.976950Z 01O $ curl -k -OL ${GITLAB_URL}/gitlab-ci-yml/-/raw/main/settings.xml
+2026-06-18T08:02:30.992372Z 01E   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+2026-06-18T08:02:31.002868Z 01E                                  Dload  Upload   Total   Spent    Left  Speed
+2026-06-18T08:02:31.004581Z 01E 
+2026-06-18T08:02:31.096394Z 01O $ export HTTPS_PROXY=http://10.0.4.149:8080
+2026-06-18T08:02:31.096405Z 01O $ export HTTP_PROXY=http://10.0.4.149:8080
+2026-06-18T08:02:31.096406Z 01O $ export NO_PROXY=169.254.169.254,assets-660291247815-ap-northeast-1.s3.ap-northeast-1.amazonaws.com
+2026-06-18T08:02:31.096408Z 01O $ export AWS_PAGER=""
+2026-06-18T08:02:31.096409Z 01O $ export CODEARTIFACT_AUTH_TOKEN=`aws codeartifact get-authorization-token --domain ${AWS_CODEAF_DOMAIN} --domain-owner ${AWS_CODEAF_OWNER} --query authorizationToken --region ap-northeast-1 --output text`
+100  3101 100  3101   0     0 30541     0  --:--:-- --:--:-- --:--:-- 30702
+2026-06-18T08:02:32.061407Z 01O $ project_id=$(echo "$CI_PROJECT_NAME-$CI_COMMIT_BRANCH" | sed 's/[#&]/-/g' | sed 's/\//:/g')
+2026-06-18T08:02:32.065940Z 01O $ qualitygate_status=$(curl -u "${SONARQUBE_USER}:${SONARQUBE_PASSWORD}" ${SONARQUBE_URL}api/qualitygates/project_status?projectKey=$project_id)
+2026-06-18T08:02:32.071285Z 01E   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+2026-06-18T08:02:32.071295Z 01E                                  Dload  Upload   Total   Spent    Left  Speed
+2026-06-18T08:02:32.071297Z 01E 
+100  1042   0  1042   0     0  5793     0  --:--:-- --:--:-- --:--:--  5821
+2026-06-18T08:02:32.252017Z 01O $ qualitygate_result=$(echo $qualitygate_status | jq -r .projectStatus.status)
+2026-06-18T08:02:32.301564Z 01O $ if [ "$qualitygate_result" == "ERROR" ]; then exit 1; else exit 0; fi
+2026-06-18T08:02:32.553120Z 00O section_end:1781769752:step_script
+2026-06-18T08:02:32.553138Z 00O+section_start:1781769752:after_script
+2026-06-18T08:02:32.554091Z 00O+Running after_script
+2026-06-18T08:02:32.898900Z 01O Running after script...
+2026-06-18T08:02:32.898949Z 01O $ TZ='Asia/Tokyo' date '+%Y/%m/%d %H:%M:%S'
+2026-06-18T08:02:32.900873Z 01O 2026/06/18 17:02:32
+2026-06-18T08:02:33.117635Z 00O section_end:1781769753:after_script
+2026-06-18T08:02:33.117645Z 00O+section_start:1781769753:cleanup_file_variables
+2026-06-18T08:02:33.125489Z 00O+Cleaning up project directory and file based variables
+2026-06-18T08:02:33.759077Z 00O section_end:1781769753:cleanup_file_variables
+2026-06-18T08:02:33.759085Z 00O+
+2026-06-18T08:02:33.768557Z 00O ERROR: Job failed: exit code 1
