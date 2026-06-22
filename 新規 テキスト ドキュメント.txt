@@ -1,16 +1,24 @@
-String envSwitchInfo = "";
+public boolean send(String queueKey, String program, String programArgs,
+			String reqSvr, List<RCqsndExecEnvInfo> envInfoList, String groupId) {
+		LOGGER.debug("START");
+
+		boolean result = false;
+		try {
+			result = sendQueue(queueKey, program, programArgs, reqSvr, envInfoList, groupId);
+		} catch (Exception e) {
+			String logmsg = String.format("キュー登録に失敗しました。 %s", e.getMessage());
+			LOGGER.error(logmsg, e);
+
+
+			// 引数．環境切替情報を半角スペース区切りの文字列への変換を実施する。
+			StringBuilder envSwitchInfo = new StringBuilder();
 			for (RCqsndExecEnvInfo envInfo : envInfoList) {
-				envSwitchInfo += envInfo.getEnvName() + " ";
-Use a StringBuilder instead.
-				envSwitchInfo += envInfo.getEnvValue() + " ";
-Use a StringBuilder instead.
+				envSwitchInfo.append(envInfo.getEnvName()).append(" ");
+				envSwitchInfo.append(envInfo.getEnvValue()).append(" ");
 			}
-			if(envSwitchInfo.length() > 0) {
-'if' is not followed by whitespace.
-'if' is not followed by whitespace.
-Using '>' is not allowed.
-				envSwitchInfo = envSwitchInfo.substring(0, envSwitchInfo.length() - 1);
+			if (envSwitchInfo.length() != 0) {
+				envSwitchInfo = envSwitchInfo.deleteCharAt(envSwitchInfo.length() - 1);
 			}
 			String from = "\\$";
 			String to = "$";
-			envSwitchInfo = envSwitchInfo.replace(from, to);
+			String EnvSwitchInfo = envSwitchInfo.toString().replace(from, to);
