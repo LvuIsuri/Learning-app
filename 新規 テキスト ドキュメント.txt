@@ -25,3 +25,6 @@ return new ResponseEntity<>(stResult , headers, HttpStatus.OK);
 String stArgs = form.getSeiqiraino() + " " + form.getSeiqkbn() + " " + "0 " + form.getSeiqiraino().substring(15,16) + " "  + 
 ',' is not followed by whitespace.
 '+' should be on a new line
+// ヘッダー設定
+		String filename = path.getFileName().toString();
+Possible null pointer dereference in jp.or.kikin.seikyusien.controller.SeikyusienAPIController.onSeikyuKekka01(SeikyusienRequestForm, BindingResult) due to return value of called method
