@@ -28,3 +28,17 @@ String stArgs = form.getSeiqiraino() + " " + form.getSeiqkbn() + " " + "0 " + fo
 // ヘッダー設定
 		String filename = path.getFileName().toString();
 Possible null pointer dereference in jp.or.kikin.seikyusien.controller.SeikyusienAPIController.onSeikyuKekka01(SeikyusienRequestForm, BindingResult) due to return value of called method
+	
+	@GetMapping("/error")
+	public ResponseEntity<?> getHandleErrorpage(WebRequest reqest) {
+Remove usage of generic wildcard type.
+		return comonHandleErrorpage(reqest);
+	}
+	
+	@PostMapping("/error")
+	public ResponseEntity<?> postHandleErrorpage(WebRequest reqest) {
+Remove usage of generic wildcard type.
+		return comonHandleErrorpage(reqest);
+	}
+	
+	/**
