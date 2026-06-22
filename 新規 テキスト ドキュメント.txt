@@ -1,31 +1,22 @@
-public class SeikyusienRequestForm {
-	@NotBlank(message = "請求年月が設定されていません", 
-File contains tab characters (this is the first instance).
-Missing a Javadoc comment.
-			groups = {SeikyuKekkaG.class})
-	@Size(max =6 ,min = 6, message = "請求年月が{max}桁ではありません:${validatedValue}" ,
-'=' is not followed by whitespace.
-',' is preceded with whitespace.
-',' is not followed by whitespace.
-',' is preceded with whitespace.
-			groups = {SeikyuKekkaG.class})
-	@Pattern(regexp = "^[0-9]+$", message = "請求年月が半角数字ではありません:${validatedValue}", 
-			groups = {SeikyuKekkaG.class})
-	private String seiqnengetu;
-	
-	@NotBlank(message = "請求区分が設定されていません", 
-Missing a Javadoc comment.
-			groups = {SeikyuiraiG.class, SeikyukakuteiG.class, SeikyuKekkaG.class})
-	@Pattern(regexp = "[12]", message = "請求区分の値が範囲外です:${validatedValue}", 
-			groups = {SeikyuiraiG.class, SeikyukakuteiG.class, SeikyuKekkaG.class})
-if (request instanceof MultipartHttpServletRequest) {
-Replace this instanceof check and cast with 'instanceof MultipartHttpServletRequest multiparthttpservletrequest'
-			((MultipartHttpServletRequest) request).getFileMap().forEach((key, file) -> {
-				if (file != null) {
-					paramPairs.add(key + "=" + file.getOriginalFilename());
-				}
-			});
-		}
-		return String.join(", ", paramPairs);
-	
+	public void loadRetryTimeOut() throws Exception{
+Define and throw a dedicated exception instead of using a generic one.
+'{' is not preceded with whitespace.
+		Node node = (Node) xpath.evaluate("/confValue/retry/retrySqsTimeOut", document, XPathConstants.NODE);
+		retryMap.put("retrySqsTimeOut", node.getTextContent());
 	}
+	// リトライ情報取得
+	public String getretryInfo(String key) throws Exception{
+Define and throw a dedicated exception instead of using a generic one.
+Remove the declaration of thrown exception 'java.lang.Exception', as it cannot be thrown from method's body.
+'{' is not preceded with whitespace.
+		return retryMap.get(key);
+	}
+	// Url情報読込
+	public void loadBizUrl(String id) throws Exception{
+Define and throw a dedicated exception instead of using a generic one.
+'{' is not preceded with whitespace.
+		String expr = "/confValue/queueInfo/bizQueue[@id='" + id + "']/bizUrl";
+		Node node = (Node) xpath.evaluate(expr, document, XPathConstants.NODE);
+		bizUrlMap.put(id, node.getTextContent());
+	}
+	// Url情報取得
