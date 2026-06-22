@@ -19,3 +19,4 @@ Missing a Javadoc comment.
 	private static final String SEIQKAKUTEIIRAIKBN = "2";
 Missing a Javadoc comment.
 	
+public ResponseEntity<?> onSeikyuIrai01(@ModelAttribute @Validated(SeikyuiraiG.class) SeikyusienRequestForm form, BindingResult bindingResult) throws IOException {
