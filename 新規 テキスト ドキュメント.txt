@@ -1,7 +1,3 @@
-int retryNow = 0;
-		while(true) {
-'while' is not followed by whitespace.
-'while' is not followed by whitespace.
 			HttpsURLConnection con = null;
 			try {
 Change this "try" to a try-with-resources.
@@ -38,12 +34,3 @@ Found reliance on default encoding in jp.or.kikin.seikyusien.repository.Seikyusi
 					}
 					// 取得したストリームを読込、処理結果を取得
 					BufferedReader br = new BufferedReader(new InputStreamReader(is));
-Found reliance on default encoding in jp.or.kikin.seikyusien.repository.SeikyusienAPIQueueRepositoryImpl.sendQueue(String, String, String, String, List, String): new java.io.InputStreamReader(InputStream)
-					String s;
-					StringBuilder sb = new StringBuilder();
-					while((s = br.readLine()) != null) {
-'while' is not followed by whitespace.
-'while' is not followed by whitespace.
-						sb.append(s);
-						//returnMessage += s;
-This block of commented-out lines of code should be removed.
