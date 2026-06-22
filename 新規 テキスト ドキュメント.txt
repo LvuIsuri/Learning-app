@@ -20,3 +20,5 @@ Missing a Javadoc comment.
 Missing a Javadoc comment.
 	
 public ResponseEntity<?> onSeikyuIrai01(@ModelAttribute @Validated(SeikyuiraiG.class) SeikyusienRequestForm form, BindingResult bindingResult) throws IOException {
+return new ResponseEntity<>(stResult , headers, HttpStatus.OK);
+',' is preceded with whitespace.
