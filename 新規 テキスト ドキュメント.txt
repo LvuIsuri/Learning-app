@@ -22,3 +22,6 @@ Missing a Javadoc comment.
 public ResponseEntity<?> onSeikyuIrai01(@ModelAttribute @Validated(SeikyuiraiG.class) SeikyusienRequestForm form, BindingResult bindingResult) throws IOException {
 return new ResponseEntity<>(stResult , headers, HttpStatus.OK);
 ',' is preceded with whitespace.
+String stArgs = form.getSeiqiraino() + " " + form.getSeiqkbn() + " " + "0 " + form.getSeiqiraino().substring(15,16) + " "  + 
+',' is not followed by whitespace.
+'+' should be on a new line
