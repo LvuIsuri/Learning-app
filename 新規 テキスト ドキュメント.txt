@@ -1,24 +1,49 @@
-public boolean send(String queueKey, String program, String programArgs,
-			String reqSvr, List<RCqsndExecEnvInfo> envInfoList, String groupId) {
-		LOGGER.debug("START");
+int retryNow = 0;
+		while(true) {
+'while' is not followed by whitespace.
+'while' is not followed by whitespace.
+			HttpsURLConnection con = null;
+			try {
+Change this "try" to a try-with-resources.
+				// 設定ファイルから取得した接続先URLへHTTPリクエストを送信し、処理結果をHTTPレスポンスで受信する
+				URL urlObject = URI.create(url).toURL();
+				HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+Make this anonymous inner class a lambda
+					@Override
+					public boolean verify(String var1, SSLSession var2) {
+						return true;
+					}
+				});
+				con = (HttpsURLConnection) urlObject.openConnection();
+				con.setRequestMethod("POST");
+				con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=shift_jis");
+				con.setConnectTimeout(timeout);
+				con.setReadTimeout(timeout);
+				con.setDoOutput(true);
+				con.setSSLSocketFactory(sslFactory);
+				con.connect();
+				// ボディ部設定
+				OutputStream os = con.getOutputStream();
+				PrintStream ps = new PrintStream(os);
+Found reliance on default encoding in jp.or.kikin.seikyusien.repository.SeikyusienAPIQueueRepositoryImpl.sendQueue(String, String, String, String, List, String): new java.io.PrintStream(OutputStream)
+				ps.print(requestBody);
+				ps.close();
+				// HTTPステータスコード取得
+				int httpStatusCode = con.getResponseCode();
 
-		boolean result = false;
-		try {
-			result = sendQueue(queueKey, program, programArgs, reqSvr, envInfoList, groupId);
-		} catch (Exception e) {
-			String logmsg = String.format("キュー登録に失敗しました。 %s", e.getMessage());
-			LOGGER.error(logmsg, e);
 
-
-			// 引数．環境切替情報を半角スペース区切りの文字列への変換を実施する。
-			StringBuilder envSwitchInfo = new StringBuilder();
-			for (RCqsndExecEnvInfo envInfo : envInfoList) {
-				envSwitchInfo.append(envInfo.getEnvName()).append(" ");
-				envSwitchInfo.append(envInfo.getEnvValue()).append(" ");
-			}
-			if (envSwitchInfo.length() != 0) {
-				envSwitchInfo = envSwitchInfo.deleteCharAt(envSwitchInfo.length() - 1);
-			}
-			String from = "\\$";
-			String to = "$";
-			String EnvSwitchInfo = envSwitchInfo.toString().replace(from, to);
+					if (is == null) {
+						// エラーストリームを取得できない場合、インプットストリームを取得
+						is = con.getInputStream();
+					}
+					// 取得したストリームを読込、処理結果を取得
+					BufferedReader br = new BufferedReader(new InputStreamReader(is));
+Found reliance on default encoding in jp.or.kikin.seikyusien.repository.SeikyusienAPIQueueRepositoryImpl.sendQueue(String, String, String, String, List, String): new java.io.InputStreamReader(InputStream)
+					String s;
+					StringBuilder sb = new StringBuilder();
+					while((s = br.readLine()) != null) {
+'while' is not followed by whitespace.
+'while' is not followed by whitespace.
+						sb.append(s);
+						//returnMessage += s;
+This block of commented-out lines of code should be removed.
