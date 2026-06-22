@@ -1,9 +1,26 @@
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-@SpringBootApplication
-Utility classes should not have a public or default constructor.
-public class SeikyusienApi {
-	public static void main(String[] args) {
-File contains tab characters (this is the first instance).
-		SpringApplication.run(SeikyusienApi.class, args);
+			// ファイルアップロード(リクエスト内容によって保存場所が変わる)
+			seikyusienService.fileupload(form.getFilename().getOriginalFilename(), is, form.getSeiqkbn(), form.getSeiqiraino(), form.getTransactionid());
+			//SQSキュー登録(依頼内容区分は0:請求依頼　固定)
+			String stArgs = form.getSeiqiraino() + " " + form.getSeiqkbn() + " " + "0 " + form.getSeiqiraino().substring(15,16) + " "  + 
+',' is not followed by whitespace.
+'+' should be on a new line.
+										form.getTransactionid() + " "  + form.getFilename().getOriginalFilename();
+			seikyusienService.sendQueue(form.getSeiqkbn() ,form.getSeiqiraino() ,stArgs ,RCSQHE ,SEIQIRAIIRAIKBN);
+',' is preceded with whitespace.
+',' is not followed by whitespace.
+',' is preceded with whitespace.
+',' is not followed by whitespace.
+',' is preceded with whitespace.
+',' is not followed by whitespace.
+',' is preceded with whitespace.
+',' is not followed by whitespace.
+		}
+		// 0埋めする
+		String stResult = String.format("%02d", result);
+		return new ResponseEntity<>(stResult , headers, HttpStatus.OK);
+',' is preceded with whitespace.
 	}
-}
+	
+	/**
+	 * 請求確定・取消
+	 * @param form リクエストフォーム
