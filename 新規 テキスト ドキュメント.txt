@@ -1,44 +1,19 @@
-public class SeikyusienAPIController {
-	
-File contains tab characters (this is the first instance).
-	@Autowired
-Missing a Javadoc comment.
-	private SeikyusienAPIService seikyusienService;
+ * エラーページ処理
+	 * エラーメッセージ、例外が設定されていた場合、ログに出力する。
+	 * @param reqest
+	 * @return
+	 */
+	private ResponseEntity<?> comonHandleErrorpage(WebRequest reqest) {
+@return tag should be present and have description.
+		HttpStatus httpStatus = HttpStatus.valueOf(
+Annotate the parameter with @javax.annotation.Nullable in method 'valueOf' declaration, or make sure that null can not be passed as argument.
+				(Integer) reqest.getAttribute(RequestDispatcher.ERROR_STATUS_CODE, RequestAttributes.SCOPE_REQUEST));
+Possible null pointer dereference in jp.or.kikin.seikyusien.controller.error.ErrorPageController.comonHandleErrorpage(WebRequest) due to return value of called method
 		
-	private static final Logger logger = LoggerFactory.getLogger(SeikyusienAPIController.class);
-Missing a Javadoc comment.
-Name 'logger' must match pattern '^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$'.
-	// ファイルアップロードエラーコード
-	private static final Integer RESULTNG = 23;
-Missing a Javadoc comment.
-	
-	// バリデーションチェック(請求依頼)
-	private static final String SEIQIRAIIRAIKBN = "1";
-Missing a Javadoc comment.
-	// バリデーションチェック(請求確定)
-	private static final String SEIQKAKUTEIIRAIKBN = "2";
-Missing a Javadoc comment.
-	
-public ResponseEntity<?> onSeikyuIrai01(@ModelAttribute @Validated(SeikyuiraiG.class) SeikyusienRequestForm form, BindingResult bindingResult) throws IOException {
-return new ResponseEntity<>(stResult , headers, HttpStatus.OK);
-',' is preceded with whitespace.
-String stArgs = form.getSeiqiraino() + " " + form.getSeiqkbn() + " " + "0 " + form.getSeiqiraino().substring(15,16) + " "  + 
-',' is not followed by whitespace.
-'+' should be on a new line
-// ヘッダー設定
-		String filename = path.getFileName().toString();
-Possible null pointer dereference in jp.or.kikin.seikyusien.controller.SeikyusienAPIController.onSeikyuKekka01(SeikyusienRequestForm, BindingResult) due to return value of called method
-	
-	@GetMapping("/error")
-	public ResponseEntity<?> getHandleErrorpage(WebRequest reqest) {
-Remove usage of generic wildcard type.
-		return comonHandleErrorpage(reqest);
-	}
-	
-	@PostMapping("/error")
-	public ResponseEntity<?> postHandleErrorpage(WebRequest reqest) {
-Remove usage of generic wildcard type.
-		return comonHandleErrorpage(reqest);
-	}
-	
-	/**
+		// エラーへ遷移の場合、エラー内容をログに出力
+		String uri = (String) reqest.getAttribute(RequestDispatcher.ERROR_REQUEST_URI, RequestAttributes.SCOPE_REQUEST);
+		String message = (String) reqest.getAttribute(RequestDispatcher.ERROR_MESSAGE, RequestAttributes.SCOPE_REQUEST);
+		Exception ex = (Exception) reqest.getAttribute(RequestDispatcher.ERROR_EXCEPTION,
+				RequestAttributes.SCOPE_REQUEST);
+		logger.error("URL:" + uri + ", " + message + ", status:" + httpStatus.toString(), ex);
+Invoke method(s) only conditionally. Use the built-in formatting to construct this argument.
