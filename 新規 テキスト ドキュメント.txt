@@ -1,26 +1,21 @@
-			// ファイルアップロード(リクエスト内容によって保存場所が変わる)
-			seikyusienService.fileupload(form.getFilename().getOriginalFilename(), is, form.getSeiqkbn(), form.getSeiqiraino(), form.getTransactionid());
-			//SQSキュー登録(依頼内容区分は0:請求依頼　固定)
-			String stArgs = form.getSeiqiraino() + " " + form.getSeiqkbn() + " " + "0 " + form.getSeiqiraino().substring(15,16) + " "  + 
-',' is not followed by whitespace.
-'+' should be on a new line.
-										form.getTransactionid() + " "  + form.getFilename().getOriginalFilename();
-			seikyusienService.sendQueue(form.getSeiqkbn() ,form.getSeiqiraino() ,stArgs ,RCSQHE ,SEIQIRAIIRAIKBN);
-',' is preceded with whitespace.
-',' is not followed by whitespace.
-',' is preceded with whitespace.
-',' is not followed by whitespace.
-',' is preceded with whitespace.
-',' is not followed by whitespace.
-',' is preceded with whitespace.
-',' is not followed by whitespace.
-		}
-		// 0埋めする
-		String stResult = String.format("%02d", result);
-		return new ResponseEntity<>(stResult , headers, HttpStatus.OK);
-',' is preceded with whitespace.
-	}
+public class SeikyusienAPIController {
 	
-	/**
-	 * 請求確定・取消
-	 * @param form リクエストフォーム
+File contains tab characters (this is the first instance).
+	@Autowired
+Missing a Javadoc comment.
+	private SeikyusienAPIService seikyusienService;
+		
+	private static final Logger logger = LoggerFactory.getLogger(SeikyusienAPIController.class);
+Missing a Javadoc comment.
+Name 'logger' must match pattern '^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$'.
+	// ファイルアップロードエラーコード
+	private static final Integer RESULTNG = 23;
+Missing a Javadoc comment.
+	
+	// バリデーションチェック(請求依頼)
+	private static final String SEIQIRAIIRAIKBN = "1";
+Missing a Javadoc comment.
+	// バリデーションチェック(請求確定)
+	private static final String SEIQKAKUTEIIRAIKBN = "2";
+Missing a Javadoc comment.
+	
