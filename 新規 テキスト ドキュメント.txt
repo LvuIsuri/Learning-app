@@ -18,3 +18,14 @@ Missing a Javadoc comment.
 			groups = {SeikyuiraiG.class, SeikyukakuteiG.class, SeikyuKekkaG.class})
 	@Pattern(regexp = "[12]", message = "請求区分の値が範囲外です:${validatedValue}", 
 			groups = {SeikyuiraiG.class, SeikyukakuteiG.class, SeikyuKekkaG.class})
+if (request instanceof MultipartHttpServletRequest) {
+Replace this instanceof check and cast with 'instanceof MultipartHttpServletRequest multiparthttpservletrequest'
+			((MultipartHttpServletRequest) request).getFileMap().forEach((key, file) -> {
+				if (file != null) {
+					paramPairs.add(key + "=" + file.getOriginalFilename());
+				}
+			});
+		}
+		return String.join(", ", paramPairs);
+	
+	}
