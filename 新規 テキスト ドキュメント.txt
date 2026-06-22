@@ -1,22 +1,16 @@
-	public void loadRetryTimeOut() throws Exception{
-Define and throw a dedicated exception instead of using a generic one.
-'{' is not preceded with whitespace.
-		Node node = (Node) xpath.evaluate("/confValue/retry/retrySqsTimeOut", document, XPathConstants.NODE);
-		retryMap.put("retrySqsTimeOut", node.getTextContent());
-	}
-	// リトライ情報取得
-	public String getretryInfo(String key) throws Exception{
-Define and throw a dedicated exception instead of using a generic one.
-Remove the declaration of thrown exception 'java.lang.Exception', as it cannot be thrown from method's body.
-'{' is not preceded with whitespace.
-		return retryMap.get(key);
-	}
-	// Url情報読込
-	public void loadBizUrl(String id) throws Exception{
-Define and throw a dedicated exception instead of using a generic one.
-'{' is not preceded with whitespace.
-		String expr = "/confValue/queueInfo/bizQueue[@id='" + id + "']/bizUrl";
-		Node node = (Node) xpath.evaluate(expr, document, XPathConstants.NODE);
-		bizUrlMap.put(id, node.getTextContent());
-	}
-	// Url情報取得
+String envSwitchInfo = "";
+			for (RCqsndExecEnvInfo envInfo : envInfoList) {
+				envSwitchInfo += envInfo.getEnvName() + " ";
+Use a StringBuilder instead.
+				envSwitchInfo += envInfo.getEnvValue() + " ";
+Use a StringBuilder instead.
+			}
+			if(envSwitchInfo.length() > 0) {
+'if' is not followed by whitespace.
+'if' is not followed by whitespace.
+Using '>' is not allowed.
+				envSwitchInfo = envSwitchInfo.substring(0, envSwitchInfo.length() - 1);
+			}
+			String from = "\\$";
+			String to = "$";
+			envSwitchInfo = envSwitchInfo.replace(from, to);
