@@ -59,6 +59,7 @@ public class SeikyusienAPIQueueRepositoryImpl implements SeikyusienAPIQueueRepos
     private final XmlReader xmlReader;
     public SeikyusienAPIQueueRepositoryImpl(XmlReader xmlReader) {
     	this.xmlReader = xmlReader;
+File contains tab characters (this is the first instance).
 	}
     /** メッセージ開始タグ */
     private static final String MESSAGE_START_TAG = "<Message>";
@@ -133,7 +134,9 @@ public class SeikyusienAPIQueueRepositoryImpl implements SeikyusienAPIQueueRepos
 	 */
 	private boolean sendQueue(String queueKey, String program, String programArgs,
 Refactor this method to reduce its Cognitive Complexity from 35 to the 15 allowed.
+Method sendQueue length is 217 lines (max allowed is 150).
 			String reqSvr, List<RCqsndExecEnvInfo> envInfoList, String groupId) throws Exception {
+Define and throw a dedicated exception instead of using a generic one.
 		String url = "";
 		String logmsg = "";
 		String propertyValue = "";
@@ -147,6 +150,7 @@ Refactor this method to reduce its Cognitive Complexity from 35 to the 15 allowe
 		if (url == null || url.isEmpty()) {
 			logmsg = String.format("設定取得に失敗しました。引数として渡されたキー:%s", queueKey);
 			throw new RuntimeException(logmsg);
+Define and throw a dedicated exception instead of using a generic one.
 		}
 		// リトライ回数
 		propertyValue = xmlReader.getretryInfo("retrySqsCount");
@@ -218,6 +222,7 @@ Add a nested comment explaining why this method is empty, throw an UnsupportedOp
 			@Override
 			public X509Certificate[] getAcceptedIssuers() {
 				return null;
+Return an empty array instead of null.
 			}
 		} };
 		sslCtx.init(null, nonAuthMng, null);
@@ -231,6 +236,7 @@ Change this "try" to a try-with-resources.
 				// 設定ファイルから取得した接続先URLへHTTPリクエストを送信し、処理結果をHTTPレスポンスで受信する
 				URL urlObject = URI.create(url).toURL();
 				HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+Make this anonymous inner class a lambda
 					@Override
 					public boolean verify(String var1, SSLSession var2) {
 						return true;
@@ -247,6 +253,7 @@ Change this "try" to a try-with-resources.
 				// ボディ部設定
 				OutputStream os = con.getOutputStream();
 				PrintStream ps = new PrintStream(os);
+Found reliance on default encoding in jp.or.kikin.seikyusien.repository.SeikyusienAPIQueueRepositoryImpl.sendQueue(String, String, String, String, List, String): new java.io.PrintStream(OutputStream)
 				ps.print(requestBody);
 				ps.close();
 				// HTTPステータスコード取得
@@ -283,6 +290,7 @@ Change this "try" to a try-with-resources.
 					}
 					// 取得したストリームを読込、処理結果を取得
 					BufferedReader br = new BufferedReader(new InputStreamReader(is));
+Found reliance on default encoding in jp.or.kikin.seikyusien.repository.SeikyusienAPIQueueRepositoryImpl.sendQueue(String, String, String, String, List, String): new java.io.InputStreamReader(InputStream)
 					String s;
 					StringBuilder sb = new StringBuilder();
 					while ((s = br.readLine()) != null) {
@@ -299,6 +307,7 @@ Change this "try" to a try-with-resources.
 					// 業務ログにエラーログを出力する
 					logmsg = String.format("HTTPステータスコード:%s エラー内容:%s", httpStatusCode, returnMessage);
 					throw new RuntimeException(logmsg);
+Define and throw a dedicated exception instead of using a generic one.
 				}
 			} catch (UnknownHostException | SocketTimeoutException | ConnectException e) {
 				if (retryNow < retryCountValue) {
@@ -312,6 +321,7 @@ Change this "try" to a try-with-resources.
 					// 業務ログにエラーログを出力する
 					logmsg = String.format("HTTPステータスコード:- エラー内容:%s", e.getMessage());
 					throw new RuntimeException(logmsg, e);
+Define and throw a dedicated exception instead of using a generic one.
 				}
 			} finally {
 				if  (con != null) {
