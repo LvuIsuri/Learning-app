@@ -1,15 +1,219 @@
-InputStream is = con.getErrorStream();
-					if (is == null) {
-						// エラーストリームを取得できない場合、インプットストリームを取得
-						is = con.getInputStream();
-					}
-					// 取得したストリームを読込、処理結果を取得
-					BufferedReader br = new BufferedReader(new InputStreamReader(is));
-					String s;
-					StringBuilder sb = new StringBuilder();
-					while ((s = br.readLine()) != null) {
-						sb.append(s);
-					}
-					returnMessage = sb.toString();
+private boolean sendQueue(String queueKey, String program, String programArgs,
+        String reqSvr, List<RCqsndExecEnvInfo> envInfoList, String groupId)
+        throws InterruptedException, UnsupportedEncodingException,
+               NoSuchAlgorithmException, KeyManagementException, QueueSendException {
 
-					br.close();
+    String url = getQueueUrl(queueKey);              // ✅ tách riêng
+    int[] retryConfig = getRetryConfig();            // ✅ tách riêng
+    String requestBody = buildRequestBody(program, programArgs, 
+                         reqSvr, envInfoList, groupId); // ✅ tách riêng
+    SSLSocketFactory sslFactory = createSslFactory(); // ✅ tách riêng
+
+    executeWithRetry(url, requestBody, retryConfig, sslFactory); // ✅ tách riêng
+    return true;
+}
+
+// ✅ Tách: lấy URL
+private String getQueueUrl(String queueKey) throws QueueSendException {
+    String url = xmlReader.getBizUrl(queueKey);
+    if (url == null || url.isEmpty()) {
+        throw new QueueConfigException("設定取得に失敗しました。引数として渡されたキー:" + queueKey);
+    }
+    return url;
+}
+
+// ✅ Tách: lấy retry config
+private int[] getRetryConfig() {
+    int retryCount = 3;
+    int retryWaitTime = 1000;
+    int timeout = 30000;
+
+    String propertyValue = xmlReader.getretryInfo("retrySqsCount");
+    if (StringUtils.isNumeric(propertyValue)) {
+        retryCount = Integer.parseInt(propertyValue);
+    }
+    propertyValue = xmlReader.getretryInfo("retrySqsWaitTime");
+    if (StringUtils.isNumeric(propertyValue)) {
+        retryWaitTime = Integer.parseInt(propertyValue) * 1000;
+    }
+    propertyValue = xmlReader.getretryInfo("retrySqsTimeOut");
+    if (StringUtils.isNumeric(propertyValue)) {
+        timeout = Integer.parseInt(propertyValue) * 1000;
+    }
+    return new int[]{retryCount, retryWaitTime, timeout};
+}
+
+// ✅ Tách: build request body
+private String buildRequestBody(String program, String programArgs,
+        String reqSvr, List<RCqsndExecEnvInfo> envInfoList, 
+        String groupId) throws UnsupportedEncodingException {
+
+    String uniqueId = UUID.randomUUID().toString();
+    String exKey = (groupId == null || groupId.isEmpty()) ? uniqueId : groupId;
+    String envSwitchInfo = buildEnvSwitchInfo(envInfoList);
+    String programArgs4Json = programArgs.replace("\"", "\\\"");
+
+    String messageBody = new StringBuilder()
+            .append("{\"program\": \"").append(program)
+            .append("\", \"program_arg\": \"").append(programArgs4Json)
+            .append("\", \"req_svr\": \"").append(reqSvr)
+            .append("\", \"env_info_list\": \"").append(envSwitchInfo)
+            .append("\", \"group_id\": \"").append(groupId)
+            .append("\"}")
+            .toString();
+
+    String encodeBody = URLEncoder.encode(messageBody, "UTF-8");
+
+    return new StringBuilder()
+            .append("Action=SendMessage&MessageBody=").append(encodeBody)
+            .append("&MessageGroupId=").append(exKey)
+            .append("&MessageDeduplicationId=").append(uniqueId)
+            .append("&Version=2012-11-05")
+            .toString();
+}
+
+// ✅ Tách: build env switch info
+private String buildEnvSwitchInfo(List<RCqsndExecEnvInfo> envInfoList) {
+    StringBuilder sb = new StringBuilder();
+    for (RCqsndExecEnvInfo envInfo : envInfoList) {
+        sb.append(envInfo.getEnvName()).append(" ");
+        sb.append(envInfo.getEnvValue()).append(" ");
+    }
+    String result = sb.length() != 0 ? sb.substring(0, sb.length() - 1) : "";
+    return result.replace("\\$", "$");
+}
+
+// ✅ Tách: tạo SSL factory
+private SSLSocketFactory createSslFactory() 
+        throws NoSuchAlgorithmException, KeyManagementException {
+    SSLContext sslCtx = SSLContext.getInstance("TLS");
+    TrustManager[] nonAuthMng = { new X509TrustManager() {
+        @Override
+        public void checkClientTrusted(X509Certificate[] arg0, String arg1) 
+                throws CertificateException {
+            // 開発環境用のため、クライアント証明書の検証を行わない
+        }
+        @Override
+        public void checkServerTrusted(X509Certificate[] arg0, String arg1) 
+                throws CertificateException {
+            // 開発環境用のため、サーバー証明書の検証を行わない
+        }
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+            return new X509Certificate[0];
+        }
+    }};
+    sslCtx.init(null, nonAuthMng, null);
+    return sslCtx.getSocketFactory();
+}
+
+// ✅ Tách: xử lý retry loop
+private void executeWithRetry(String url, String requestBody, 
+        int[] retryConfig, SSLSocketFactory sslFactory)
+        throws InterruptedException, QueueSendException {
+
+    int retryCount = retryConfig[0];
+    int retryWaitTime = retryConfig[1];
+    int timeout = retryConfig[2];
+    int retryNow = 0;
+
+    while (true) {
+        HttpsURLConnection con = null;
+        try {
+            con = openConnection(url, timeout, sslFactory);
+            sendRequest(con, requestBody);
+            int httpStatusCode = con.getResponseCode();
+
+            if (httpStatusCode == 200) break;
+
+            retryNow = handleHttpError(httpStatusCode, retryNow, retryCount, retryWaitTime, con);
+
+        } catch (UnknownHostException | SocketTimeoutException | ConnectException e) {
+            retryNow = handleNetworkError(e, retryNow, retryCount, retryWaitTime);
+        } catch (IOException e) {
+            throw new QueueSendException("IO error: " + e.getMessage(), e);
+        } finally {
+            if (con != null) con.disconnect();
+        }
+    }
+}
+
+// ✅ Tách: mở connection
+private HttpsURLConnection openConnection(String url, int timeout, 
+        SSLSocketFactory sslFactory) throws IOException {
+    HttpsURLConnection.setDefaultHostnameVerifier((var1, var2) -> true);
+    HttpsURLConnection con = (HttpsURLConnection) URI.create(url).toURL().openConnection();
+    con.setRequestMethod("POST");
+    con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=shift_jis");
+    con.setConnectTimeout(timeout);
+    con.setReadTimeout(timeout);
+    con.setDoOutput(true);
+    con.setSSLSocketFactory(sslFactory);
+    con.connect();
+    return con;
+}
+
+// ✅ Tách: gửi request
+private void sendRequest(HttpsURLConnection con, String requestBody) throws IOException {
+    try (PrintStream ps = new PrintStream(con.getOutputStream())) {
+        ps.print(requestBody);
+    }
+}
+
+// ✅ Tách: xử lý HTTP error
+private int handleHttpError(int httpStatusCode, int retryNow, 
+        int retryCount, int retryWaitTime, 
+        HttpsURLConnection con) throws InterruptedException, IOException, QueueSendException {
+    if (retryNow != retryCount && isRetryableStatus(httpStatusCode)) {
+        retryNow++;
+        logger.warn("キュー登録に失敗しました。リトライします。HTTPステータスコード:{}", httpStatusCode);
+        Thread.sleep(retryWaitTime);
+        return retryNow;
+    }
+    String returnMessage = readErrorMessage(con);
+    throw new QueueSendException(
+        String.format("HTTPステータスコード:%s エラー内容:%s", httpStatusCode, returnMessage));
+}
+
+// ✅ Tách: kiểm tra status có thể retry
+private boolean isRetryableStatus(int httpStatusCode) {
+    return httpStatusCode == 429 || httpStatusCode == 403 ||
+           httpStatusCode == 500 || httpStatusCode == 502 ||
+           httpStatusCode == 503 || httpStatusCode == 504 ||
+           httpStatusCode == 509;
+}
+
+// ✅ Tách: đọc error message
+private String readErrorMessage(HttpsURLConnection con) throws IOException {
+    InputStream is = con.getErrorStream();
+    if (is == null) {
+        is = con.getInputStream();
+    }
+    String returnMessage = "";
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+        String s;
+        while ((s = br.readLine()) != null) {
+            returnMessage += s;
+        }
+    }
+    int messageStartPoint = returnMessage.indexOf(MESSAGE_START_TAG);
+    int messageEndPoint = returnMessage.indexOf(MESSAGE_END_TAG);
+    if (messageStartPoint != -1 && messageEndPoint != -1) {
+        returnMessage = returnMessage.substring(
+            messageStartPoint + MESSAGE_START_TAG.length(), messageEndPoint);
+    }
+    return returnMessage;
+}
+
+// ✅ Tách: xử lý network error
+private int handleNetworkError(Exception e, int retryNow, 
+        int retryCount, int retryWaitTime) 
+        throws InterruptedException, QueueSendException {
+    if (retryNow != retryCount) {
+        retryNow++;
+        logger.warn("キュー登録に失敗しました。リトライします。HTTPステータスコード:- エラー内容:{}", e.getMessage());
+        Thread.sleep(retryWaitTime);
+        return retryNow;
+    }
+    throw new QueueSendException("HTTPステータスコード:- エラー内容:" + e.getMessage(), e);
+}
