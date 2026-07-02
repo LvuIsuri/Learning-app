@@ -1,37 +1,58 @@
-13:38:38,705 |-WARN in ch.qos.logback.core.model.processor.AppenderModelHandler - Appender named [CONSOLE] not referenced. Skipping further processing.
+準備
+①EC2インスタンスの起動（※私の方で実施するので試験時は連絡してください）
+　オンラインWebサーバIP10.15.8.7のインスタンスを起動する
+　運用管理サーバIP10.13.7.21のインスタンスを起動する
 
-  .   ____          _            __ _ _
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-  '  |____| .__|_| |_|_| |_\__, | / / / /
- =========|_|==============|___/=/_/_/_/
+②ECSサービスの起動（※私の方で実施するので試験時は連絡してください）
+　クラスターEcscl_ONZ_CAS1101を選択後、サービスEcssv_ONS_CAS1101を選択
+　Ecssv_ONZ_CAS1101画面の右上にサービスを更新ボタンがあるので押下する
+　Ecssv_ONZ_CAS1101を更新画面が表示されるので必要なタスクを0→1に変更して更新ボタンを押下する
+　　※ECRのイメージを変更した場合は新しいデプロイの強制にチェックを入れる
+　　※必要なタスクが既に1の場合、落とし忘れの可能性があるため、確認後1→0で更新し、再度0→1で更新する
+　Ecssv_ONS_CAS1101サービス画面に戻るのでサービス概要のタスクを確認し、1件が実行中となることを確認する
+　タスクタブを開き、現在実行中のタスクを押下する
+　タスク設定画面が表示されるので設定のプライベートIPをメモする(例 10.15.8.62)
 
-[32m :: Spring Boot :: [39m              [2m (v3.5.6)[0;39m
+③テストの実行
+　curlは192系端末からcmdで実行する。リクエストにファイルがある場合はcmd実行フォルダ配下に配置する。
+　　※リクエストファイルも検証物となるので各試験毎に退避すること
+　コマンド例は以下でIPの部分をタスク設定のプライベートIPに変更する。ヘッダーを出力する場合はオプションをつける
+　　curl -X POST -H "apikey: 7GQ3ZP1H9K4M2X8C5R0T6W1V8B3N7" -F "seiqkbn=1" -F "seiqiraino=5071120101234561001" -F "transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17" -F "filename=@202612_15071120101234561001.zip" -OJ http://10.15.8.62:8082/ON_SeikyuIrai
+　レスポンスについてはcmd実行配下に作成されるのでそれを確認する。
+　　※レスポンスファイルも検証物となるので各試験毎に退避すること
 
-date:2026-06-29 13:38:38.799	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:Starting SeikyusienApi using Java 21.0.2 with PID 21236 (C:\pleiades\2023-12\workspace\seikyusien\target\classes started by use in C:\pleiades\2023-12\workspace\seikyusien)
-date:2026-06-29 13:38:38.800	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:No active profile set, falling back to 1 default profile: "default"
-date:2026-06-29 13:38:39.539	thread:main	X-Track:	level:INFO 	logger:o.s.boot.web.embedded.tomcat.TomcatWebServer    	message:Tomcat initialized with port 8082 (http)
-date:2026-06-29 13:38:39.550	thread:main	X-Track:	level:INFO 	logger:org.apache.catalina.core.StandardService        	message:Starting service [Tomcat]
-date:2026-06-29 13:38:39.551	thread:main	X-Track:	level:INFO 	logger:org.apache.catalina.core.StandardEngine         	message:Starting Servlet engine: [Apache Tomcat/10.1.46]
-date:2026-06-29 13:38:39.965	thread:main	X-Track:	level:INFO 	logger:o.a.c.c.ContainerBase.[Tomcat].[localhost].[/]  	message:Initializing Spring embedded WebApplicationContext
-date:2026-06-29 13:38:39.965	thread:main	X-Track:	level:INFO 	logger:o.s.b.w.s.c.ServletWebServerApplicationContext  	message:Root WebApplicationContext: initialization completed in 1137 ms
-13:38:39,998 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Could NOT find configuration file [C:\Users\use\AppData\Local\Temp\tomcat.8082.14989166814233687811\logback-access.xml] using property "catalina.base"
-13:38:39,998 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Could NOT find configuration file [C:\Users\use\AppData\Local\Temp\tomcat.8082.14989166814233687811\logback-access.xml] using property "catalina.home"
-13:38:39,998 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Found [logback-access.xml] as a resource.
-13:38:40,005 |-INFO in ch.qos.logback.access.common.model.processor.ConfigurationModelHandler - debug attribute not set
-13:38:40,005 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ACCESS_STDOUT]
-13:38:40,005 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
-13:38:40,006 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.access.common.PatternLayoutEncoder] for [encoder] property
-13:38:40,019 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
-13:38:40,019 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - console in production environments, especially in high volume systems.
-13:38:40,019 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
-13:38:40,019 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ACCESS_FILE]
-13:38:40,019 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.FileAppender]
-13:38:40,019 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.access.common.PatternLayoutEncoder] for [encoder] property
-13:38:40,020 |-INFO in ch.qos.logback.core.FileAppender[ACCESS_FILE] - File property is set to [/var/log/tomcat/access_log.txt]
-13:38:40,020 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [ACCESS_STDOUT] to ch.qos.logback.access.tomcat.LogbackValve[null]
-13:38:40,020 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [ACCESS_FILE] to ch.qos.logback.access.tomcat.LogbackValve[null]
-13:38:40,020 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@3cc053 - End of configuration.
-13:38:40,020 |-INFO in ch.qos.logback.access.common.joran.JoranConfigurator@388c519 - Registering current configuration as safe fallback point
-13:38:40,020 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Done configuring
+④作成ファイル確認手順
+　WinSCPを起動
+　オンラインWebサーバIP10.15.8.7に接続する。IDPASSはrein71 ut_rein71
+　ダウンロードファイルは以下のパスに作成される
+　　※ファイルは検証物となるので各試験毎に退避すること
+　　/nfs/data1/RE/RE71/～
+
+⑤ログ確認手順
+　業務ログはCloudWatchでEcscl_ONZ_CAS1101を確認する。ログ出力の内容はログ設計書を確認する。
+　ログファイルを取得する場合はアクションからエクスポートを選択する
+
+⑥アクセスログ、catarinaログ確認
+　TeraTermを起動
+　運用管理サーバに接続するIP10.13.7.21
+　　　maplopt SI2PT_maplopt
+　下記フォルダにあるコマンド.txtを開く
+　　\\192.168.221.49\Kiban_Share\60_APK\share\02_AP共通基盤\14_請求支援機能\ECS Exec
+　# タスクARN取得を叩く
+　　TASK_ARN=`aws ecs list-tasks --cluster Ecscl_ONZ_CAS1101 --query "taskArns[]" --output text`
+　# ECS Execを叩く
+　　aws ecs execute-command --cluster Ecscl_ONZ_CAS1101 --task ${TASK_ARN} --container Ecscn_on-calc-dev --interactive --command "/bin/bash"
+　bash-5.2#と表示されるとコンテナ内部が見えるのでアクセスログとcatarinaログを確認する
+　　/var/log/tomcat/～
+
+⑦SQSキュー登録確認
+　AmazonSQSを開く
+　キュー検索でQUE_ON_RC～と検索する
+　QUE_ON_RCSQHEが請求依頼、RCSQKTが請求確定となる
+　本請求がH17、確認試験がS17となるのでそれに該当する項目の利用可能なメッセージが1となっていることを確認する
+　キュー情報を押下し右上のメッセージを送受信ボタンを押下する
+　メッセージを受信にあるメッセージをポーリングボタンを押下する
+　メッセージ情報が表示されるのでクリックする
+　メッセージ本文が表示されるので確認し完了ボタンを押下する。
+　キュー画面に戻りクリアボタンを押下する
+　キューをクリアすると登録されているキュー情報が削除される
