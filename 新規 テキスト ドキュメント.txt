@@ -1,1 +1,41 @@
+"以下の条件で共通算定APサーバへリクエストを送信
+
+POST /ON_SeikyuKakutei
+
+環境変数
+$API_KEY：7GQ3ZP1H9K4M2X8C5R0T6W1V8B3N7
+$AP_DATA：/nts/data1/RE/RE71
+$QUEUE_CONF_PATH：/kikin_on/home/RE/RE01/etc/SI71/apInfra/queueConf.xml
+
+リクエストヘッダ
+apikey：7GQ3ZP1H9K4M2X8C5R0T6W1V8B3N7
+
+リクエストボディ
+seiqkbn：1
+seiqiraino：5071120101234561001
+irainaiyoukbn=1
+transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17
+
 SQSキュー登録で任意のエラーを発生させ中止とする
+
+前提条件：
+共通算定APサーバが起動していること。
+"	"・SQSキュー登録が行われないこと
+
+・レスポンスステータスに500が返却されること
+
+レスポンスヘッダ
+HTTP1.1　HTTPステータス500
+Date:応答日時
+Content-Type:text/plain
+
+・リクエスト処理の開始、終了、例外ログが出力されること
+AP処理開始
+　日付、スレッド名、ID(X-Track)、ログレベル、クラス名(LoggingInterceptor)、メッセージ(message:AP処理開始 リクエスト情報)
+
+AP処理完了
+　日付、スレッド名、ID(X-Track)、ログレベル、クラス名(LoggingInterceptor)、メッセージ(message:AP処理開始 リクエスト情報、処理時間(ms))
+
+アクセスログ
+　[ACCESS] X-Forwarded-For クライアントIPアドレス セッションID 認証ユーザ名 リクエストライン アクセス日時 HTTPステータス レスポンスサイズ(バイト) 処理時間(ms) ms
+"
