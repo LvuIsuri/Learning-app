@@ -1,2 +1,19 @@
-説明しながらテストしてもらうことがあまりなかったので手探りで伝えているのでミスが少しあるかもしれません。
-Tôi chưa có nhiều cơ hội để giải thích mọi thứ trong khi cho người khác thử nghiệm, vì vậy tôi đang khá lúng túng và có thể sẽ mắc một vài lỗi.
+請求依頼番号の2010123456の頭二桁20が県コード、以下が医療機関番号となる
+
+請求依頼番号0100000001を基準とする
+
+①県コードを01～47までカウントアップする(都道府県は47のため)
+0100000001～4700000001
+
+②医療機関番号を00000001から00100000までカウントアップする(県コードは01を使用)
+
+③curl文の件コードを01～47、医療機関番号を00000001から00100000までカウントアップする(●Jmeterのカウンタ機能を使用すればいい？プライベートIPは毎回変わるので試験前に毎回変更する)
+curl -X POST -H "apikey: 7GQ3ZP1H9K4M2X8C5R0T6W1V8B3N7" -F "seiqkbn=1" -F "seiqiraino=5071101000000011001" -F "transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17" -F "filename=@202612_15071101000000011001.zip" http://10.15.8.62:8082/ON_SeikyuIrai
+→
+curl -X POST -H "apikey: 7GQ3ZP1H9K4M2X8C5R0T6W1V8B3N7" -F "seiqkbn=1" -F "seiqiraino=5071147000000011001" -F "transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17" -F "filename=@202612_15071147000000011001.zip" http://10.15.8.62:8082/ON_SeikyuIrai
+→
+curl -X POST -H "apikey: 7GQ3ZP1H9K4M2X8C5R0T6W1V8B3N7" -F "seiqkbn=1" -F "seiqiraino=5071101000000021001" -F "transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17" -F "filename=@202612_15071101000000021001.zip" http://10.15.8.62:8082/ON_SeikyuIrai
+→
+curl -X POST -H "apikey: 7GQ3ZP1H9K4M2X8C5R0T6W1V8B3N7" -F "seiqkbn=1" -F "seiqiraino=5071101001000001001" -F "transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17" -F "filename=@202612_15071101001000001001.zip" http://10.15.8.62:8082/ON_SeikyuIrai
+
+④請求確定の添付ファイルも同じ条件でカウントアップする
