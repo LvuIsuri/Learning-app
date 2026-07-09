@@ -1,5 +1,5 @@
-date:2026-07-09 14:59:35.857	thread:http-nio-8082-exec-127	X-Track:5af8e99a-433c-4b73-adad-e9a2eb41e1ca	level:WARN 	logger:j.o.k.s.r.SeikyusienAPIQueueRepositoryImpl      	message:リランコマンド：python3 $AP_HOME/bin/apInfra/py/apExecSvrReqQueue.py 'ON_RCSQHE_H' '/RC/RCsqhe' '5071101000000061001 1 0 1 18cd3748-9a76-4a05-8c69-ba0b8c1a9d17 202612_15071101000000061001.zip' 'ON_CLAIMASP.AP' 'AP_DOMAIN50INI_FILE_ENV$RE_HOME/etc/RC/IH/01/RECENTERSvr.in' ''
-date:2026-07-09 14:59:35.857	thread:http-nio-8082-exec-127	X-Track:5af8e99a-433c-4b73-adad-e9a2eb41e1ca	level:ERROR	logger:j.o.kikin.seikyusien.handler.AppExceptionHandler	message:異常終了しました
+date:2026-07-09 15:07:11.339	thread:http-nio-8082-exec-121	X-Track:4c712e2d-a7ed-4090-8136-74cbf62f831e	level:WARN 	logger:j.o.k.s.r.SeikyusienAPIQueueRepositoryImpl      	message:リランコマンド：python3 $AP_HOME/bin/apInfra/py/apExecSvrReqQueue.py 'ON_RCSQHE_H' '/RC/RCsqhe' '5071101000000091001 1 0 1 31d894fa-e1b7-4ca1-88b3-b2563532a5b4 202612_15071101000000091001.zip' 'ON_CLAIMASP.AP' 'AP_DOMAIN50INI_FILE_ENV$RE_HOME/etc/RC/IH/01/RECENTERSvr.in' ''
+date:2026-07-09 15:07:11.339	thread:http-nio-8082-exec-121	X-Track:4c712e2d-a7ed-4090-8136-74cbf62f831e	level:ERROR	logger:j.o.kikin.seikyusien.handler.AppExceptionHandler	message:異常終了しました
 jp.or.kikin.seikyusien.exception.QueueException: キュー登録に失敗しました
 	at jp.or.kikin.seikyusien.service.SeikyusienAPIServiceImpl.sendQueue(SeikyusienAPIServiceImpl.java:228)
 	at jp.or.kikin.seikyusien.controller.SeikyusienAPIController.onSeikyuIrai01(SeikyusienAPIController.java:106)
@@ -111,5 +111,5 @@ jp.or.kikin.seikyusien.exception.QueueException: キュー登録に失敗しま�
 	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:493)
 	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
 	at java.base/java.lang.Thread.run(Thread.java:1583)
-date:2026-07-09 14:59:35.857	thread:http-nio-8082-exec-127	X-Track:5af8e99a-433c-4b73-adad-e9a2eb41e1ca	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP処理完了 POST /ON_SeikyuIrai param: seiqkbn=1, seiqiraino=5071101000000061001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202612_15071101000000061001.zip (処理時間: 15ms)
-[ACCESS] - 127.0.0.1 - - POST /ON_SeikyuIrai HTTP/1.1 2026-07-09 14:59:35.857 500 - 8 ms
+date:2026-07-09 15:07:11.339	thread:http-nio-8082-exec-121	X-Track:4c712e2d-a7ed-4090-8136-74cbf62f831e	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP処理完了 POST /ON_SeikyuIrai param: seiqkbn=1, seiqiraino=5071101000000091001, transactionid=31d894fa-e1b7-4ca1-88b3-b2563532a5b4, filename=202612_15071101000000091001.zip (処理時間: 0ms)
+[ACCESS] - 127.0.0.1 - - POST /ON_SeikyuIrai HTTP/1.1 2026-07-09 15:07:11.339 500 - 8 ms
