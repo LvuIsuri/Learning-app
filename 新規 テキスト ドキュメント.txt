@@ -1,24 +1,5 @@
-import java.util.zip.ZipOutputStream
-import java.util.zip.ZipEntry
-
-def pref = vars.get("pref")
-def kikan = vars.get("kikan")
-def seiqiraino = "5071" + pref + kikan + "1001"
-def filename = "202612_1" + seiqiraino + ".zip"
-def filePath = "C:/test/tmp/" + filename
-
-new File("C:/test/tmp").mkdirs()
-
-def fos = new FileOutputStream(filePath)
-def zos = new ZipOutputStream(fos)
-zos.putNextEntry(new ZipEntry("dummy.txt"))
-zos.write("test data pref=${pref} kikan=${kikan}".getBytes())
-zos.closeEntry()
-zos.close()
-fos.close()
-
-vars.put("seiqiraino", seiqiraino)
-vars.put("filename", filename)
-vars.put("filePath", filePath)
-
-log.info("Generated: " + filePath)
+date:2026-07-09 14:52:15.144	thread:http-nio-8082-exec-61	X-Track:846ca58f-56bc-4fde-881d-087991992df0	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP処理開始 POST /ON_SeikyuIrai param: seiqkbn=1, seiqiraino=507101000000031001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202612_1507101000000031001.zip
+date:2026-07-09 14:52:15.144	thread:http-nio-8082-exec-61	X-Track:846ca58f-56bc-4fde-881d-087991992df0	level:WARN 	logger:j.o.k.s.controller.SeikyusienAPIController      	message:添付ファイル名が誤っています:202612_1507101000000031001.zip
+date:2026-07-09 14:52:15.144	thread:http-nio-8082-exec-61	X-Track:846ca58f-56bc-4fde-881d-087991992df0	level:WARN 	logger:j.o.k.s.controller.SeikyusienAPIController      	message:点数表の値が範囲外です:507101000000031001
+date:2026-07-09 14:52:15.144	thread:http-nio-8082-exec-61	X-Track:846ca58f-56bc-4fde-881d-087991992df0	level:WARN 	logger:j.o.k.s.controller.SeikyusienAPIController      	message:請求依頼番号が19桁ではありません:507101000000031001
+date:2026-07-09 14:52:15.144	thread:http-nio-8082-exec-61	X-Track:846ca58f-56bc-4fde-881d-087991992df0	level:ERROR	logger:j.o.kikin.seikyusien.handler.AppExceptionHandler	message:異常終了しました
