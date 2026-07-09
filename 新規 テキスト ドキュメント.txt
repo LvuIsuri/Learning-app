@@ -52,3 +52,22 @@ fos.close()
 vars.put("seiqiraino", seiqiraino)
 vars.put("filename", filename)
 vars.put("filePath", filePath)
+Thread Name:Thread Group 1-1
+Sample Start:2026-07-09 16:58:54 JST
+Load time:1
+Connect Time:0
+Latency:0
+Size in bytes:2606
+Sent bytes:0
+Headers size in bytes:0
+Body size in bytes:2606
+Sample Count:1
+Error Count:1
+Data type ("text"|"bin"|""):text
+Response code:Non HTTP response code: java.io.FileNotFoundException
+Response message:Non HTTP response message: C:\test\tmp\202612_15071106000000011001.zip (指定されたファイルが見つかりません。)
+
+
+HTTPSampleResult fields:
+ContentType: 
+DataEncoding: null
