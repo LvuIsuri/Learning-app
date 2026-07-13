@@ -1,1 +1,35 @@
-・アップロードしたたzipファイルをバイナリ比較し一致すること。zipファイルが正常に解凍できることを確認する
+01	業務AP	-	"以下の条件で共通算定APサーバへリクエストを送信
+
+POST /ON_SeikyuKekka
+
+DLFile：$AP_DATA/sect01/temp/RCsqhe/dfIH/5071101101234561001/202612_150711011012345610010.zip
+
+apikey：7GQ3ZP1H9K4M2X8C5R0T6W1V8B3N7
+seiqnengetu：202612
+seiqkbn：1
+seiqiraino：5071101101234561001
+irainaiyoukbn=0
+transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17
+
+前提条件：
+共通算定APサーバが起動していること。
+"	"・リクエストの受信が行われ対応したダウンロードファイルをレスポンスに設定すること
+
+レスポンスヘッダ
+HTTP1.1　HTTPステータス200
+Date:応答日時
+Content-Disposition:attachment;filename=202612_150711011012345610010.zip
+Content-Type:application/zip
+
+・リクエスト処理の開始、終了ログが出力されること
+AP処理開始
+　日付、スレッド名、ID(X-Track)、ログレベル、クラス名(LoggingInterceptor)、メッセージ(message:AP処理開始 リクエスト情報)
+
+AP処理完了
+　日付、スレッド名、ID(X-Track)、ログレベル、クラス名(LoggingInterceptor)、メッセージ(message:AP処理開始 リクエスト情報、処理時間(ms))
+
+アクセスログ
+　[ACCESS] X-Forwarded-For クライアントIPアドレス セッションID 認証ユーザ名 リクエストライン アクセス日時 HTTPステータス レスポンスサイズ(バイト) 処理時間(ms) ms
+
+・レスポンスに設定されたzipファイルをバイナリ比較し一致すること。zipファイルが正常に解凍できることを確認する
+"
