@@ -1,1 +1,14 @@
-internal-Elb-ONZ-ONZAHL4101-186471822.ap-northeast-1.elb.amazonaws.com
+●全部上書きになるのでバックアップはとってください
+
+コンテナの以下のパスにxmlファイルがある
+/kikin_on/home1/RE/RE01/etc/SI71/apInfra/
+queueConf.xml
+
+ファイルサーバがマウントされているので以下のフォルダにコピーする
+/nfs/data1/RE/RE71/sect20/temp/RCsqhe/dfIH/5071120101234561001
+
+コピーしたqueueConf.xmlを編集する
+
+作成したqueueConf.xmlファイルを/kikin_on/home1/RE/RE01/etc/SI71/apInfra/に戻す
+
+リクエストを投げる
