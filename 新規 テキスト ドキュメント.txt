@@ -1,14 +1,52 @@
-●全部上書きになるのでバックアップはとってください
 
-コンテナの以下のパスにxmlファイルがある
-/kikin_on/home1/RE/RE01/etc/SI71/apInfra/
-queueConf.xml
 
-ファイルサーバがマウントされているので以下のフォルダにコピーする
-/nfs/data1/RE/RE71/sect20/temp/RCsqhe/dfIH/5071120101234561001
+①タスクの停止
+AWSのECSを開き、クラスターEcscl_ONZ_CAS1101を開きサービスからEcssv_ONS_CAS1101を開く
+画面右上にある「サービスの更新」ボタンを押す
+必要なタスクの数が1の場合は0に変更し、画面を下にスクロールさせ更新ボタンを押下する
+　(0の場合は何もしなくて良い。)
 
-コピーしたqueueConf.xmlを編集する
 
-作成したqueueConf.xmlファイルを/kikin_on/home1/RE/RE01/etc/SI71/apInfra/に戻す
+②Git情報の取得、更新、登録(※今mainへの直接更新は行っていないのでmainへのコミット、プッシュは行わないでください。)
+任意の場所でGit Bashを開く
+クローンをローカルに作成する
+　git clone https://10.13.6.102/on-Biz2/apOnCalc.git
 
-リクエストを投げる
+取得したapOnCalcのqueueConf.xmlの内容を変更する(※元に戻せるようにqueueConf.xmlのバックアップを作成しておくこと。)
+
+Git Bash上でクローンしたapOnCalcに移動し、featureCfwへコミット、プッシュを行う
+　git add -A
+　git commit -m "コミット内容を記述する"
+　git push origin featureCfw
+
+Git Lab画面に戻り、CICDのPipelinesでエラーにならない、RepositoryのCommitsで変更内容の確認を行い、問題ない場合は先に進む
+Merge requestsを開き、New merge requestを選択する
+
+
+
+
+
+
+Source branchにfeatureCfw、Target branchにdevelopを選択し、Compare branch and continueボタンを押下する
+Create merge requestボタンを押下する
+CI/CDのPipelinesを見るとdevelopにマージが行われ、エラーとならないことを確認する。
+RepositoryのTagsを選択する
+RELEASE-dev-20260623-v1.0.0のタグをDelete tag(削除)する
+New tagボタンを押下する
+Tag nameにRELEASE-dev-20260623-v1.0.0と入力、Create fromにdevelopを選択しCreate tagボタンを押下する
+RELEASE-dev-20260623-v1.0.0タグが作成されることを確認する
+CI/CDのPipelinesにRELEASE-dev-20260623-v1.0.0のタグ作成情報があるのでエラーとならないことを確認する
+
+③ECRの確認、タスクの起動
+AWSのECRからon-calc-devを開き、作成時刻がタグ作成時刻と一致していることを確認する
+AWSのECSを開き、クラスターEcscl_ONZ_CAS1101を開きサービスからEcssv_ONS_CAS1101を開く
+画面右上にある「サービスの更新」ボタンを押す
+新しいデプロイの強制にチェックを入れる
+必要なタスクを0から1に変更し、画面を下にスクロールさせ更新ボタンを押下する
+Ecssv_ONS_CAS1101画面でタスクが1件実行中となるまで待つ
+リクエストを投げテストを行う。
+
+
+
+
+全てのxml変更テストが終了したら変更内容を元に戻す。(私に連絡してください。)
