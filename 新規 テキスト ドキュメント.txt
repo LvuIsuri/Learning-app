@@ -1,3 +1,9 @@
+"共通算定APIサーバから起動プログラムなどの起動情報をキューノードへ登録する。
+HTTPステータス500"																	
+"共通算定APIサーバから起動プログラムなどの起動情報をキューノードへ登録する。
+HTTPステータス502"																	
+"共通算定APIサーバから起動プログラムなどの起動情報をキューノードへ登録する。
+HTTPステータス503"																	
 "SQSキュー登録を実施する。
 
 環境変数
@@ -26,8 +32,8 @@ transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17
 
 前提条件：
 共通算定APサーバが起動していること。
-SQSキュー登録結果のレスポンスステータスが403となること"	"・SQSキュー登録のリクエストが正常に行われること
-・SQSキュー登録のレスポンスステータスが403となること
+SQSキュー登録結果のレスポンスステータスが500となること"	"・SQSキュー登録のリクエストが正常に行われること
+・SQSキュー登録のレスポンスステータスが500となること
 ・WARNログ出力、retrySqsWaitTime分待機した後、retrySqsCount分リトライ。その後エラーログを出力すること
 ・SQSキュー登録が行われないこと(false返却)
 
@@ -37,13 +43,62 @@ Host:リクエスト先
 Content-Type:application/x-www-form-urlencoded; charset=shift_jis
 
 SQSキュー登録レスポンス
-ステータス　403
+ステータス　500
 レスポンス　なし
 処理結果 false
 
 WARNログ内容
-キュー登録に失敗しました。リトライします。HTTPステータスコード:403
+キュー登録に失敗しました。リトライします。HTTPステータスコード:500
 
 エラーログ内容
-HTTPステータスコード:403 エラー内容:(ストリームのメッセージ内容を表示)"
+HTTPステータスコード:500 エラー内容:(ストリームのメッセージ内容を表示)"
+	
+"SQSキュー登録を実施する。
+
+環境変数
+$API_KEY：7GQ3ZP1H9K4M2X8C5R0T6W1V8B3N7
+$AP_DATA：/nts/data1/RE/RE71
+$QUEUE_CONF_PATH：/kikin_on/home/RE/RE01/etc/SI71/apInfra/queueConf.xml
+
+外部ファイルqueueConf.xml設定情報
+retrySqsCount：10
+retrySqsWaitTime：1
+retrySqsTimeOut：6
+<bizQueue id=""ON_RCSQHE_H"">
+　<bizUrl>https://sqs.ap-northeast-1.amazonaws.com/599218091789/QUE_ON_RCSQHE_H17.fifo</bizUrl>
+<bizQueue id=""ON_RCSQHE_S"">
+　<bizUrl>https://sqs.ap-northeast-1.amazonaws.com/599218091789/QUE_ON_RCSQHE_S17.fifo</bizUrl>
+<bizQueue id=""ON_RCSQKT_H"">
+　<bizUrl>https://sqs.ap-northeast-1.amazonaws.com/599218091789/QUE_ON_RCSQKT_H17.fifo</bizUrl>
+<bizQueue id=""ON_RCSQKT_S"">
+　<bizUrl>https://sqs.ap-northeast-1.amazonaws.com/599218091789/QUE_ON_RCSQKT_S17.fifo</bizUrl>
+
+請求確定・取消から以下のリクエストを受信
+seiqkbn：1
+seiqiraino：5071113101234561001
+irainaiyoukbn=1
+transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17
+
+前提条件：
+共通算定APサーバが起動していること。
+SQSキュー登録結果のレスポンスステータスが503となること"	"・SQSキュー登録のリクエストが正常に行われること
+・SQSキュー登録のレスポンスステータスが503となること
+・WARNログ出力、retrySqsWaitTime分待機した後、retrySqsCount分リトライ。その後エラーログを出力すること
+・SQSキュー登録が行われないこと(false返却)
+
+SQSキュー登録リクエスト
+POST リクエストパス HTTP1.1
+Host:リクエスト先
+Content-Type:application/x-www-form-urlencoded; charset=shift_jis
+
+SQSキュー登録レスポンス
+ステータス　503
+レスポンス　なし
+処理結果 false
+
+WARNログ内容
+キュー登録に失敗しました。リトライします。HTTPステータスコード:503
+
+エラーログ内容
+HTTPステータスコード:503 エラー内容:(ストリームのメッセージ内容を表示)"
 	
