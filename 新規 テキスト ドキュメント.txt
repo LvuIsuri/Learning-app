@@ -1,17 +1,192 @@
-件名：育児休業取得に関するご相談
+import axios, { AxiosError, AxiosInstance } from "axios";
+import axiosRetry from "axios-retry";
+import { ApiError } from "@/src/appBase/errors/ApiError";
+import { FwConst } from "../const/Const";
 
-総務ご担当者様
 
-お疲れ様です。チャンです。
+/**
+ * HTTPクライアント取得
+ * @returns HTTPクライアントのインスタンス
+ */
+export const useHttpClient = (): HttpClient => {
+  return HttpClient.getInstance();
+};
 
-私事で恐縮ですが、妻が現在ベトナムに在住しており、2027年1月に出産を予定しております。
+type Headers = {
+  [key: string]: string;
+};
 
-出産の立ち会いおよび産後のサポートのため、2027年1月から2月末までの約2か月間、ベトナムへの帰国を検討しております。そのため、育児休業の取得についてご相談させていただきたく存じます。
+/**
+ * HTTPクライアントクラス
+ * - シングルトンパターンで実装
+ * - 認証トークンの自動付与
+ */
+export class HttpClient {
+  private static instance: HttpClient;
+  private axiosInstance: AxiosInstance;
+  private authToken: string | null = null;
 
-なお、休業後は2027年3月1日より業務に復帰する予定です。
+  private constructor() {
+    this.axiosInstance = axios.create({
+      baseURL: FwConst.BACKEND_BASE_URL,
+    });
 
-つきましては、育児休業取得に必要な手続きや提出書類、また妻が海外（ベトナム）で出産する場合に必要となる対応がございましたら、ご教示いただけますでしょうか。
+    // リトライ設定
+    axiosRetry(this.axiosInstance, {
+      retries: FwConst.MAX_RETRY_ATTEMPTS,
+      retryCondition: (error) => {
+        return (
+          axiosRetry.isNetworkOrIdempotentRequestError(error) || // ネットワークエラーや冪等リクエストエラーの場合はリトライ
+          (FwConst.RETRY_HTTP_STATUS_CODES.length > 0 && // 配列が空でない場合のみチェック
+            error.response?.status !== undefined &&
+            FwConst.RETRY_HTTP_STATUS_CODES.includes(error.response.status)
+          )
+        );
+      },
+      // リトライ間隔を指数関数的に増加させる
+      retryDelay: axiosRetry.exponentialDelay,
+    });
+    this.setupInterceptors();
+  }
 
-また、帰国スケジュールの調整や航空券の手配を行う必要があるため、可能であれば早めに関連情報をご共有いただけますと幸いです。
+  public static getInstance(): HttpClient {
+    if (!HttpClient.instance) {
+      HttpClient.instance = new HttpClient();
+    }
+    return HttpClient.instance;
+  }
 
-お忙しいところ恐縮ですが、ご確認のほどよろしくお願いいたします。
+  public setAuthToken(token: string): void {
+    this.authToken = token;
+  }
+
+  public getAuthToken(): string | null {
+    return this.authToken;
+  }
+
+  private setupInterceptors(): void {
+    this.axiosInstance.interceptors.request.use(
+      async (config) => {
+        if (this.authToken && config.url?.startsWith("/")) {
+          config.headers["Authorization"] = `Bearer ${this.authToken}`;
+        }
+
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      },
+    );
+
+    this.axiosInstance.interceptors.response.use(
+      (response) => {
+        return response;
+      },
+      async (error: Error) => {
+        return Promise.reject(this.handleError(error));
+      },
+    );
+  }
+
+  private handleError(error: Error): Error {
+    // ApiErrorの場合はそのまま返す
+    if (error instanceof ApiError) {
+      return error;
+    }
+    // axiosのエラーでない場合は、通常のErrorとして返す
+    if (!axios.isAxiosError(error)) {
+      return new Error(`Other Error: ${error.message}`, error);
+    }
+
+    if (error.response) {
+      switch (error.response.status) {
+        case 401:
+          return new ApiError("Unauthorized", error);
+        case 403:
+          return new ApiError("Forbidden", error);
+        case 404:
+          return new ApiError("Not Found", error);
+        case 500:
+          return new ApiError("Internal Server Error", error);
+        default:
+          return new ApiError(`HTTP Error: ${error.response.status}`, error);
+      }
+    } else {
+      return new ApiError(`HTTP Error: ${error.message}`, error);
+    }
+  }
+
+  /**
+   * GET リクエスト
+   * @param url 
+   * @param params 
+   * @param headers 
+   * @returns 
+   */
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  public async get<T = any>(url: string, params?: any, headers?: Headers): Promise<T> {
+    try {
+      let actualParams = params;
+      // paramsが { params: ... } 形式なら中身を取り出す
+      if (params && typeof params === "object" && "params" in params) {
+        actualParams = params.params;
+      }
+      const config: any = {};
+      if (actualParams) config.params = actualParams;
+      if (headers) config.headers = headers;
+      const response = await this.axiosInstance.get<T>(url, config);
+      return response.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        throw this.handleError(err);
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * POST リクエスト
+   * @param url 
+   * @param data 
+   * @param headers 
+   * @returns 
+   */
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  public async post<T = any>(url: string, data?: any, headers?: Headers): Promise<T> {
+    try {
+      const config = headers ? { headers: headers } : undefined;
+      const response = await this.axiosInstance.post<T>(url, data, config);
+      return response.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        throw this.handleError(err);
+      }
+      throw err;
+    }
+  }
+
+  /**
+   *  PUT リクエスト
+   * @param url 
+   * @param data 
+   * @param headers 
+   * @returns 
+   */
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  public async put<T = any>(
+    url: string,
+    data?: any,
+    headers?: Headers,
+  ): Promise<T> {
+    try {
+      const config = headers ? { headers: headers } : undefined;
+      const response = await this.axiosInstance.put<T>(url, data, config);
+      return response.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        throw this.handleError(err);
+      }
+      throw err;
+    }
+  }
+}
