@@ -1,192 +1,55 @@
-import axios, { AxiosError, AxiosInstance } from "axios";
-import axiosRetry from "axios-retry";
-import { ApiError } from "@/src/appBase/errors/ApiError";
-import { FwConst } from "../const/Const";
+09:39:15,242 |-WARN in ch.qos.logback.core.model.processor.AppenderModelHandler - Appender named [CONSOLE] not referenced. Skipping further processing.
 
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
 
-/**
- * HTTPクライアント取得
- * @returns HTTPクライアントのインスタンス
- */
-export const useHttpClient = (): HttpClient => {
-  return HttpClient.getInstance();
-};
+[32m :: Spring Boot :: [39m              [2m (v3.5.6)[0;39m
 
-type Headers = {
-  [key: string]: string;
-};
+date:2026-09-08 09:39:15.329	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:Starting SeikyusienApi using Java 21.0.2 with PID 4344 (C:\pleiades\2023-12\workspace _bk1\seikyusien\target\classes started by use in C:\pleiades\2023-12\workspace _bk1\seikyusien)
+date:2026-09-08 09:39:15.330	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:No active profile set, falling back to 1 default profile: "default"
+date:2026-09-08 09:39:15.868	thread:main	X-Track:	level:INFO 	logger:o.s.boot.web.embedded.tomcat.TomcatWebServer    	message:Tomcat initialized with port 8082 (http)
+date:2026-09-08 09:39:15.876	thread:main	X-Track:	level:INFO 	logger:org.apache.catalina.core.StandardService        	message:Starting service [Tomcat]
+date:2026-09-08 09:39:15.879	thread:main	X-Track:	level:INFO 	logger:org.apache.catalina.core.StandardEngine         	message:Starting Servlet engine: [Apache Tomcat/10.1.46]
+date:2026-09-08 09:39:15.907	thread:main	X-Track:	level:INFO 	logger:o.a.c.c.ContainerBase.[Tomcat].[localhost].[/]  	message:Initializing Spring embedded WebApplicationContext
+date:2026-09-08 09:39:15.907	thread:main	X-Track:	level:INFO 	logger:o.s.b.w.s.c.ServletWebServerApplicationContext  	message:Root WebApplicationContext: initialization completed in 552 ms
+09:39:15,933 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Could NOT find configuration file [C:\Users\use\AppData\Local\Temp\tomcat.8082.2426481561742028889\logback-access.xml] using property "catalina.base"
+09:39:15,933 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Could NOT find configuration file [C:\Users\use\AppData\Local\Temp\tomcat.8082.2426481561742028889\logback-access.xml] using property "catalina.home"
+09:39:15,933 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Found [logback-access.xml] as a resource.
+09:39:15,937 |-INFO in ch.qos.logback.access.common.model.processor.ConfigurationModelHandler - debug attribute not set
+09:39:15,937 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ACCESS_STDOUT]
+09:39:15,937 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+09:39:15,937 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.access.common.PatternLayoutEncoder] for [encoder] property
+09:39:15,943 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
+09:39:15,943 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - console in production environments, especially in high volume systems.
+09:39:15,943 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
+09:39:15,943 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ACCESS_FILE]
+09:39:15,943 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.FileAppender]
+09:39:15,943 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.access.common.PatternLayoutEncoder] for [encoder] property
+09:39:15,943 |-INFO in ch.qos.logback.core.FileAppender[ACCESS_FILE] - File property is set to [/var/log/tomcat/access_log.txt]
+09:39:15,949 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [ACCESS_STDOUT] to ch.qos.logback.access.tomcat.LogbackValve[null]
+09:39:15,949 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [ACCESS_FILE] to ch.qos.logback.access.tomcat.LogbackValve[null]
+09:39:15,949 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@7c281eb8 - End of configuration.
+09:39:15,949 |-INFO in ch.qos.logback.access.common.joran.JoranConfigurator@65f40689 - Registering current configuration as safe fallback point
+09:39:15,949 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Done configuring
+date:2026-09-08 09:39:16.070	thread:main	X-Track:	level:WARN 	logger:o.s.b.a.s.s.UserDetailsServiceAutoConfiguration 	message:
 
-/**
- * HTTPクライアントクラス
- * - シングルトンパターンで実装
- * - 認証トークンの自動付与
- */
-export class HttpClient {
-  private static instance: HttpClient;
-  private axiosInstance: AxiosInstance;
-  private authToken: string | null = null;
+Using generated security password: 1151416c-84ac-41df-b262-d9445e3b57e4
 
-  private constructor() {
-    this.axiosInstance = axios.create({
-      baseURL: FwConst.BACKEND_BASE_URL,
-    });
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
 
-    // リトライ設定
-    axiosRetry(this.axiosInstance, {
-      retries: FwConst.MAX_RETRY_ATTEMPTS,
-      retryCondition: (error) => {
-        return (
-          axiosRetry.isNetworkOrIdempotentRequestError(error) || // ネットワークエラーや冪等リクエストエラーの場合はリトライ
-          (FwConst.RETRY_HTTP_STATUS_CODES.length > 0 && // 配列が空でない場合のみチェック
-            error.response?.status !== undefined &&
-            FwConst.RETRY_HTTP_STATUS_CODES.includes(error.response.status)
-          )
-        );
-      },
-      // リトライ間隔を指数関数的に増加させる
-      retryDelay: axiosRetry.exponentialDelay,
-    });
-    this.setupInterceptors();
-  }
-
-  public static getInstance(): HttpClient {
-    if (!HttpClient.instance) {
-      HttpClient.instance = new HttpClient();
-    }
-    return HttpClient.instance;
-  }
-
-  public setAuthToken(token: string): void {
-    this.authToken = token;
-  }
-
-  public getAuthToken(): string | null {
-    return this.authToken;
-  }
-
-  private setupInterceptors(): void {
-    this.axiosInstance.interceptors.request.use(
-      async (config) => {
-        if (this.authToken && config.url?.startsWith("/")) {
-          config.headers["Authorization"] = `Bearer ${this.authToken}`;
-        }
-
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      },
-    );
-
-    this.axiosInstance.interceptors.response.use(
-      (response) => {
-        return response;
-      },
-      async (error: Error) => {
-        return Promise.reject(this.handleError(error));
-      },
-    );
-  }
-
-  private handleError(error: Error): Error {
-    // ApiErrorの場合はそのまま返す
-    if (error instanceof ApiError) {
-      return error;
-    }
-    // axiosのエラーでない場合は、通常のErrorとして返す
-    if (!axios.isAxiosError(error)) {
-      return new Error(`Other Error: ${error.message}`, error);
-    }
-
-    if (error.response) {
-      switch (error.response.status) {
-        case 401:
-          return new ApiError("Unauthorized", error);
-        case 403:
-          return new ApiError("Forbidden", error);
-        case 404:
-          return new ApiError("Not Found", error);
-        case 500:
-          return new ApiError("Internal Server Error", error);
-        default:
-          return new ApiError(`HTTP Error: ${error.response.status}`, error);
-      }
-    } else {
-      return new ApiError(`HTTP Error: ${error.message}`, error);
-    }
-  }
-
-  /**
-   * GET リクエスト
-   * @param url 
-   * @param params 
-   * @param headers 
-   * @returns 
-   */
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  public async get<T = any>(url: string, params?: any, headers?: Headers): Promise<T> {
-    try {
-      let actualParams = params;
-      // paramsが { params: ... } 形式なら中身を取り出す
-      if (params && typeof params === "object" && "params" in params) {
-        actualParams = params.params;
-      }
-      const config: any = {};
-      if (actualParams) config.params = actualParams;
-      if (headers) config.headers = headers;
-      const response = await this.axiosInstance.get<T>(url, config);
-      return response.data;
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        throw this.handleError(err);
-      }
-      throw err;
-    }
-  }
-
-  /**
-   * POST リクエスト
-   * @param url 
-   * @param data 
-   * @param headers 
-   * @returns 
-   */
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  public async post<T = any>(url: string, data?: any, headers?: Headers): Promise<T> {
-    try {
-      const config = headers ? { headers: headers } : undefined;
-      const response = await this.axiosInstance.post<T>(url, data, config);
-      return response.data;
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        throw this.handleError(err);
-      }
-      throw err;
-    }
-  }
-
-  /**
-   *  PUT リクエスト
-   * @param url 
-   * @param data 
-   * @param headers 
-   * @returns 
-   */
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  public async put<T = any>(
-    url: string,
-    data?: any,
-    headers?: Headers,
-  ): Promise<T> {
-    try {
-      const config = headers ? { headers: headers } : undefined;
-      const response = await this.axiosInstance.put<T>(url, data, config);
-      return response.data;
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        throw this.handleError(err);
-      }
-      throw err;
-    }
-  }
-}
+date:2026-09-08 09:39:16.074	thread:main	X-Track:	level:INFO 	logger:o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer	message:Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+date:2026-09-08 09:39:16.230	thread:main	X-Track:	level:INFO 	logger:o.s.boot.web.embedded.tomcat.TomcatWebServer    	message:Tomcat started on port 8082 (http) with context path '/'
+date:2026-09-08 09:39:16.234	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:Started SeikyusienApi in 1.203 seconds (process running for 1.591)
+date:2026-09-08 09:46:13.041	thread:http-nio-8082-exec-1	X-Track:	level:INFO 	logger:o.a.c.c.ContainerBase.[Tomcat].[localhost].[/]  	message:Initializing Spring DispatcherServlet 'dispatcherServlet'
+date:2026-09-08 09:46:13.041	thread:http-nio-8082-exec-1	X-Track:	level:INFO 	logger:o.springframework.web.servlet.DispatcherServlet 	message:Initializing Servlet 'dispatcherServlet'
+date:2026-09-08 09:46:13.041	thread:http-nio-8082-exec-1	X-Track:	level:INFO 	logger:o.springframework.web.servlet.DispatcherServlet 	message:Completed initialization in 0 ms
+date:2026-09-08 09:46:13.096	thread:http-nio-8082-exec-1	X-Track:b68c011c-b733-4a88-8e02-8a20e65f3c2f	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�髢句ｧ� POST /ON_SeikyuIrai param: seiqkbn=0, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip
+date:2026-09-08 09:46:13.190	thread:http-nio-8082-exec-1	X-Track:b68c011c-b733-4a88-8e02-8a20e65f3c2f	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�螳御ｺ� POST /ON_SeikyuIrai param: seiqkbn=0, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip (蜃ｦ逅�譎る俣: 94ms)
+[ACCESS] - 0:0:0:0:0:0:0:1 - - POST /ON_SeikyuIrai HTTP/1.1 2026-09-08 09:46:13.206 200 2 192 ms
+date:2026-09-08 09:51:23.978	thread:http-nio-8082-exec-3	X-Track:3bfd23f6-0a3c-4887-9dea-1cbfd3bfe8eb	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�髢句ｧ� POST /ON_SeikyuIrai param: seiqkbn=0, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip
+date:2026-09-08 09:51:23.981	thread:http-nio-8082-exec-3	X-Track:3bfd23f6-0a3c-4887-9dea-1cbfd3bfe8eb	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�螳御ｺ� POST /ON_SeikyuIrai param: seiqkbn=0, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip (蜃ｦ逅�譎る俣: 3ms)
+[ACCESS] - 0:0:0:0:0:0:0:1 - - POST /ON_SeikyuIrai HTTP/1.1 2026-09-08 09:51:23.981 200 2 5 ms
