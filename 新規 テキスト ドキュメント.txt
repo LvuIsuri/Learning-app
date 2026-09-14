@@ -1,55 +1,515 @@
-09:39:15,242 |-WARN in ch.qos.logback.core.model.processor.AppenderModelHandler - Appender named [CONSOLE] not referenced. Skipping further processing.
+package httpclient
 
-  .   ____          _            __ _ _
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-  '  |____| .__|_| |_|_| |_\__, | / / / /
- =========|_|==============|___/=/_/_/_/
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
 
-[32m :: Spring Boot :: [39m              [2m (v3.5.6)[0;39m
+	"github.com/cockroachdb/errors"
+	"gitlab.jup.cicd.local/architecture-team/appbase.git/pkg/apconfig"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
-date:2026-09-08 09:39:15.329	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:Starting SeikyusienApi using Java 21.0.2 with PID 4344 (C:\pleiades\2023-12\workspace _bk1\seikyusien\target\classes started by use in C:\pleiades\2023-12\workspace _bk1\seikyusien)
-date:2026-09-08 09:39:15.330	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:No active profile set, falling back to 1 default profile: "default"
-date:2026-09-08 09:39:15.868	thread:main	X-Track:	level:INFO 	logger:o.s.boot.web.embedded.tomcat.TomcatWebServer    	message:Tomcat initialized with port 8082 (http)
-date:2026-09-08 09:39:15.876	thread:main	X-Track:	level:INFO 	logger:org.apache.catalina.core.StandardService        	message:Starting service [Tomcat]
-date:2026-09-08 09:39:15.879	thread:main	X-Track:	level:INFO 	logger:org.apache.catalina.core.StandardEngine         	message:Starting Servlet engine: [Apache Tomcat/10.1.46]
-date:2026-09-08 09:39:15.907	thread:main	X-Track:	level:INFO 	logger:o.a.c.c.ContainerBase.[Tomcat].[localhost].[/]  	message:Initializing Spring embedded WebApplicationContext
-date:2026-09-08 09:39:15.907	thread:main	X-Track:	level:INFO 	logger:o.s.b.w.s.c.ServletWebServerApplicationContext  	message:Root WebApplicationContext: initialization completed in 552 ms
-09:39:15,933 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Could NOT find configuration file [C:\Users\use\AppData\Local\Temp\tomcat.8082.2426481561742028889\logback-access.xml] using property "catalina.base"
-09:39:15,933 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Could NOT find configuration file [C:\Users\use\AppData\Local\Temp\tomcat.8082.2426481561742028889\logback-access.xml] using property "catalina.home"
-09:39:15,933 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Found [logback-access.xml] as a resource.
-09:39:15,937 |-INFO in ch.qos.logback.access.common.model.processor.ConfigurationModelHandler - debug attribute not set
-09:39:15,937 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ACCESS_STDOUT]
-09:39:15,937 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
-09:39:15,937 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.access.common.PatternLayoutEncoder] for [encoder] property
-09:39:15,943 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
-09:39:15,943 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - console in production environments, especially in high volume systems.
-09:39:15,943 |-INFO in ch.qos.logback.core.ConsoleAppender[ACCESS_STDOUT] - See also https://logback.qos.ch/codes.html#slowConsole
-09:39:15,943 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ACCESS_FILE]
-09:39:15,943 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.FileAppender]
-09:39:15,943 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.access.common.PatternLayoutEncoder] for [encoder] property
-09:39:15,943 |-INFO in ch.qos.logback.core.FileAppender[ACCESS_FILE] - File property is set to [/var/log/tomcat/access_log.txt]
-09:39:15,949 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [ACCESS_STDOUT] to ch.qos.logback.access.tomcat.LogbackValve[null]
-09:39:15,949 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [ACCESS_FILE] to ch.qos.logback.access.tomcat.LogbackValve[null]
-09:39:15,949 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@7c281eb8 - End of configuration.
-09:39:15,949 |-INFO in ch.qos.logback.access.common.joran.JoranConfigurator@65f40689 - Registering current configuration as safe fallback point
-09:39:15,949 |-INFO in ch.qos.logback.access.tomcat.LogbackValve[null] - Done configuring
-date:2026-09-08 09:39:16.070	thread:main	X-Track:	level:WARN 	logger:o.s.b.a.s.s.UserDetailsServiceAutoConfiguration 	message:
+	"gitlab.jup.cicd.local/architecture-team/appbase.git/pkg/logging"
+)
 
-Using generated security password: 1151416c-84ac-41df-b262-d9445e3b57e4
+/*
+定数
 
-This generated password is for development use only. Your security configuration must be updated before running your application in production.
+	DEF_〜 ：各種デフォルト値
+	ID_〜  ：各種設定ID
+*/
+const (
+	DEF_TIME_OUT                   = 5000
+	DEF_RETRY_MAX_COUNT            = 3
+	DEF_RETRY_WAIT_TIME            = 500
+	DEF_RETRY_EXPONENTIAL_BACK_OFF = 2.0
+	DEF_RETRY_STATUS_CODE          = "500,502,503,504"
+	ID_TIME_OUT                    = "TIME_OUT"
+	ID_PROXY_URL                   = "PROXY_URL"
+	ID_RETRY_MAX_COUNT             = "RETRY_MAX_COUNT"
+	ID_RETRY_WAIT_TIME             = "RETRY_WAIT_TIME"
+	ID_RETRY_EXPONENTIAL_BACK_OFF  = "RETRY_EXPONENTIAL_BACK_OFF"
+	ID_RETRY_STATUS_CODE           = "RETRY_STATUS_CODE"
+	STATUS_CODE_SUCCESS            = 200
+	STATUS_CODE_UNAUTHORIZED       = 401
+	STATUS_CODE_FORBIDDEN          = 403
+)
 
-date:2026-09-08 09:39:16.074	thread:main	X-Track:	level:INFO 	logger:o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer	message:Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
-date:2026-09-08 09:39:16.230	thread:main	X-Track:	level:INFO 	logger:o.s.boot.web.embedded.tomcat.TomcatWebServer    	message:Tomcat started on port 8082 (http) with context path '/'
-date:2026-09-08 09:39:16.234	thread:main	X-Track:	level:INFO 	logger:jp.or.kikin.seikyusien.SeikyusienApi            	message:Started SeikyusienApi in 1.203 seconds (process running for 1.591)
-date:2026-09-08 09:46:13.041	thread:http-nio-8082-exec-1	X-Track:	level:INFO 	logger:o.a.c.c.ContainerBase.[Tomcat].[localhost].[/]  	message:Initializing Spring DispatcherServlet 'dispatcherServlet'
-date:2026-09-08 09:46:13.041	thread:http-nio-8082-exec-1	X-Track:	level:INFO 	logger:o.springframework.web.servlet.DispatcherServlet 	message:Initializing Servlet 'dispatcherServlet'
-date:2026-09-08 09:46:13.041	thread:http-nio-8082-exec-1	X-Track:	level:INFO 	logger:o.springframework.web.servlet.DispatcherServlet 	message:Completed initialization in 0 ms
-date:2026-09-08 09:46:13.096	thread:http-nio-8082-exec-1	X-Track:b68c011c-b733-4a88-8e02-8a20e65f3c2f	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�髢句ｧ� POST /ON_SeikyuIrai param: seiqkbn=0, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip
-date:2026-09-08 09:46:13.190	thread:http-nio-8082-exec-1	X-Track:b68c011c-b733-4a88-8e02-8a20e65f3c2f	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�螳御ｺ� POST /ON_SeikyuIrai param: seiqkbn=0, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip (蜃ｦ逅�譎る俣: 94ms)
-[ACCESS] - 0:0:0:0:0:0:0:1 - - POST /ON_SeikyuIrai HTTP/1.1 2026-09-08 09:46:13.206 200 2 192 ms
-date:2026-09-08 09:51:23.978	thread:http-nio-8082-exec-3	X-Track:3bfd23f6-0a3c-4887-9dea-1cbfd3bfe8eb	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�髢句ｧ� POST /ON_SeikyuIrai param: seiqkbn=0, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip
-date:2026-09-08 09:51:23.981	thread:http-nio-8082-exec-3	X-Track:3bfd23f6-0a3c-4887-9dea-1cbfd3bfe8eb	level:INFO 	logger:j.o.k.seikyusien.interceptor.LoggingInterceptor 	message:AP蜃ｦ逅�螳御ｺ� POST /ON_SeikyuIrai param: seiqkbn=0, seiqiraino=5071113101234561001, transactionid=18cd3748-9a76-4a05-8c69-ba0b8c1a9d17, filename=202511_15071113101234561001.zip (蜃ｦ逅�譎る俣: 3ms)
-[ACCESS] - 0:0:0:0:0:0:0:1 - - POST /ON_SeikyuIrai HTTP/1.1 2026-09-08 09:51:23.981 200 2 5 ms
+/*
+設定項目構造体
+*/
+type ClientProperty struct {
+	RetryMaxCount      int
+	ExponentialBackOff float64
+	RetryWaitTime      time.Duration
+	RetryStatusCode    string
+}
+
+/*
+レスポンスデータ構造体
+*/
+type ResponseData struct {
+	StatusCode     int
+	Status         string
+	ContentType    string
+	Body           []byte
+	ResponseHeader http.Header
+}
+
+/*
+HttpClient インタフェース
+*/
+type HttpClient interface {
+	Get(ctx context.Context, url string, header http.Header, params map[string]string) (ResponseData, error)
+	Post(ctx context.Context, url, contentType string, bbody []byte, header http.Header) (ResponseData, error)
+	SetProperty(key string, val string) error
+	RegisterResponseHandler(f func(ResponseData, error) (bool, error))
+	SetTransport(tr *http.Transport)
+}
+
+/*
+HttpClient 構造体
+*/
+type HttpClientImpl struct {
+	RetryJudgeFunc func(ResponseData, error) (bool, error)
+	Property       ClientProperty
+	Logw           logging.Logger
+	Apconfig       apconfig.Config
+	HttpS          NetHttp
+	reqBody        []byte
+}
+
+type NetHttp interface {
+	HttpDo(req *http.Request, prop ClientProperty) (*http.Response, error)
+	setTimeout(val string) error
+	setProxy(val string) error
+	setTransport(tr *http.Transport)
+}
+type NetHttpImpl struct {
+	httpClient *http.Client
+	Tr         *http.Transport
+}
+
+/*
+コンストラクタ
+
+	処理概要:
+		net/httpを使用したリクエスト
+	引数:
+		log logging.Logger ロガー
+	戻り値:
+		HttpClient HTTPクライアントアクセサ
+*/
+func NewHttpClient(apconfig apconfig.Config, log logging.Logger) HttpClient {
+	var ret HttpClientImpl
+	// hc := http.Client{
+	// 	Timeout: DEF_TIME_OUT * time.Millisecond,
+	// }
+	hc := http.Client{
+		Timeout:   DEF_TIME_OUT * time.Millisecond,
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+	ret.HttpS = &NetHttpImpl{
+		// httpClient: xray.Client(&hc),
+		httpClient: &hc,
+	}
+	ret.Property = ClientProperty{
+		RetryMaxCount:      DEF_RETRY_MAX_COUNT,
+		RetryWaitTime:      DEF_RETRY_WAIT_TIME * time.Millisecond,
+		ExponentialBackOff: DEF_RETRY_EXPONENTIAL_BACK_OFF,
+		RetryStatusCode:    DEF_RETRY_STATUS_CODE,
+	}
+
+	ret.RegisterResponseHandler(ret.shouldRetry)
+	ret.Logw = log
+	ret.Apconfig = apconfig
+	return &ret
+}
+
+/*
+HTTPリクエスト
+
+	処理概要:
+		net/httpを使用したリクエスト
+	引数:
+		req *http.Request HTTPリクエスト
+		prop ClientProperty クライアントプロパティ
+	戻り値:
+		*http.Response HTTPレスポンス
+		error エラーオブジェクト
+*/
+func (x *NetHttpImpl) HttpDo(req *http.Request, prop ClientProperty) (*http.Response, error) {
+	return x.httpClient.Do(req)
+}
+
+/*
+タイムアウト設定
+
+	処理概要:
+		http.Clientにタイムアウト値を設定する
+	引数:
+		val string タイムアウト値
+	戻り値:
+		error エラーオブジェクト
+*/
+func (x *NetHttpImpl) setTimeout(val string) error {
+	ival, err := strconv.Atoi(val)
+	if err == nil {
+		x.httpClient.Timeout = time.Duration(ival) * time.Millisecond
+	}
+	return errors.WithStack(err)
+}
+
+/*
+プロキシを設定
+
+	処理概要:
+		http.Clientにプロキシを設定する
+	引数:
+		val string Proxy URL
+	戻り値:
+		error エラーオブジェクト
+*/
+func (x *NetHttpImpl) setProxy(val string) error {
+	if val == "" {
+		if x.Tr == nil {
+			return nil
+		}
+		x.Tr.Proxy = nil
+	} else if proxyUrl, err := url.Parse(val); err == nil {
+		if x.Tr == nil {
+			x.Tr = &http.Transport{}
+		}
+		x.Tr.Proxy = http.ProxyURL(proxyUrl)
+	} else {
+		return errors.WithStack(err)
+	}
+	x.httpClient.Transport = x.Tr
+	return nil
+}
+
+/*
+トランスポート設定
+
+	処理概要:
+		http.Clientにトランスポートを設定する
+	引数:
+		tr *http.Transport
+	戻り値:
+*/
+func (x *NetHttpImpl) setTransport(tr *http.Transport) {
+	x.Tr = tr
+	x.httpClient.Transport = x.Tr
+}
+
+/*
+リトライ判定（業務側で上書き可）
+
+	引数:
+		res ResponseData HTTPサーバーからのレスポンス
+		err error        HTTPサーバー接続時のエラー結果
+	戻り値:
+		bool  true:リトライ対象 false:リトライ非対象
+		error 引数のerrを返却
+*/
+func (x *HttpClientImpl) shouldRetry(res ResponseData, err error) (bool, error) {
+	if err != nil {
+		//レスポンスがエラーの場合
+		return true, err
+	} else if res.StatusCode == 0 {
+		//レスポンスが空の場合
+		return false, nil
+	} else if strings.Contains(x.Property.RetryStatusCode, strconv.Itoa(res.StatusCode)) {
+		//ステータスコードが対象の場合
+		return true, nil
+	}
+	return false, nil
+}
+
+/*
+プロパティ値取得処理(文字列型／必須)
+
+	処理概要：
+		HTTPクライアントに関連する値はapconfigから取得
+		apconfigに存在しない場合はエラーとする。
+	引数:
+		key string プロパティキー
+	戻り値:
+		string 値
+		error  エラーオブジェクト
+*/
+func getPropertyStringRequired(apconfig apconfig.Config, key string) (string, error) {
+	if val, found := apconfig.GetWithContains(key); !found {
+		return "", errors.Errorf("key is not exsits. key:%s", key)
+	} else {
+		return val, nil
+	}
+}
+
+/*
+各種設定
+
+	引数:
+		key string 設定項目ID
+		val string 設定値
+	戻り値:
+		error 型エラー
+*/
+func (x *HttpClientImpl) SetProperty(key string, val string) error {
+	switch key {
+	case ID_TIME_OUT:
+		return x.HttpS.setTimeout(val)
+	case ID_PROXY_URL:
+		return x.HttpS.setProxy(val)
+	case ID_RETRY_MAX_COUNT:
+		ival, err := strconv.Atoi(val)
+		if err == nil {
+			x.Property.RetryMaxCount = ival
+		}
+		return errors.WithStack(err)
+	case ID_RETRY_WAIT_TIME:
+		ival, err := strconv.Atoi(val)
+		if err == nil {
+			x.Property.RetryWaitTime = time.Duration(ival) * time.Millisecond
+		}
+		return errors.WithStack(err)
+	case ID_RETRY_EXPONENTIAL_BACK_OFF:
+		fval, err := strconv.ParseFloat(val, 64)
+		if err == nil {
+			x.Property.ExponentialBackOff = fval
+		}
+		return errors.WithStack(err)
+	case ID_RETRY_STATUS_CODE:
+		x.Property.RetryStatusCode = val
+		return nil
+	}
+	return errors.New("id not found")
+}
+
+/*
+HTTPレスポンスハンドラを登録
+
+	引数:
+		func(*http.Request, ResponseData,error) (bool,error) 判定用関数（引数／戻り値はshouldRetryを参照）
+	戻り値:
+		なし
+*/
+func (x *HttpClientImpl) RegisterResponseHandler(f func(ResponseData, error) (bool, error)) {
+	x.RetryJudgeFunc = f
+}
+
+/*
+HTTPレスポンスハンドラを登録
+
+	引数:
+		トランスポート構造体をセットする
+	戻り値:
+		なし
+*/
+func (x *HttpClientImpl) SetTransport(tr *http.Transport) {
+	x.HttpS.setTransport(tr)
+}
+
+/*
+HTTP GETリクエストを送信
+
+	引数:
+	    url string               リクエスト先URL
+	    header http.Header       リクエストヘッダー
+	    params map[string]string クエリパラメータ
+	戻り値:
+	    ResponseData レスポンスデータ
+	    error        通信エラー（net/http Doメソッド結果）
+*/
+func (x *HttpClientImpl) Get(ctx context.Context, url string, header http.Header, params map[string]string) (ResponseData, error) {
+	req, err := getNewRequest(ctx, "GET", url, "", nil, header, params)
+	if err != nil {
+		return ResponseData{}, err
+	}
+	//Postのリトライが発生した場合にbody ReaderCloserを再生成させるが、Getの場合は不要のため明示的にnilを退避させる
+	x.reqBody = nil
+	return x.Do(req)
+}
+
+/*
+HTTP POSTリクエストを送信
+
+	引数:
+	    url string         リクエスト先URL
+	    contentType string コンテントタイプ
+	    bbody []byte       リクエストボディ
+	    header http.Header リクエストヘッダー
+	戻り値:
+	    ResponseData レスポンスデータ
+	    error        通信エラー（net/http Doメソッド結果）
+*/
+func (x *HttpClientImpl) Post(ctx context.Context, url, contentType string, bbody []byte, header http.Header) (ResponseData, error) {
+	req, err := getNewRequest(ctx, "POST", url, contentType, bbody, header, nil)
+	if err != nil {
+		return ResponseData{}, err
+	}
+	//リトライが発生した場合に、再利用不可なbody ReaderCloserを再生成する為に退避を行う
+	x.reqBody = bbody
+	return x.Do(req)
+}
+
+/*
+HTTP リクエストをnet/httpを使用しながらリトライ送信
+
+	引数:
+	    req *http.Request   リクエストデータ
+	戻り値:
+	    ResponseData レスポンスデータ
+	    error        通信エラー（net/http Doメソッド結果）
+*/
+func (x *HttpClientImpl) Do(req *http.Request) (respdata ResponseData, err error) {
+
+	// リクエスト開始
+	x.Logw.Info("i.fraw.0005", req.URL.String())
+	// 処理時間計測開始
+	startTime := time.Now()
+	logstr := ""
+	retrywaittime := x.Property.RetryWaitTime
+	mes := "初回"
+	// リクエスト終了
+	defer func() {
+		x.Logw.Info("i.fraw.0006", req.URL.String(), logstr, logging.FormatDurationMillisecond(time.Since(startTime)))
+	}()
+	for i := 0; i <= x.Property.RetryMaxCount; i++ {
+		//reqErr はリクエストした結果→RetryJudgeFuncにより書き換え可能(リトライはreqErrで判定)
+		resp, reqErr := x.HttpS.HttpDo(req, x.Property)
+		respdata, reqErr = readResponse(resp, reqErr)
+		var retrybool bool
+		retrybool, err = x.RetryJudgeFunc(respdata, reqErr)
+		var isBreak bool
+		logstr, isBreak = logString(retrybool, (i == x.Property.RetryMaxCount), err, respdata)
+		if isBreak {
+			break
+		}
+		if err != nil {
+			//#回目リトライHTTP処理失敗 リトライ実施[エラー内容], レスポンスボディ[]
+			x.Logw.Warn("w.fraw.0002", mes, err.Error(), "")
+		} else {
+			//#回目リトライHTTP処理失敗 リトライ実施[ステータス], レスポンスボディ[レスポンスボディ]
+			x.Logw.Warn("w.fraw.0002", mes, respdata.Status, string(respdata.Body))
+		}
+		time.Sleep(retrywaittime)
+		retrywaittime = retrywaittime * time.Duration(x.Property.ExponentialBackOff*1000) / 1000
+		mes = fmt.Sprintf("%d回目リトライ", i+1)
+		//ReaderCloserをリセット
+		if x.reqBody != nil {
+			bytebuf := bytes.NewBuffer(x.reqBody)
+			req.Body = io.NopCloser(bytebuf)
+		}
+	}
+	return respdata, errors.Wrap(err, "request fail")
+}
+
+/*
+リトライ終了時のログを作成する
+
+	引数:
+		retryBool  boll         リトライ要否
+		isMaxCount bool         最終リトライ是非
+		err        error        レスポンスエラー
+		respdata   ResponseData レスポンスデータ
+		params map[string]string クエリパラメータ
+	戻り値:
+		string    ログメッセージ
+		bool      break要否
+*/
+func logString(retryBool bool, isMaxCount bool, err error, respdata ResponseData) (string, bool) {
+	if retryBool && !isMaxCount {
+		//リトライ対象かつ
+		return "", false
+	}
+	if !retryBool {
+		return fmt.Sprintf("ステータスコード[%d]", respdata.StatusCode), true
+	}
+	// リトライ最終回の場合はレスポンスボディ、エラーがあればエラーを残す
+	if err != nil {
+		return fmt.Sprintf("ステータスコード[%d] レスポンスボディ[%s] エラー[%s]", respdata.StatusCode, string(respdata.Body), err.Error()), true
+	} else {
+		return fmt.Sprintf("ステータスコード[%d] レスポンスボディ[%s] エラー[]", respdata.StatusCode, string(respdata.Body)), true
+	}
+}
+
+/*
+HTTP リクエストデータを作成
+
+	引数:
+		method string      リクエストメソッド(GET or POST)
+		url string               リクエスト先URL
+		contentType string       コンテントタイプ
+		header http.Header       リクエストヘッダー
+		params map[string]string クエリパラメータ
+	戻り値:
+		req *http.Request   リクエストデータ
+		error               URLパース失敗等エラー
+*/
+func getNewRequest(ctx context.Context, method string, url string, contenttype string, body []byte, header http.Header, params map[string]string) (*http.Request, error) {
+	bytebuf := bytes.NewBuffer(body)
+	req, err := http.NewRequest(method, url, bytebuf)
+	if err != nil {
+		return req, errors.Wrap(err, "get request data fail")
+	}
+	//ヘッダーのマージ
+	for _key, _vals := range header {
+		req.Header.Set(_key, _vals[0])
+	}
+	//クエリパラメータ
+	qparams := req.URL.Query()
+	for _id, _val := range params {
+		qparams.Add(_id, _val)
+	}
+	req.URL.RawQuery = qparams.Encode()
+	//contenttype未指定の場合、自動設定
+	if body != nil {
+		if contenttype == "" {
+			contenttype = http.DetectContentType(body)
+		}
+		req.Header.Set("Content-Type", contenttype)
+	}
+	return req.WithContext(ctx), nil
+}
+
+/*
+HTTP レスポンスデータの取得
+
+	引数:
+		res *http.Response HTTPレスポンス
+		err error          通信エラー
+	戻り値:
+		ResponseData       レスポンス
+		error              通信エラーまたはレスポンスボディ読み込みエラー
+*/
+func readResponse(res *http.Response, err error) (ResponseData, error) {
+	resdata := ResponseData{}
+	if err != nil {
+		return resdata, err
+	} else if res == nil {
+		return resdata, errors.New("read response fail")
+	}
+	resdata.StatusCode = res.StatusCode
+	resdata.Status = res.Status
+	resdata.ResponseHeader = res.Header
+	for key, val := range res.Header {
+		if strings.ToLower(key) == "content-type" {
+			resdata.ContentType = val[0]
+		}
+	}
+	if res.Body != nil {
+		resdata.Body, err = io.ReadAll(res.Body)
+		defer res.Body.Close()
+	}
+	if err != nil {
+		return resdata, errors.Wrap(err, "read body error")
+	}
+	return resdata, nil
+}
