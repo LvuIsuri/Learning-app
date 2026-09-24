@@ -1,15 +1,15 @@
 <mxfile host="app.diagrams.net">
-  <diagram id="prd-seq" name="プロデューサのシーケンス">
+  <diagram id="cs-seq" name="コンシューマのシーケンス">
     <mxGraphModel dx="1500" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
 
         <mxCell id="frame" value="" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="30" y="30" width="2280" height="1530" as="geometry"/>
+          <mxGeometry x="30" y="30" width="2280" height="1960" as="geometry"/>
         </mxCell>
 
-        <mxCell id="a1" value="&lt;font color=&quot;#000000&quot;&gt;APP制御（プロデューサ）&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="a1" value="&lt;font color=&quot;#000000&quot;&gt;APP制御（コンシューマ）&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="150" y="40" width="120" height="60" as="geometry"/>
         </mxCell>
         <mxCell id="a2" value="&lt;font color=&quot;#000000&quot;&gt;ビジネスロジック&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
@@ -38,389 +38,489 @@
         </mxCell>
 
         <mxCell id="l1" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="210" y="100" as="sourcePoint"/><mxPoint x="210" y="1540" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="210" y="100" as="sourcePoint"/><mxPoint x="210" y="1970" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="l2" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="450" y="100" as="sourcePoint"/><mxPoint x="450" y="1540" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="450" y="100" as="sourcePoint"/><mxPoint x="450" y="1970" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="l3" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="690" y="100" as="sourcePoint"/><mxPoint x="690" y="1540" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="690" y="100" as="sourcePoint"/><mxPoint x="690" y="1970" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="l4" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="930" y="100" as="sourcePoint"/><mxPoint x="930" y="1540" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="930" y="100" as="sourcePoint"/><mxPoint x="930" y="1970" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="l5" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1170" y="100" as="sourcePoint"/><mxPoint x="1170" y="1540" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1170" y="100" as="sourcePoint"/><mxPoint x="1170" y="1970" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="l6" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1410" y="100" as="sourcePoint"/><mxPoint x="1410" y="1540" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1410" y="100" as="sourcePoint"/><mxPoint x="1410" y="1970" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="l7" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1650" y="100" as="sourcePoint"/><mxPoint x="1650" y="1540" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1650" y="100" as="sourcePoint"/><mxPoint x="1650" y="1970" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="l8" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1890" y="100" as="sourcePoint"/><mxPoint x="1890" y="1540" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1890" y="100" as="sourcePoint"/><mxPoint x="1890" y="1970" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="l9" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="2130" y="100" as="sourcePoint"/><mxPoint x="2130" y="1540" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="2130" y="100" as="sourcePoint"/><mxPoint x="2130" y="1970" as="targetPoint"/></mxGeometry>
         </mxCell>
 
         <mxCell id="actApp" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="200" y="160" width="20" height="1390" as="geometry"/>
-        </mxCell>
-        <mxCell id="actBl" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="440" y="200" width="20" height="390" as="geometry"/>
+          <mxGeometry x="200" y="160" width="20" height="1810" as="geometry"/>
         </mxCell>
 
         <mxCell id="e0" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry"><mxPoint x="30" y="170" as="sourcePoint"/><mxPoint x="200" y="170" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e0l" value="リクエスト受信" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e0">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
-        </mxCell>
-
-        <mxCell id="e1" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="210" as="sourcePoint"/><mxPoint x="440" y="210" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e1l" value="業務処理呼出" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e1">
+        <mxCell id="e0l" value="メッセージ受信（1）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e0">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
 
         <mxCell id="loop1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="350" y="240" width="1790" height="320" as="geometry"/>
+          <mxGeometry x="90" y="200" width="2050" height="1660" as="geometry"/>
         </mxCell>
         <mxCell id="loop1t" value="loop&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="350" y="240" width="90" height="28" as="geometry"/>
+          <mxGeometry x="90" y="200" width="90" height="28" as="geometry"/>
         </mxCell>
-        <mxCell id="loop1c" value="[0,N]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="352" y="268" width="100" height="24" as="geometry"/>
+        <mxCell id="loop1c" value="[1,受信メッセージ件数]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="92" y="228" width="220" height="24" as="geometry"/>
         </mxCell>
 
         <mxCell id="actAcc1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="680" y="270" width="20" height="50" as="geometry"/>
+          <mxGeometry x="680" y="240" width="20" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="actDyn1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="255" width="20" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="250" as="sourcePoint"/><mxPoint x="680" y="250" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e1l" value="メッセージID取得呼出（2）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e1">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
         <mxCell id="e2" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="460" y="280" as="sourcePoint"/><mxPoint x="680" y="280" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="700" y="265" as="sourcePoint"/><mxPoint x="1400" y="265" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e2l" value="トランザクション追加（DB）（1）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e2">
+        <mxCell id="e2l" value="メッセージID取得（SQSメッセージIDテーブル）（2）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e2">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
         <mxCell id="e3" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="315" as="sourcePoint"/><mxPoint x="460" y="315" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1400" y="286" as="sourcePoint"/><mxPoint x="700" y="286" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="e3l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e3">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-
-        <mxCell id="actDel1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="920" y="350" width="20" height="50" as="geometry"/>
+        <mxCell id="e4" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="306" as="sourcePoint"/><mxPoint x="220" y="306" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e4" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="460" y="360" as="sourcePoint"/><mxPoint x="920" y="360" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e4l" value="トランザクション追加（SQS）（2）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e4">
+        <mxCell id="e4l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e4">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="alt1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="110" y="330" width="2020" height="1510" as="geometry"/>
+        </mxCell>
+        <mxCell id="alt1t" value="alt&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="110" y="330" width="90" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="alt1c1" value="[メッセージIDなし]　※1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="112" y="358" width="240" height="24" as="geometry"/>
         </mxCell>
         <mxCell id="e5" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="920" y="395" as="sourcePoint"/><mxPoint x="460" y="395" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="200" y="400" as="sourcePoint"/><mxPoint x="30" y="400" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e5l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e5">
+        <mxCell id="e5l" value="エラー処理（ログ出力し後続メッセージの処理を継続）（3）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="240" y="386" width="360" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="div1" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="110" y="425" as="sourcePoint"/><mxPoint x="2130" y="425" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="alt1c2" value="[メッセージステータス＝完了]　※2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="112" y="427" width="260" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="200" y="470" as="sourcePoint"/><mxPoint x="30" y="470" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e6l" value="結果返却（正常終了）（3）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="240" y="456" width="300" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="div2" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="110" y="495" as="sourcePoint"/><mxPoint x="2130" y="495" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="alt1c3" value="[メッセージステータス＝ロールバック]　※3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="112" y="497" width="300" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="200" y="540" as="sourcePoint"/><mxPoint x="30" y="540" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e7l" value="結果返却（正常終了：メッセージ破棄）（3）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="240" y="526" width="360" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="div3" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="110" y="565" as="sourcePoint"/><mxPoint x="2130" y="565" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="alt1c4" value="[上記以外（未処理メッセージ）]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="112" y="567" width="260" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="actBl" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="440" y="600" width="20" height="400" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="610" as="sourcePoint"/><mxPoint x="440" y="610" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e8l" value="業務処理呼出（4）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e8">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
 
-        <mxCell id="actS3A1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1160" y="430" width="20" height="100" as="geometry"/>
+        <mxCell id="loop2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="350" y="635" width="1780" height="330" as="geometry"/>
         </mxCell>
-        <mxCell id="actS31" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="2120" y="455" width="20" height="50" as="geometry"/>
+        <mxCell id="loop2t" value="loop&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="350" y="635" width="90" height="28" as="geometry"/>
         </mxCell>
-        <mxCell id="e6" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="460" y="440" as="sourcePoint"/><mxPoint x="1160" y="440" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e6l" value="データ登録（S3）（3）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e6">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e7" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1180" y="465" as="sourcePoint"/><mxPoint x="2120" y="465" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e7l" value="データ登録（S3 SDK）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e7">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e8" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="2120" y="497" as="sourcePoint"/><mxPoint x="1180" y="497" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e8l" value="結果返却（バージョンID）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e8">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e9" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1160" y="525" as="sourcePoint"/><mxPoint x="460" y="525" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e9l" value="結果返却（補償トランザクションアイテム蓄積）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e9">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        <mxCell id="loop2c" value="[0,N]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="352" y="663" width="100" height="24" as="geometry"/>
         </mxCell>
 
+        <mxCell id="actDel1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="920" y="665" width="20" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="e9" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="460" y="675" as="sourcePoint"/><mxPoint x="920" y="675" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e9l" value="トランザクションアイテム追加（SQS）（5）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e9">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
         <mxCell id="e10" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="440" y="588" as="sourcePoint"/><mxPoint x="220" y="588" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="920" y="710" as="sourcePoint"/><mxPoint x="460" y="710" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="e10l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e10">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
 
-        <mxCell id="alt1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="90" y="620" width="2050" height="880" as="geometry"/>
-        </mxCell>
-        <mxCell id="alt1t" value="alt&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="90" y="620" width="90" height="28" as="geometry"/>
-        </mxCell>
-        <mxCell id="alt1c" value="[業務処理正常終了]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="92" y="648" width="200" height="24" as="geometry"/>
-        </mxCell>
-
         <mxCell id="actAcc2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="680" y="650" width="20" height="80" as="geometry"/>
-        </mxCell>
-        <mxCell id="actDyn1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="670" width="20" height="42" as="geometry"/>
+          <mxGeometry x="680" y="745" width="20" height="50" as="geometry"/>
         </mxCell>
         <mxCell id="e11" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="660" as="sourcePoint"/><mxPoint x="680" y="660" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="460" y="755" as="sourcePoint"/><mxPoint x="680" y="755" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e11l" value="データ登録呼出（4）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e11">
+        <mxCell id="e11l" value="トランザクションアイテム追加（DB）（6）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e11">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e12" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="700" y="680" as="sourcePoint"/><mxPoint x="1400" y="680" as="targetPoint"/></mxGeometry>
+        <mxCell id="e12" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="790" as="sourcePoint"/><mxPoint x="460" y="790" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e12l" value="データ登録（DynamoDB SDK：TransactWriteItems）（4）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e12">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e13" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1400" y="707" as="sourcePoint"/><mxPoint x="700" y="707" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e13l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e13">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e14" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="726" as="sourcePoint"/><mxPoint x="220" y="726" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e14l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e14">
+        <mxCell id="e12l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e12">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
 
-        <mxCell id="opt1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="110" y="745" width="1550" height="90" as="geometry"/>
+        <mxCell id="actS3A1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="825" width="20" height="100" as="geometry"/>
         </mxCell>
-        <mxCell id="opt1t" value="opt&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="110" y="745" width="90" height="28" as="geometry"/>
+        <mxCell id="actS31" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="2120" y="850" width="20" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="opt1c" value="[RDBトランザクション使用]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="112" y="773" width="220" height="24" as="geometry"/>
+        <mxCell id="e13" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="460" y="835" as="sourcePoint"/><mxPoint x="1160" y="835" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="actRdb1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1640" y="770" width="20" height="45" as="geometry"/>
+        <mxCell id="e13l" value="データ登録（S3）（7）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e13">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e15" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="782" as="sourcePoint"/><mxPoint x="1640" y="782" as="targetPoint"/></mxGeometry>
+        <mxCell id="e14" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1180" y="860" as="sourcePoint"/><mxPoint x="2120" y="860" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e15l" value="コミット（RDB）（5）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e15">
+        <mxCell id="e14l" value="データ登録（S3 SDK）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e14">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e15" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="2120" y="892" as="sourcePoint"/><mxPoint x="1180" y="892" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e15l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e15">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
         <mxCell id="e16" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1640" y="810" as="sourcePoint"/><mxPoint x="220" y="810" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1160" y="920" as="sourcePoint"/><mxPoint x="460" y="920" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e16l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e16">
+        <mxCell id="e16l" value="結果返却（補償トランザクションアイテム蓄積）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e16">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
 
-        <mxCell id="loop2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="110" y="850" width="2020" height="290" as="geometry"/>
+        <mxCell id="e17" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="440" y="998" as="sourcePoint"/><mxPoint x="220" y="998" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="loop2t" value="loop&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="110" y="850" width="90" height="28" as="geometry"/>
-        </mxCell>
-        <mxCell id="loop2c" value="[メッセージ件数]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="112" y="878" width="200" height="24" as="geometry"/>
-        </mxCell>
-
-        <mxCell id="actDel2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="920" y="880" width="20" height="80" as="geometry"/>
-        </mxCell>
-        <mxCell id="actSqs1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1880" y="900" width="20" height="40" as="geometry"/>
-        </mxCell>
-        <mxCell id="e17" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="890" as="sourcePoint"/><mxPoint x="920" y="890" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e17l" value="メッセージ送信呼出（6）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e17">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e18" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="940" y="910" as="sourcePoint"/><mxPoint x="1880" y="910" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e18l" value="メッセージ送信（SQS SDK）※標準キューは遅延時間設定／FIFOは設定なし（6）※1" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e18">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e19" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1880" y="935" as="sourcePoint"/><mxPoint x="940" y="935" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e19l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e19">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e20" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="920" y="956" as="sourcePoint"/><mxPoint x="220" y="956" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e20l" value="結果返却（メッセージIDテーブルへの登録は行わない）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e20">
+        <mxCell id="e17l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e17">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
 
         <mxCell id="alt2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="130" y="975" width="1990" height="155" as="geometry"/>
+          <mxGeometry x="130" y="1030" width="1990" height="910" as="geometry"/>
         </mxCell>
-        <mxCell id="alt2t" value="opt&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="130" y="975" width="90" height="28" as="geometry"/>
+        <mxCell id="alt2t" value="alt&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="130" y="1030" width="90" height="28" as="geometry"/>
         </mxCell>
-        <mxCell id="alt2c" value="[SQS送信エラー]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="132" y="1003" width="200" height="24" as="geometry"/>
+        <mxCell id="alt2c1" value="[業務処理正常終了]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="132" y="1058" width="220" height="24" as="geometry"/>
         </mxCell>
+
         <mxCell id="actAcc3" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="680" y="1000" width="20" height="70" as="geometry"/>
+          <mxGeometry x="680" y="1080" width="20" height="70" as="geometry"/>
         </mxCell>
         <mxCell id="actDyn2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="1015" width="20" height="35" as="geometry"/>
+          <mxGeometry x="1400" y="1095" width="20" height="35" as="geometry"/>
         </mxCell>
-        <mxCell id="e21" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1010" as="sourcePoint"/><mxPoint x="680" y="1010" as="targetPoint"/></mxGeometry>
+        <mxCell id="e18" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1090" as="sourcePoint"/><mxPoint x="680" y="1090" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e21l" value="送信エラー情報登録呼出（7）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e21">
+        <mxCell id="e18l" value="DynamoDBトランザクション処理呼出（8）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e18">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e22" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1025" as="sourcePoint"/><mxPoint x="1400" y="1025" as="targetPoint"/></mxGeometry>
+        <mxCell id="e19" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1105" as="sourcePoint"/><mxPoint x="1400" y="1105" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e22l" value="通常登録（insert_error_&lt;UUID&gt;／キュー名／メッセージグループID／メッセージ本文）（7）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e22">
+        <mxCell id="e19l" value="データ登録（DynamoDB SDK：TransactWriteItems）（8）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e19">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e20" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1400" y="1126" as="sourcePoint"/><mxPoint x="700" y="1126" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e20l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e20">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e21" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="1146" as="sourcePoint"/><mxPoint x="220" y="1146" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e21l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e21">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="opt1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1170" width="1510" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="opt1t" value="opt&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1170" width="90" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="opt1c" value="[RDBトランザクション使用]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="152" y="1198" width="220" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="actRdb1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="1195" width="20" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="e22" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1207" as="sourcePoint"/><mxPoint x="1640" y="1207" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e22l" value="RDBトランザクションコミット（9）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e22">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
         <mxCell id="e23" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1400" y="1046" as="sourcePoint"/><mxPoint x="700" y="1046" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1640" y="1235" as="sourcePoint"/><mxPoint x="220" y="1235" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="e23l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e23">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e24" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="1066" as="sourcePoint"/><mxPoint x="220" y="1066" as="targetPoint"/></mxGeometry>
+
+        <mxCell id="opt2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1275" width="1960" height="190" as="geometry"/>
         </mxCell>
-        <mxCell id="e24l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e24">
+        <mxCell id="opt2t" value="loop&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1275" width="90" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="opt2c" value="[後続メッセージ件数]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="152" y="1303" width="220" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="actDel2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="920" y="1325" width="20" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="actSqs1" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1880" y="1345" width="20" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e24" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1335" as="sourcePoint"/><mxPoint x="920" y="1335" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e24l" value="メッセージ送信呼出（10）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e24">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e25" value="" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="220" y="1093" as="sourcePoint"/>
-            <mxPoint x="220" y="1118" as="targetPoint"/>
-            <Array as="points"><mxPoint x="330" y="1093"/><mxPoint x="330" y="1118"/></Array>
-          </mxGeometry>
+        <mxCell id="e25" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="940" y="1355" as="sourcePoint"/><mxPoint x="1880" y="1355" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e25l" value="エラーログ出力（呼出元へ返却せず、補償処理も行わない）（9）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="345" y="1092" width="400" height="24" as="geometry"/>
+        <mxCell id="e25l" value="メッセージ送信（SQS SDK）（10）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e25">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-
-        <mxCell id="altdiv" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="90" y="1160" as="sourcePoint"/><mxPoint x="2140" y="1160" as="targetPoint"/></mxGeometry>
+        <mxCell id="e26" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1880" y="1380" as="sourcePoint"/><mxPoint x="940" y="1380" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="alt1c2" value="[業務処理異常終了 または DynamoDB／RDBコミット失敗]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="92" y="1162" width="360" height="24" as="geometry"/>
-        </mxCell>
-
-        <mxCell id="optRb" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="110" y="1180" width="1550" height="90" as="geometry"/>
-        </mxCell>
-        <mxCell id="optRbt" value="opt&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="110" y="1180" width="90" height="28" as="geometry"/>
-        </mxCell>
-        <mxCell id="optRbc" value="[RDBトランザクション使用]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="112" y="1208" width="220" height="24" as="geometry"/>
-        </mxCell>
-        <mxCell id="actRdb2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1640" y="1218" width="20" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="e26" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1228" as="sourcePoint"/><mxPoint x="1640" y="1228" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e26l" value="ロールバック（RDB）（8）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e26">
+        <mxCell id="e26l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e26">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
         <mxCell id="e27" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1640" y="1252" as="sourcePoint"/><mxPoint x="220" y="1252" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="920" y="1401" as="sourcePoint"/><mxPoint x="220" y="1401" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="e27l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e27">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
+        <mxCell id="e28" value="" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="220" y="1425" as="sourcePoint"/>
+            <mxPoint x="220" y="1450" as="targetPoint"/>
+            <Array as="points"><mxPoint x="330" y="1425"/><mxPoint x="330" y="1450"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e28l" value="送信エラー時はログ出力のみ（補償処理は実行しない）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="345" y="1425" width="380" height="24" as="geometry"/>
+        </mxCell>
 
+        <mxCell id="opt3" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1480" width="1960" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="opt3t" value="opt&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1480" width="90" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="opt3c" value="[コンテキストにSQSメッセージIDテーブル情報あり]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="152" y="1508" width="320" height="24" as="geometry"/>
+        </mxCell>
         <mxCell id="actAcc4" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="680" y="1320" width="20" height="70" as="geometry"/>
+          <mxGeometry x="680" y="1530" width="20" height="70" as="geometry"/>
         </mxCell>
         <mxCell id="actDyn3" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="1335" width="20" height="35" as="geometry"/>
-        </mxCell>
-        <mxCell id="e28" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1330" as="sourcePoint"/><mxPoint x="680" y="1330" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e28l" value="補償トランザクション呼出（8）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e28">
-          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+          <mxGeometry x="1400" y="1545" width="20" height="35" as="geometry"/>
         </mxCell>
         <mxCell id="e29" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1345" as="sourcePoint"/><mxPoint x="1400" y="1345" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1540" as="sourcePoint"/><mxPoint x="680" y="1540" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e29l" value="DynamoDB補償トランザクション実行（トランザクション内で作成したレコードを削除／更新・削除レコードの復元は行わない）（8）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e29">
+        <mxCell id="e29l" value="メッセージステータス更新呼出（11）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e29">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e30" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1400" y="1366" as="sourcePoint"/><mxPoint x="700" y="1366" as="targetPoint"/></mxGeometry>
+        <mxCell id="e30" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1555" as="sourcePoint"/><mxPoint x="1400" y="1555" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="e30l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e30">
+        <mxCell id="e30l" value="メッセージステータス更新（complete／通常更新：トランザクション対象外）（11）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e30">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
         <mxCell id="e31" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="1386" as="sourcePoint"/><mxPoint x="220" y="1386" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1400" y="1576" as="sourcePoint"/><mxPoint x="700" y="1576" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="e31l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e31">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-
-        <mxCell id="actS3A2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1160" y="1410" width="20" height="70" as="geometry"/>
+        <mxCell id="e32" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="1596" as="sourcePoint"/><mxPoint x="220" y="1596" as="targetPoint"/></mxGeometry>
         </mxCell>
-        <mxCell id="actS32" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="2120" y="1425" width="20" height="35" as="geometry"/>
-        </mxCell>
-        <mxCell id="e32" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1420" as="sourcePoint"/><mxPoint x="1160" y="1420" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="e32l" value="データ削除呼出（8）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e32">
+        <mxCell id="e32l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e32">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e33" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1180" y="1435" as="sourcePoint"/><mxPoint x="2120" y="1435" as="targetPoint"/></mxGeometry>
+
+        <mxCell id="e32b" value="" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="220" y="1604" as="sourcePoint"/>
+            <mxPoint x="220" y="1624" as="targetPoint"/>
+            <Array as="points"><mxPoint x="330" y="1604"/><mxPoint x="330" y="1624"/></Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e33l" value="データ削除（S3 SDK：バージョンID指定）（8）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e33">
+        <mxCell id="e32bl" value="更新エラー時はログ出力のみ（呼出元へ返却せず、補償トランザクションも実行しない）（11）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="345" y="1602" width="460" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="div4" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="130" y="1640" as="sourcePoint"/><mxPoint x="2120" y="1640" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="alt2c2" value="[業務処理異常終了 または DynamoDB／RDBコミット失敗]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="132" y="1642" width="360" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="optRb2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1660" width="1510" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="optRb2t" value="opt&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;" style="shape=card;whiteSpace=wrap;html=1;fontSize=11;fontColor=#000000;strokeColor=#000000;fillColor=none;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1660" width="90" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="optRb2c" value="[RDBトランザクション使用]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="152" y="1688" width="220" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="actRdb2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="1698" width="20" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="e33" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1708" as="sourcePoint"/><mxPoint x="1640" y="1708" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e33l" value="RDBロールバック（12）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e33">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
         <mxCell id="e34" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="2120" y="1456" as="sourcePoint"/><mxPoint x="1180" y="1456" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1640" y="1730" as="sourcePoint"/><mxPoint x="220" y="1730" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="e34l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e34">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e35" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="1160" y="1476" as="sourcePoint"/><mxPoint x="220" y="1476" as="targetPoint"/></mxGeometry>
+
+        <mxCell id="actAcc5" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="680" y="1770" width="20" height="70" as="geometry"/>
         </mxCell>
-        <mxCell id="e35l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e35">
+        <mxCell id="actDyn4" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="1785" width="20" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="e35" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1780" as="sourcePoint"/><mxPoint x="680" y="1780" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e35l" value="補償トランザクション呼出（12）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e35">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e36" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1795" as="sourcePoint"/><mxPoint x="1400" y="1795" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e36l" value="DynamoDB補償トランザクション実行（トランザクション内で作成したレコードを削除／更新・削除レコードの復元は行わない）（12）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e36">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e37" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1400" y="1816" as="sourcePoint"/><mxPoint x="700" y="1816" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e37l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e37">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e38" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="680" y="1836" as="sourcePoint"/><mxPoint x="220" y="1836" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e38l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e38">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
 
-        <mxCell id="e36" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="200" y="1530" as="sourcePoint"/><mxPoint x="30" y="1530" as="targetPoint"/></mxGeometry>
+        <mxCell id="actS3A2" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="1860" width="20" height="55" as="geometry"/>
         </mxCell>
-        <mxCell id="e36l" value="レスポンス送信" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e36">
+        <mxCell id="actS32" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="2120" y="1873" width="20" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="e39" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="1870" as="sourcePoint"/><mxPoint x="1160" y="1870" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e39l" value="データ削除呼出（12）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e39">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e40" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1180" y="1883" as="sourcePoint"/><mxPoint x="2120" y="1883" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e40l" value="S3補償トランザクション実行（バージョンID指定削除）（12）" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e40">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e41" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="2120" y="1899" as="sourcePoint"/><mxPoint x="1180" y="1899" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e41l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e41">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e42" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1160" y="1912" as="sourcePoint"/><mxPoint x="220" y="1912" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e42l" value="結果返却" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e42">
+          <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e43" value="" style="endArrow=classic;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="200" y="1955" as="sourcePoint"/><mxPoint x="30" y="1955" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="e43l" value="レスポンス送信" style="edgeLabel;html=1;align=center;verticalAlign=bottom;resizable=0;points=[];fontSize=11;fontColor=#000000;" vertex="1" connectable="0" parent="e43">
           <mxGeometry x="0" y="-8" relative="1" as="geometry"/>
         </mxCell>
 
