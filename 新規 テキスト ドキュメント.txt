@@ -1,62 +1,75 @@
-```mermaid
-sequenceDiagram
-    participant H as Hinemos Agent
-    participant M as メイン処理
-    participant C as 設定ファイル
-    participant P as キュー監視プロセス
-    participant Q as キュー監視スレッド
-    participant S as SQS
-    participant D as DynamoDB
-    participant A as 業務AP起動スレッド
-    participant T as ECSタスク保護制御
-    participant E as 業務AP実行処理
-    participant B as 業務AP
-
-    H->>M: キュー受信制御起動
-    M->>C: キュー設定取得
-    C-->>M: キュー情報・設定ファイルサーバID
-    M->>M: 対象キュー判定
-    M->>P: キュー監視プロセス起動
-    M->>M: 子プロセス死活監視
-
-    P->>Q: キュー監視スレッド起動
-    Q->>C: 最大同時実行数取得
-    C-->>Q: 最大同時実行数
-
-    loop キュー監視
-        Q->>S: メッセージ受信\nロングポーリング
-        S-->>Q: メッセージ
-
-        Q->>D: メッセージID検索
-        D-->>Q: 重複有無
-
-        alt 重複メッセージ
-            Q->>D: エラー状態登録
-            Q->>S: メッセージ削除
-        else 未登録メッセージ
-            Q->>A: 業務AP起動スレッド起動
-            A->>T: 処理数更新・タスク保護設定
-            A->>D: メッセージ情報登録\nステータス=running
-            A->>S: メッセージ削除
-            A->>E: 実行パターンに応じて起動要求
-            E->>B: AWS Lambda／HTTP API／\nECSタスク／AWS Step Functions実行
-            B-->>E: 実行結果
-            E-->>A: 処理結果
-
-            alt 正常終了
-                A->>D: メッセージ情報削除
-            else 異常終了
-                A->>D: ステータス=error更新
-            end
-
-            A->>T: 処理数更新・タスク保護解除
-        end
-    end
-
-    H->>M: 終了シグナル
-    M->>P: キュー監視プロセス停止
-    P->>Q: 新規処理停止
-    Q->>S: 受信済みメッセージの\n可視性タイムアウト設定
-    Q->>A: 起動済みスレッド完了待機
-    M->>M: 子プロセス終了待機
-    M-->>H: 正常終了
+<mxfile host="app.diagrams.net" agent="Claude" version="24.0.0">
+  <diagram name="キュー受信_処理シーケンス" id="seq_queue_reception">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2100" pageHeight="2300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+<mxCell id="id2" value="Hinemos Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="25.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id3" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="60" as="sourcePoint"/><mxPoint x="100" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id4" value="メイン処理" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="205.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id5" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="60" as="sourcePoint"/><mxPoint x="280" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id6" value="設定ファイル" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="385.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id7" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="460" y="60" as="sourcePoint"/><mxPoint x="460" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id8" value="キュー監視プロセス" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="565.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id9" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="640" y="60" as="sourcePoint"/><mxPoint x="640" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id10" value="キュー監視スレッド" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="745.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id11" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="820" y="60" as="sourcePoint"/><mxPoint x="820" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id12" value="SQS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="925.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id13" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1000" y="60" as="sourcePoint"/><mxPoint x="1000" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id14" value="DynamoDB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1105.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id15" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1180" y="60" as="sourcePoint"/><mxPoint x="1180" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id16" value="業務AP起動スレッド" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1285.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id17" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1360" y="60" as="sourcePoint"/><mxPoint x="1360" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id18" value="ECSタスク保護制御" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1465.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id19" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1540" y="60" as="sourcePoint"/><mxPoint x="1540" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id20" value="業務AP実行処理" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1645.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id21" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1720" y="60" as="sourcePoint"/><mxPoint x="1720" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id22" value="業務AP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1825.0" y="20" width="150" height="40" as="geometry"/></mxCell>
+<mxCell id="id23" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1900" y="60" as="sourcePoint"/><mxPoint x="1900" y="2200" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id24" value="loop [キュー監視]" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontSize=12;fontStyle=1;verticalAlign=top;width=100;height=30;" vertex="1" parent="1"><mxGeometry x="730" y="575" width="1260" height="1190" as="geometry"/></mxCell>
+<mxCell id="id25" value="alt [重複メッセージ]" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontSize=12;fontStyle=1;verticalAlign=top;width=100;height=30;" vertex="1" parent="1"><mxGeometry x="730" y="830" width="1260" height="890" as="geometry"/></mxCell>
+<mxCell id="id26" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="730" y="975" as="sourcePoint"/><mxPoint x="1990" y="975" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id27" value="[未登録メッセージ]" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="738" y="978" width="260" height="20" as="geometry"/></mxCell>
+<mxCell id="id28" value="alt [正常終了]" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontSize=12;fontStyle=1;verticalAlign=top;width=100;height=30;" vertex="1" parent="1"><mxGeometry x="1090" y="1450" width="360" height="180" as="geometry"/></mxCell>
+<mxCell id="id29" value="" style="endArrow=none;startArrow=none;dashed=1;html=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1090" y="1540" as="sourcePoint"/><mxPoint x="1450" y="1540" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id30" value="[異常終了]" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="1098" y="1543" width="260" height="20" as="geometry"/></mxCell>
+<mxCell id="id31" value="キュー受信制御起動" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="100" as="sourcePoint"/><mxPoint x="280" y="100" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id32" value="キュー設定取得" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="155" as="sourcePoint"/><mxPoint x="460" y="155" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id33" value="キュー情報・設定ファイルサーバID" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=1;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="460" y="210" as="sourcePoint"/><mxPoint x="280" y="210" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id34" value="" style="html=1;endArrow=block;endFill=1;elbow=vertical;startArrow=none;dashed=0;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="265" as="sourcePoint"/><mxPoint x="280" y="295" as="targetPoint"/><Array as="points"><mxPoint x="370" y="265"/><mxPoint x="370" y="295"/></Array></mxGeometry></mxCell>
+<mxCell id="id35" value="対象キュー判定" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1"><mxGeometry x="380" y="257" width="260" height="46" as="geometry"/></mxCell>
+<mxCell id="id36" value="キュー監視プロセス起動" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="320" as="sourcePoint"/><mxPoint x="640" y="320" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id37" value="" style="html=1;endArrow=block;endFill=1;elbow=vertical;startArrow=none;dashed=0;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="375" as="sourcePoint"/><mxPoint x="280" y="405" as="targetPoint"/><Array as="points"><mxPoint x="370" y="375"/><mxPoint x="370" y="405"/></Array></mxGeometry></mxCell>
+<mxCell id="id38" value="子プロセス死活監視" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1"><mxGeometry x="380" y="367" width="260" height="46" as="geometry"/></mxCell>
+<mxCell id="id39" value="キュー監視スレッド起動" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="640" y="430" as="sourcePoint"/><mxPoint x="820" y="430" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id40" value="最大同時実行数取得" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="820" y="485" as="sourcePoint"/><mxPoint x="460" y="485" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id41" value="最大同時実行数" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=1;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="460" y="540" as="sourcePoint"/><mxPoint x="820" y="540" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id42" value="メッセージ受信&lt;br&gt;ロングポーリング" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="820" y="620" as="sourcePoint"/><mxPoint x="1000" y="620" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id43" value="メッセージ" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=1;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1000" y="675" as="sourcePoint"/><mxPoint x="820" y="675" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id44" value="メッセージID検索" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="820" y="730" as="sourcePoint"/><mxPoint x="1180" y="730" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id45" value="重複有無" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=1;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1180" y="785" as="sourcePoint"/><mxPoint x="820" y="785" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id46" value="エラー状態登録" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="820" y="875" as="sourcePoint"/><mxPoint x="1180" y="875" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id47" value="メッセージ削除" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="820" y="930" as="sourcePoint"/><mxPoint x="1000" y="930" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id48" value="業務AP起動スレッド起動" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="820" y="1020" as="sourcePoint"/><mxPoint x="1360" y="1020" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id49" value="処理数更新・タスク保護設定" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1360" y="1075" as="sourcePoint"/><mxPoint x="1540" y="1075" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id50" value="メッセージ情報登録&lt;br&gt;ステータス=running" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1360" y="1130" as="sourcePoint"/><mxPoint x="1180" y="1130" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id51" value="メッセージ削除" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1360" y="1185" as="sourcePoint"/><mxPoint x="1000" y="1185" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id52" value="実行パターンに応じて起動要求" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1360" y="1240" as="sourcePoint"/><mxPoint x="1720" y="1240" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id53" value="AWS Lambda／HTTP API／&lt;br&gt;ECSタスク／AWS Step Functions実行" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1720" y="1295" as="sourcePoint"/><mxPoint x="1900" y="1295" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id54" value="実行結果" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=1;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1900" y="1350" as="sourcePoint"/><mxPoint x="1720" y="1350" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id55" value="処理結果" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=1;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1720" y="1405" as="sourcePoint"/><mxPoint x="1360" y="1405" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id56" value="メッセージ情報削除" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1360" y="1495" as="sourcePoint"/><mxPoint x="1180" y="1495" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id57" value="ステータス=error更新" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1360" y="1585" as="sourcePoint"/><mxPoint x="1180" y="1585" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id58" value="処理数更新・タスク保護解除" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1360" y="1675" as="sourcePoint"/><mxPoint x="1540" y="1675" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id59" value="終了シグナル" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="1810" as="sourcePoint"/><mxPoint x="280" y="1810" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id60" value="キュー監視プロセス停止" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="1865" as="sourcePoint"/><mxPoint x="640" y="1865" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id61" value="新規処理停止" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="640" y="1920" as="sourcePoint"/><mxPoint x="820" y="1920" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id62" value="受信済みメッセージの&lt;br&gt;可視性タイムアウト設定" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="820" y="1975" as="sourcePoint"/><mxPoint x="1000" y="1975" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id63" value="起動済みスレッド完了待機" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=0;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="820" y="2030" as="sourcePoint"/><mxPoint x="1360" y="2030" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="id64" value="" style="html=1;endArrow=block;endFill=1;elbow=vertical;startArrow=none;dashed=0;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="2085" as="sourcePoint"/><mxPoint x="280" y="2115" as="targetPoint"/><Array as="points"><mxPoint x="370" y="2085"/><mxPoint x="370" y="2115"/></Array></mxGeometry></mxCell>
+<mxCell id="id65" value="子プロセス終了待機" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1"><mxGeometry x="380" y="2077" width="260" height="46" as="geometry"/></mxCell>
+<mxCell id="id66" value="正常終了" style="html=1;endArrow=block;endFill=1;elbow=none;startArrow=none;dashed=1;fontSize=11;labelBackgroundColor=#FFFFFF;align=center;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="280" y="2140" as="sourcePoint"/><mxPoint x="100" y="2140" as="targetPoint"/></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
