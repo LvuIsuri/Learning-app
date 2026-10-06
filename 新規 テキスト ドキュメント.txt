@@ -1,3 +1,8 @@
+export HTTPS_PROXY=http://10.0.4.220:8080
+export https_proxy=http://10.0.4.220:8080
+export HTTP_PROXY=http://10.0.4.220:8080
+export http_proxy=http://10.0.4.220:8080
+export NO_PROXY=169.254.169.254,s3.ap-northeast-1.amazonaws.com,sqs.ap-northeast-1.amazonaws.com,dynamodb.ap-northeast-1.amazonaws.com,localhost,127.0.0.1,172.26.0.0/16,10.0.0.0/8execute-api.ap-northeast-1.amazonaws.com
 (ls-venv) bttranvu@DESKTOP-ISI5UG2:~/localstack-main$ pip install -e ".[runtime]" 
 Obtaining file:///home/bttranvu/localstack-main
 lo  Installing build dependencies ... -cal^canceled
