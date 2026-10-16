@@ -1,44 +1,14 @@
-export HTTPS_PROXY=http://10.0.4.220:8080
-export https_proxy=http://10.0.4.220:8080
-export HTTP_PROXY=http://10.0.4.220:8080
-export http_proxy=http://10.0.4.220:8080
-export NO_PROXY=169.254.169.254,s3.ap-northeast-1.amazonaws.com,sqs.ap-northeast-1.amazonaws.com,dynamodb.ap-northeast-1.amazonaws.com,localhost,127.0.0.1,172.26.0.0/16,10.0.0.0/8execute-api.ap-northeast-1.amazonaws.com
-(ls-venv) bttranvu@DESKTOP-ISI5UG2:~/localstack-main$ pip install -e ".[runtime]" 
-Obtaining file:///home/bttranvu/localstack-main
-lo  Installing build dependencies ... -cal^canceled
-local-stacERROR: Operation cancelled by user
-(ls-venv) bttranvu@DESKTOP-ISI5UG2:~/localstack-main$ pip install -e ".[runtime]" 
-Obtaining file:///home/bttranvu/localstack-main
-localstack --versi  Installing build dependencies ... -o\^canceled
-
-ERROR: Operation cancelled by user
-(ls-venv) bttranvu@DESKTOP-ISI5UG2:~/localstack-main$ 
-(ls-venv) bttranvu@DESKTOP-ISI5UG2:~/localstack-main$ pip install -e ".[runtime]" 
-Obtaining file:///home/bttranvu/localstack-main
-localstack --version
-  Installing build dependencies ... /  error
-  error: subprocess-exited-with-error
-  
-  × pip subprocess to install build dependencies did not run successfully.
-  │ exit code: 1
-  ╰─> [7 lines of output]
-      WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f2b457ff4d0>, 'Connection to 10.0.4.149 timed out. (connect timeout=15)')': /simple/setuptools/
-      WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f2b456acb90>, 'Connection to 10.0.4.149 timed out. (connect timeout=15)')': /simple/setuptools/
-      WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f2b456accd0>, 'Connection to 10.0.4.149 timed out. (connect timeout=15)')': /simple/setuptools/
-      WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f2b456ace10>, 'Connection to 10.0.4.149 timed out. (connect timeout=15)')': /simple/setuptools/
-      WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f2b456acf50>, 'Connection to 10.0.4.149 timed out. (connect timeout=15)')': /simple/setuptools/
-      ERROR: Could not find a version that satisfies the requirement setuptools>=64 (from versions: none)
-      ERROR: No matching distribution found for setuptools>=64
-      [end of output]
-  
-  note: This error originates from a subprocess, and is likely not a problem with pip.
-error: subprocess-exited-with-error
-
-× pip subprocess to install build dependencies did not run successfully.
-│ exit code: 1
-╰─> See above for output.
-
-note: This error originates from a subprocess, and is likely not a problem with pip.
-(ls-venv) bttranvu@DESKTOP-ISI5UG2:~/localstack-main$ localstack --version
-localstack: command not found
-(ls-venv) bttranvu@DESKTOP-ISI5UG2:~/localstack-main$ 
+お疲れ様(つかれさま)です。ファイルコピー機能(きのう)（S3からEFS）の進捗(しんちょく)を報告(ほうこく)します。
+・AP共通基盤(きょうつうきばん)に、S3上(じょう)のファイルをEFSへコピーする処理(しょり)を追加(ついか)する案件(あんけん)です。
+・Pythonで作成(さくせい)し、業務(ぎょうむ)AP制御(せいぎょ)から呼(よ)び出(だ)す形(かたち)です。
+・私(わたし)は、詳細設計(しょうさいせっけい)、Pythonの実装(じっそう)、単体試験(たんたいしけん)・結合試験(けつごうしけん)の作成(さくせい)を担当(たんとう)しています。
+・既存(きそん)の業務(ぎょうむ)AP制御(せいぎょ)や、類似処理(るいじしょり)（4.41、4.49）の設計(せっけい)の調査(ちょうさ)
+・仕様確認(しようかくにん)（Q&A）
+・試験環境(しけんかんきょう)の構築(こうちく)
+・詳細設計(しょうさいせっけい)（4.59）のたたき台(だい)の作成(さくせい)
+・単体試験項目(たんたいしけんこうもく)の作成(さくせい)を進(すす)めています。
+・試験項目(しけんこうもく)の完成後(かんせいご)、単体試験(たんたいしけん)、詳細設計書(しょうさいせっけいしょ)の作成(さくせい)、結合試験(けつごうしけん)の順(じゅん)に進(すす)めます。
+・最後(さいご)に、確定(かくてい)した仕様(しよう)を各成果物(かくせいかぶつ)に反映(はんえい)します。
+・仕様面(しようめん)は小割(こわり)さん、設計(せっけい)と試験項目(しけんこうもく)は一杉(ひとすぎ)さんに確認(かくにん)しながら進(すす)めています。
+・いただいた指摘(してき)をもとに、現在(げんざい)修正(しゅうせい)しています。
+以上(いじょう)です。
