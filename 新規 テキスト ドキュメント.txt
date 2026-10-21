@@ -185,3 +185,159 @@ def main(argv=None):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     sys.exit(main())  # -1 は終了コード255になる
+
+
+
+
+
+import argparse
+import os
+import sys
+import tempfile
+from pathlib import Path, PurePosixPath
+
+import boto3
+
+
+class ReturnCodeArgumentParser(argparse.ArgumentParser):
+    """引数エラーを終了コード1で終了するパーサー。"""
+
+    def error(self, message: str) -> None:
+        self.print_usage(sys.stderr)
+        self.exit(1, f"{self.prog}: 引数エラー: {message}\n")
+
+
+def parse_bool(value: str) -> bool:
+    """true/false文字列をboolに変換する。"""
+    normalized = value.lower()
+
+    if normalized in ("true", "1", "yes"):
+        return True
+    if normalized in ("false", "0", "no"):
+        return False
+
+    raise argparse.ArgumentTypeError(
+        "上書きフラグは true または false を指定してください"
+    )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = ReturnCodeArgumentParser(
+        description="S3のファイルをダウンロードして指定フォルダに保存します"
+    )
+
+    parser.add_argument("bucket", help="S3バケット名")
+    parser.add_argument("key", help="S3オブジェクトキー")
+    parser.add_argument("destination", help="コピー先フォルダ")
+    parser.add_argument(
+        "overwrite",
+        type=parse_bool,
+        help="上書きする場合は true、しない場合は false",
+    )
+    parser.add_argument("--region", required=True, help="AWSリージョン")
+    parser.add_argument(
+        "--endpoint-url",
+        help="S3互換サービスの場合のエンドポイントURL",
+    )
+    parser.add_argument(
+        "--profile",
+        help="使用するAWSプロファイル名",
+    )
+
+    return parser.parse_args()
+
+
+def run(args: argparse.Namespace) -> int:
+    """
+    処理結果を返す。
+
+    0: 正常終了
+    1: 処理エラー
+    -1: 例外
+    """
+    try:
+        filename = PurePosixPath(args.key).name
+        if not filename:
+            print("処理エラー: S3キーにファイル名がありません", file=sys.stderr)
+            return 1
+
+        destination_dir = Path(args.destination)
+        destination_path = destination_dir / filename
+
+        # コピー先フォルダが存在しない場合は作成する。
+        destination_dir.mkdir(parents=True, exist_ok=True)
+
+        if not args.overwrite and destination_path.exists():
+            print(
+                f"処理エラー: コピー先にファイルが存在します: {destination_path}",
+                file=sys.stderr,
+            )
+            return 1
+
+        # 認証情報は環境変数、AWSプロファイル、IAMロールなどから取得する。
+        session = boto3.Session(
+            profile_name=args.profile,
+            region_name=args.region,
+        )
+        s3 = session.client(
+            "s3",
+            endpoint_url=args.endpoint_url,
+        )
+
+        # ダウンロード途中のファイルがコピー先に残らないよう、一時ファイルを使う。
+        fd, temporary_name = tempfile.mkstemp(
+            dir=destination_dir,
+            prefix=f".{filename}.",
+            suffix=".part",
+        )
+        os.close(fd)
+        temporary_path = Path(temporary_name)
+
+        try:
+            s3.download_file(
+                args.bucket,
+                args.key,
+                str(temporary_path),
+            )
+
+            if args.overwrite:
+                # 上書きあり: 一時ファイルをコピー先へ置き換える。
+                os.replace(temporary_path, destination_path)
+            else:
+                # 上書きなし: コピー先が既に作られていた場合は上書きしない。
+                try:
+                    os.link(temporary_path, destination_path)
+                except FileExistsError:
+                    print(
+                        f"処理エラー: コピー先にファイルが存在します: "
+                        f"{destination_path}",
+                        file=sys.stderr,
+                    )
+                    return 1
+        finally:
+            temporary_path.unlink(missing_ok=True)
+
+        print(f"保存しました: {destination_path}")
+        return 0
+
+    except Exception as exc:
+        print(f"例外: {exc}", file=sys.stderr)
+        return -1
+
+
+def main() -> int:
+    args = parse_args()
+    result = run(args)
+
+    # OSのプロセス終了コードでは負数を移植性のある形で返せないため、
+    # 例外(-1)はコマンドライン上では2に変換する。
+    if result == -1:
+        return 2
+
+    return result
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
