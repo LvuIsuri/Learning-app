@@ -222,3 +222,5 @@ s3 = boto3.client("s3", endpoint_url=os.environ["S3_ENDPOINT_URL"])
 s3.create_bucket(Bucket="test-bucket")
 s3.put_object(Bucket="test-bucket", Key="test/sample.csv", Body=b"a,b\n1,2\n")
 EOF
+python fileCopyS3Efs.py s3://test-bucket/test/sample.csv ~/efs_test/out/new.csv
+echo $?
