@@ -1,15 +1,187 @@
-2.全処理と分岐　（T:正常か有、F:異常か無し、－:処理されない。*:いずれか1つがF、以降は実行されない）			
-	正常(0)	異常(1/8)	例外(-1)
-入力チェック	T	F*	T
-上書き判定（同名あり×false）	T	F*	T
-S3ファイル存在	T	F*	T
-S3接続・アクセス権限	T	－	F*
-コピー先ディレクトリ・書込権限	T	－	F*
-ダウンロード・ファイル置換	T	－	F*
-戻り値	0	1（または8）	-1
-			
-3.ログ出力			
-	正常(0)	異常(1/8)	例外(-1)
-開始ログ	T	T	T
-終了ログ	T	T	－
-エラーログ	－	T	T
+# -*- coding: utf-8 -*-
+"""
+FileCopyS3EfsService : S3 -> EFS ファイルコピー (RE_Q_031_01 4.59)
+
+使用例:
+    python fileCopyS3Efs.py s3://bucket/dir/sample.csv /mnt/efs/out/new.csv
+    python fileCopyS3Efs.py s3://bucket/dir/sample.csv /mnt/efs/out true
+    python fileCopyS3Efs.py s3://bucket/dir/sample.csv /mnt/efs/out false
+
+引数 (位置引数、空白区切り):
+    file            コピー元 (s3://バケット/キー)。ワイルドカード、ディレクトリ指定は不可
+    file_path       コピー先 (EFSのファイルパス、またはディレクトリパス)
+                    ディレクトリの場合、コピー元のファイル名でコピーする
+    over_write_flg  上書きオプション true/false (省略時 true)
+
+戻り値:
+     0 : 正常終了
+     8 : 上書き不可 (コピー先に同名ファイルがあり、over_write_flg=false)
+    -1 : 異常終了 (Linuxの終了コードでは255) ※-1の扱いは確認中
+
+接続先:
+    環境変数 S3_ENDPOINT_URL があればそのエンドポイントに接続する (試験環境: Floci)。
+    未設定の場合はAWSの既定。
+"""
+import logging
+import os
+import sys
+import tempfile
+
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
+
+RC_OK = 0
+RC_NO_OVERWRITE = 8
+RC_NG = -1
+
+DEFAULT_OVER_WRITE = True
+WILDCARD_CHARS = ("*", "?")
+
+logger = logging.getLogger("FileCopyS3EfsService")
+
+
+class CopyError(Exception):
+    """異常終了 (戻り値 -1) にする例外"""
+
+
+# ---------------------------------------------------------------- 引数チェック
+def parse_args(argv):
+    """引数を検証し (bucket, key, file_path, over_write) を返す。不正は CopyError。"""
+    if len(argv) < 2 or len(argv) > 3:
+        raise CopyError("引数の数が不正です。 argc=%d" % len(argv))
+
+    file, file_path = argv[0], argv[1]
+    if not file:
+        raise CopyError("コピー元ファイルが空です。")
+    if not file_path:
+        raise CopyError("コピー先パスが空です。")
+
+    over_write = DEFAULT_OVER_WRITE
+    if len(argv) == 3:
+        flg = argv[2].strip().lower()
+        if flg == "true":
+            over_write = True
+        elif flg == "false":
+            over_write = False
+        else:
+            # 空文字を含め、true/false以外は異常 (空文字の扱いは確認中)
+            raise CopyError("上書きオプションが不正です。 value=%r" % argv[2])
+
+    bucket, key = split_s3_uri(file)
+    return bucket, key, file_path, over_write
+
+
+def split_s3_uri(uri):
+    if not uri.startswith("s3://"):
+        raise CopyError("コピー元の形式が不正です。(s3://バケット/キー) value=%s" % uri)
+    rest = uri[len("s3://"):]
+    if "/" not in rest:
+        raise CopyError("コピー元にキーがありません。 value=%s" % uri)
+    bucket, key = rest.split("/", 1)
+    if not bucket or not key:
+        raise CopyError("コピー元の形式が不正です。 value=%s" % uri)
+    if any(c in uri for c in WILDCARD_CHARS):
+        raise CopyError("コピー元にワイルドカードは指定できません。 value=%s" % uri)
+    if key.endswith("/"):
+        raise CopyError("コピー元にディレクトリは指定できません。 value=%s" % uri)
+    return bucket, key
+
+
+# ---------------------------------------------------------------- コピー先の決定
+def resolve_dest(file_path, key):
+    """コピー先のファイルパスを返す。ディレクトリ指定ならコピー元のファイル名を付ける。"""
+    if os.path.isdir(file_path):
+        return os.path.join(file_path, os.path.basename(key))
+    return file_path
+
+
+def check_dest_dir(dest):
+    """コピー先ディレクトリの存在・書込権限を確認する。"""
+    dest_dir = os.path.dirname(os.path.abspath(dest))
+    if not os.path.isdir(dest_dir):
+        raise CopyError("コピー先ディレクトリが存在しません。 dir=%s" % dest_dir)
+    if not os.access(dest_dir, os.W_OK | os.X_OK):
+        raise CopyError("コピー先ディレクトリに書込権限がありません。 dir=%s" % dest_dir)
+    return dest_dir
+
+
+# ---------------------------------------------------------------- S3
+def create_s3_client():
+    endpoint = os.environ.get("S3_ENDPOINT_URL") or None
+    return boto3.client("s3", endpoint_url=endpoint)
+
+
+def check_s3_object(s3, bucket, key):
+    """S3のファイル存在・アクセス権限を確認する。"""
+    try:
+        s3.head_object(Bucket=bucket, Key=key)
+    except ClientError as e:
+        code = str(e.response.get("Error", {}).get("Code", ""))
+        if code in ("404", "NoSuchKey", "NotFound"):
+            raise CopyError("S3にコピー元ファイルが存在しません。 s3://%s/%s" % (bucket, key))
+        if code == "NoSuchBucket":
+            raise CopyError("S3バケットが存在しません。 bucket=%s" % bucket)
+        if code in ("403", "AccessDenied", "Forbidden"):
+            raise CopyError("S3へのアクセス権限がありません。 s3://%s/%s" % (bucket, key))
+        raise CopyError("S3の確認に失敗しました。 code=%s" % code)
+    except BotoCoreError as e:
+        raise CopyError("S3に接続できません。 %s" % e)
+
+
+def download_to(s3, bucket, key, path):
+    """S3のファイルをpathにダウンロードする。(試験ではこの関数をモックして途中失敗を再現)"""
+    s3.download_file(bucket, key, path)
+
+
+# ---------------------------------------------------------------- 本処理
+def copy_file(argv):
+    bucket, key, file_path, over_write = parse_args(argv)
+    dest = resolve_dest(file_path, key)
+    dest_dir = check_dest_dir(dest)
+
+    # 同名ファイル・上書き可否 (S3へは接続しない)
+    if os.path.lexists(dest):
+        if os.path.isdir(dest):
+            raise CopyError("コピー先にディレクトリが存在します。 path=%s" % dest)
+        if not over_write:
+            logger.error("コピー先に同名ファイルが存在します。(上書き不可) path=%s", dest)
+            return RC_NO_OVERWRITE
+        if not os.access(dest, os.W_OK):
+            raise CopyError("既存ファイルが上書きできません。 path=%s" % dest)
+
+    s3 = create_s3_client()
+    check_s3_object(s3, bucket, key)
+
+    # 一時ファイルにダウンロードし、完了後に置き換える (失敗時にコピー先を壊さない)
+    fd, tmp = tempfile.mkstemp(prefix=".s3copy_", dir=dest_dir)
+    os.close(fd)
+    try:
+        download_to(s3, bucket, key, tmp)
+        os.replace(tmp, dest)
+    except Exception:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
+    logger.info("コピーしました。 s3://%s/%s -> %s", bucket, key, dest)
+    return RC_OK
+
+
+def main(argv=None):
+    """戻り値 0 / 8 / -1 を返す。"""
+    argv = list(sys.argv[1:] if argv is None else argv)
+    logger.info("開始 args=%s", argv)
+    try:
+        rc = copy_file(argv)
+    except CopyError as e:
+        logger.error("%s", e)
+        rc = RC_NG
+    except Exception as e:  # 想定外の例外も未処理で終了させない
+        logger.exception("想定外のエラーが発生しました。 %s", e)
+        rc = RC_NG
+    logger.info("終了 rc=%d", rc)
+    return rc
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    sys.exit(main())  # -1 は終了コード255になる
