@@ -211,13 +211,64 @@ def main(argv=None) -> int:
 if __name__ == "__main__":
     raise SystemExit(main())
 
-export S3_ENDPOINT_URL=http://localhost:4566
-export AWS_ACCESS_KEY_ID=test
-export AWS_SECRET_ACCESS_KEY=test
-export AWS_DEFAULT_REGION=ap-northeast-1
+【メモ】ファイルコピー（S3→EFS）環境構築・実行コマンド
 
-python - <<'EOF'
-import boto3, os
+■ 1. 環境構築（初回のみ）
+mkdir -p ~/s3efs && cd ~/s3efs
+python3 -m venv .venv
+source .venv/bin/activate
+pip install boto3 pytest awscli
+docker pull floci/floci:latest
+
+■ 2. Floci（S3エミュレータ）
+起動（初回）  docker run -d --name floci -p 4566:4566 floci/floci:latest
+再起動        docker start floci
+停止          docker stop floci
+確認          docker ps
+疎通確認      curl -s http://localhost:4566/_localstack/health
+
+■ 3. ターミナルを開くたびに実行
+cd ~/s3efs
+source .venv/bin/activate
+export S3_ENDPOINT_URL=http://localhost:4566 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=ap-northeast-1
+
+■ 4. プログラムファイルの作成
+cat > fileCopyS3Efs.py <<'EOF'
+（コードを貼り付け）
+EOF
+python -c "import ast;ast.parse(open('fileCopyS3Efs.py').read());print('OK')"
+
+■ 5. テストデータの作成（Flociを再起動したら毎回）
+printf 'a,b\n1,2\n' > sample.csv
+aws --endpoint-url $S3_ENDPOINT_URL s3 mb s3://test-bucket
+aws --endpoint-url $S3_ENDPOINT_URL s3 cp sample.csv s3://test-bucket/test/sample.csv
+mkdir -p ~/efs_test/out
+
+■ 6. 実行
+python fileCopyS3Efs.py s3://test-bucket/test/sample.csv ~/efs_test/out/new.csv          # 新規
+python fileCopyS3Efs.py s3://test-bucket/test/sample.csv ~/efs_test/out/new.csv true     # 上書き
+python fileCopyS3Efs.py s3://test-bucket/test/sample.csv ~/efs_test/out/new.csv false    # 上書きなし
+python fileCopyS3Efs.py s3://test-bucket/test/sample.csv ~/efs_test/out                  # ディレクトリ指定
+echo $?                                                                                   # 戻り値確認
+
+■ 7. 戻り値の確認方法
+0  正常終了       コピー先が新規
+1  処理エラー     コピー先に同名ファイルあり＋false、S3にファイルなし、引数不正
+-1 例外           コピー先ディレクトリなし（コマンド上は2で表示）
+show() { python fileCopyS3Efs.py "$@"; rc=$?; [ $rc -eq 2 ] && rc=-1; echo "戻り値=$rc"; }
+
+■ 8. 確認
+aws --endpoint-url $S3_ENDPOINT_URL s3 ls s3://test-bucket/ --recursive    # S3側
+ls -l ~/efs_test/out ; cat ~/efs_test/out/new.csv                           # EFS側
+
+■ 9. pytest（試験ファイル作成後）
+pytest -v
+pytest --cov=fileCopyS3Efs --cov-report=term-missing
+
+■ 注意
+・echo $? は実行直後に行う
+・Floci再起動でS3のデータは消える（5を再実行）
+・-1は終了コードでは2に変換している（確認中）
 s3 = boto3.client("s3", endpoint_url=os.environ["S3_ENDPOINT_URL"])
 s3.create_bucket(Bucket="test-bucket")
 s3.put_object(Bucket="test-bucket", Key="test/sample.csv", Body=b"a,b\n1,2\n")
