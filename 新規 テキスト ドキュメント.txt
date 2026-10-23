@@ -171,6 +171,10 @@ def run(args: argparse.Namespace) -> int:
         try:
             s3.download_file(bucket, key, str(temporary_path))
 
+            # 一時ファイルは権限0600で作成されるため、コピー先の権限を0664にする。
+            # (新規・上書きともに0664。上書きの場合も既存ファイルの権限は引き継がない)
+            os.chmod(temporary_path, 0o664)
+
             if args.over_write_flg:
                 # 上書きあり: 一時ファイルをコピー先へ置き換える。
                 os.replace(temporary_path, destination_path)
