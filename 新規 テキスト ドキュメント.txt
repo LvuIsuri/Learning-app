@@ -1,256 +1,232 @@
-"""
- * 開発システム ： オンライン請求システム
- * ファイル名   ： apExecExReqSeikyusien.py
- * 著作権       ： Copyright (C) 2020, 社会保険診療報酬支払基金
- * 会社名       ： NTT DATA Corporation
- * 更新日       ： $Date: 2026年5月19日 17::55 $
-"""
-
-import sys
-from kikin.fw.infra.external import apExecExReqSeikyusienService
-
-# メイン処理。コマンドラインから引数を受け取り、クラスを生成したのち、クラス内のメソッドを実行する。
-if __name__ == '__main__':
-    business_info_list = sys.argv[1]
-    retry_flag = sys.argv[2]
-    retry_count = sys.argv[3]
-    retry_wait_time = sys.argv[4]
-    
-    exe = apExecExReqSeikyusienService.ApExecExReqSeikyusienService\
-    (business_info_list, retry_flag, retry_count, retry_wait_time)
-    res = exe.run(exe.do_http_external_form)
-
-    if res == 1:
-        print('-1')
-        sys.exit('1')
-
-    result_sys = res[0]
-    result_external = res[1]
-    print(result_external)
-    sys.exit(result_sys)
-
-"""
- * 開発システム ： オンライン請求システム
- * ファイル名   ： apExecExReqHttpFormService.py
- * 著作権       ： Copyright (C) 2020, 社会保険診療報酬支払基金
- * 会社名       ： NTT DATA Corporation
- * 更新日       ： $Date: 2026年5月19日 17:55:00 $
-"""
-import io
-import json
-import pycurl
-import time
-import re
+import argparse
 import os
-from urllib.parse import urlencode
-from xml.etree import ElementTree
+import sys
+import tempfile
+from pathlib import Path, PurePosixPath
 
-from ..common import appBase
-from ..common import confUtils
+import boto3
+from botocore.exceptions import ClientError
+
+WILDCARD_CHARS = ("*", "?")
 
 
-class ApExecExReqSeikyusienService(appBase.AppBaseClass):
+def split_s3_uri(uri: str):
+    """
+    s3://バケット/キー をバケットとキーに分割する。
 
-    # 外部システム業務AP起動要求（HTTP・C++ライブラリ）（フォーム送信形式）から呼び出され、業務固有情報（フォーム）などを引数として、
-    # コールバック処理を行う。
+    形式が不正な場合は ValueError を返す。
+    """
+    if not uri.startswith("s3://"):
+        raise ValueError(f"コピー元の形式が不正です(s3://バケット/キー): {uri}")
+    if any(char in uri for char in WILDCARD_CHARS):
+        raise ValueError(f"コピー元にワイルドカードは指定できません: {uri}")
 
-    def __init__(self, business_info_list,
-                 retry_flag, retry_count, retry_wait_time
-                 ):
+    bucket, _, key = uri[len("s3://"):].partition("/")
+    if not bucket or not key:
+        raise ValueError(f"コピー元にバケットまたはキーがありません: {uri}")
+    if key.endswith("/"):
+        raise ValueError(f"コピー元にディレクトリは指定できません: {uri}")
 
-        # ApExecExReqHttpFormServiceクラスの初期化
-        # param business_info_list: 業務固有情報
-        # param retry_flag: リトライ要否
-        # param retry_count: リトライ回数
-        # param retry_wait_time: リトライ間隔
+    return bucket, key
 
-        self.business_info_list = business_info_list
-        self.retry_flag = retry_flag
-        self.retry_count = retry_count
-        self.retry_wait_time = retry_wait_time
 
-        key_info = ' "' + self.business_info_list + '" '
-        super().__init__(__name__, key_info)
-        self.sys_err_code = 1
-        self.result_err_code = -1
+def create_s3_client():
+    """
+    S3クライアントを作成する。
 
-    def get_url(self):
-        """
-        # URL作成
-        # HTTP通信で用いるURLを作成し、返却する。
-        # :return: URL
-        """
-        # 接続先URL取得
-        # 設定ファイル（FL_001/クライアント・サーバ共通設定ファイル．外部接続先URL）から引数．要求先をキーに接続先URLIDを検索し、IDに紐づく
-        # スキーム・ホスト名を取得する。
-        # 接続先Urlを取得するために必要なcategory_valueを定義する(現時点でUrlは単数、複数になった場合はサービスの引数を変えてcategory_valueを振り分ける)
-        category_value='SEIKYUSIENAPI'
-        scheme_host_port = confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.COMN ,category_value ,'schemeHostPort', 'externalURL')
-        # URL取得に失敗した場合
-        if scheme_host_port is None:
-            # 監視ログにエラーログを出力する。
-            # メッセージID：e.p.9009
-            # 埋め込み文字{0}：設定ファイル取得キー
-            self.output_log(self.location(), self.sys_err_code, 'e.p.9009', [category_value])
-            # 例外を発生させる。
-            raise LookupError
-        # 
-        # 取得したスキーム・ホスト名・ポート番号を元に接続先URL「external_url」を設定する。
-        external_url = scheme_host_port
-        return external_url
+    接続先は環境変数 S3_ENDPOINT_URL があればそちらを使う(試験環境: Floci)。
+    認証情報は環境変数、AWSプロファイル、IAMロールなどから取得する。
+    """
+    session = boto3.Session(
+        region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1"),
+    )
+    return session.client(
+        "s3",
+        endpoint_url=os.environ.get("S3_ENDPOINT_URL") or None,
+    )
 
-    def http_external_form(self, external_url, business_info_list):
-        """
-        HTTP通信実行
-        HTTP通信を実行し、結果を返却する。
-         :param external_url: 接続先URL
-         :param business_info_list: 業務固有情報
-         :return: HTTPステータスコード, curlコード, 業務AP終了ステータス, エラーメッセージ
-         """
-         
-        # ポストデータの作成
-        curl = pycurl.Curl()
-        byte_io = io.BytesIO()
-            
-        # ●コールバックで使用する情報は同じ
-        content_type = "Content-Type: application/x-www-form-urlencoded; charset=Windows-31J"
-        # 業務固有情報を半角スペース区切りでキー、値の形式に変換する。
-        # 請求区分、請求依頼番号、依頼内容区分、送信回、結果コード、エラーコードが来る想定
-        splited_business_info_list = business_info_list.split(' ')
-        business_info_dict = {splited_business_info_list[index] : splited_business_info_list[index + 1]
-                              for index in range(0, len(splited_business_info_list), 2)}
-        request_body = urlencode(business_info_dict)
-        
-        curl.setopt(pycurl.URL, external_url)
-        curl.setopt(pycurl.CUSTOMREQUEST, 'POST')
-        curl.setopt(pycurl.HTTP_VERSION, pycurl.CURL_HTTP_VERSION_1_1)
-        curl.setopt(pycurl.WRITEFUNCTION, byte_io.write)
-        
-        # ●環境変数API-KEY取得
-        api_key = os.getenv('API_KEY')
-        # 取得したAPIKEY情報をヘッダに設定
-        curl.setopt(pycurl.HTTPHEADER, [content_type , 'apikey:' + api_key])
-        curl.setopt(pycurl.POSTFIELDS, request_body)
 
-        # HTTPリクエスト開始
+def run(args: argparse.Namespace) -> int:
+    """
+    処理結果を返す。
+
+    0: 正常終了
+    1: 処理エラー(引数不正、S3にファイルなし、上書き不可)
+    -1: 例外(S3接続・権限、EFS書込、ダウンロード失敗、想定外)
+    """
+    try:
+        if not args.file or not args.file_path:
+            print("処理エラー: コピー元またはコピー先が空です", file=sys.stderr)
+            return 1
+
         try:
-            curl.perform()
-            curl_code = pycurl.E_OK
+            bucket, key = split_s3_uri(args.file)
+        except ValueError as exc:
+            print(f"処理エラー: {exc}", file=sys.stderr)
+            return 1
 
-            # HTTPステータスコード取得
-            http_status_code = curl.getinfo(pycurl.HTTP_CODE)
+        # コピー先がディレクトリの場合は、コピー元のファイル名でコピーする。
+        filename = PurePosixPath(key).name
+        destination_path = Path(args.file_path)
+        if destination_path.is_dir():
+            destination_path = destination_path / filename
+        destination_dir = destination_path.resolve().parent
 
-        except pycurl.error as e:
-            curl_code = e.args[0]
+        # コピー先フォルダが存在しない場合は例外とする(作成しない)。
+        if not destination_dir.is_dir():
+            print(
+                f"例外: コピー先ディレクトリが存在しません: {destination_dir}",
+                file=sys.stderr,
+            )
+            return -1
+        if not os.access(destination_dir, os.W_OK | os.X_OK):
+            print(
+                f"例外: コピー先ディレクトリに書込権限がありません: {destination_dir}",
+                file=sys.stderr,
+            )
+            return -1
 
-            # HTTP通信自体が実行できない場合はhttp_status_codeに「-」（半角ハイフン）を設定する。
-            http_status_code = '-'
+        if destination_path.exists():
+            if not args.over_write_flg:
+                print(
+                    f"処理エラー: コピー先にファイルが存在します: {destination_path}",
+                    file=sys.stderr,
+                )
+                return 1
+            if not os.access(destination_path, os.W_OK):
+                print(
+                    f"例外: 既存ファイルが上書きできません: {destination_path}",
+                    file=sys.stderr,
+                )
+                return -1
 
-        result = 0
-        err_msg = None
+        s3 = create_s3_client()
 
-        if (http_status_code == 200):
-            # レスポンスは半角文字のみで返却される
-            res = byte_io.getvalue().decode('cp932').strip()
-            result = int(res)
-
-        return http_status_code, curl_code, result, err_msg
-
-    def do_http_external_form(self):
-        # HTTP通信
-        # HTTP通信メソッドを用いて、リトライを含めたHTTP通信を実施する。
-        # :return 処理結果、処理結果（外部システム）
-
-        max_retry = 0
-
-        # URLを取得する。
+        # コピー元の存在確認。ファイルなし、バケットなしは処理エラー、
+        # 権限や接続の問題は例外(-1)とする。
         try:
-            external_url = self.get_url()
-        except LookupError:
-            # 異常終了する。
-            # 処理結果に'1'（システムエラー）を設定し返却する。
-            return self.sys_err_code
+            s3.head_object(Bucket=bucket, Key=key)
+        except ClientError as exc:
+            code = str(exc.response.get("Error", {}).get("Code", ""))
+            if code in ("404", "NoSuchKey", "NotFound", "NoSuchBucket"):
+                print(
+                    f"処理エラー: S3にコピー元が存在しません: s3://{bucket}/{key}",
+                    file=sys.stderr,
+                )
+                return 1
+            raise
 
-        # 引数．リトライ要否が要の場合
-        if self.retry_flag == "true":
-            # 引数．リトライ回数が設定されている場合
-            if self.retry_count != "0":
-                # 引数．リトライ回数をリトライ回数に設定する。
-                max_retry = int(self.retry_count)
-            # 上記以外の場合
+        # ダウンロード途中のファイルがコピー先に残らないよう、一時ファイルを使う。
+        fd, temporary_name = tempfile.mkstemp(
+            dir=destination_dir,
+            prefix=f".{filename}.",
+            suffix=".part",
+        )
+        os.close(fd)
+        temporary_path = Path(temporary_name)
+
+        try:
+            s3.download_file(bucket, key, str(temporary_path))
+
+            # 一時ファイルは権限0600で作成されるため、コピー先の権限を0664にする。
+            # (新規・上書きともに0664。上書きの場合も既存ファイルの権限は引き継がない)
+            os.chmod(temporary_path, 0o664)
+
+            if args.over_write_flg:
+                # 上書きあり: 一時ファイルをコピー先へ置き換える。
+                os.replace(temporary_path, destination_path)
             else:
-                # 設定ファイル（FL_002/サーバサイド設定ファイル．リトライ．リトライ回数）をリトライ回数に設定する。
-                max_retry = int(confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.COMN, 'retry', 'retryCount'))
+                # 上書きなし: コピー先が既に作られていた場合は上書きしない。
+                try:
+                    os.link(temporary_path, destination_path)
+                except FileExistsError:
+                    print(
+                        f"処理エラー: コピー先にファイルが存在します: "
+                        f"{destination_path}",
+                        file=sys.stderr,
+                    )
+                    return 1
+        finally:
+            temporary_path.unlink(missing_ok=True)
 
-            # 引数．リトライ間隔が設定されている場合
-            if self.retry_wait_time != "0":
-                # 引数．リトライ間隔をリトライ待機時間に設定する。
-                retry_wait_time = int(self.retry_wait_time)
-            # 上記以外の場合
-            else:
-                # 設定ファイル（FL_002/サーバサイド設定ファイル．リトライ．リトライ待機時間）を
-                # リトライ待機時間に設定する。
-                retry_wait_time = int(
-                    confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.COMN, 'retry', 'retryWaitTime'))
-        # 上記以外の場合
-        # 0をリトライ回数に設定する。（初期値が0なので処理は不要）
+        # 標準出力には処理結果のみを出力するため、メッセージは標準エラー出力に出力する。
+        print(f"保存しました: {destination_path}", file=sys.stderr)
+        return 0
 
-        # リトライカウンター初期化
-        retry_counter = 0
+    except Exception as exc:
+        print(f"例外: {exc}", file=sys.stderr)
+        return -1
+import argparse
+import sys
 
-        while True:
-            http_status_code, curl_code, result, err_msg = self.http_external_form(external_url,
-                                                                                   self.business_info_list)
-            # 通信異常判定
-            # HTTPステータスコードが200以外
-            if http_status_code == 200:
-                break
 
-            # リトライ判定
-            # 通信異常（pycurlエラーコードが'7'（ホスト接続失敗）、'28'（タイムアウト）、HTTPステータスコードが500または503）
-            # かつ（設定ファイル（FL_002/サーバサイド設定ファイル．リトライ．リトライ回数）以下の場合）
-            if ((curl_code == pycurl.E_COULDNT_CONNECT or curl_code == pycurl.E_OPERATION_TIMEDOUT
-                 or http_status_code == 500 or http_status_code == 503) and retry_counter < max_retry):
+class ReturnCodeArgumentParser(argparse.ArgumentParser):
+    """引数エラーを、処理結果1（処理エラー）、終了コード1で終了するパーサー。"""
 
-                # 監視ログにワーニングログを出力する。
-                # メッセージID：w.p.9001
-                # 埋め込み文字{0}：HTTPステータスコード
-                # 埋め込み文字{1}：URL
-                # 但し、HTTP通信自体が実行できない場合は{0}に「-」（半角ハイフン）を設定する。
-                self.output_log(self.location(), '', 'w.p.9001', [http_status_code, external_url])
-                # 設定したリトライ待機時間だけ処理を待つ。
-                time.sleep(retry_wait_time)
+    def error(self, message: str) -> None:
+        self.print_usage(sys.stderr)
+        print(f"{self.prog}: 引数エラー: {message}", file=sys.stderr)
+        # 標準出力に処理結果を出力する。
+        print(1)
+        self.exit(1)
 
-                # HTTP通信をリトライする。
-                # 無限ループに入っているため、breakしなければリトライし続ける。
-                # リトライカウンター加算
-                retry_counter += 1
 
-            # 上記以外の場合
-            else:
-                # 監視ログにエラーログを出力する。
-                # メッセージID：e.p.9010
-                # 埋め込み文字{0}：HTTPステータスコード
-                # 埋め込み文字{1}：err_msg
-                # 但し、HTTP通信自体が実行できない場合は{0}に「-」（半角ハイフン）を設定する。
-                self.output_log(self.location(), self.sys_err_code, 'e.p.9010',
-                                [f'{http_status_code}, {err_msg}', external_url])
+def parse_bool(value: str) -> bool:
+    """true/false文字列をboolに変換する。"""
+    normalized = value.strip().lower()
 
-                # 異常終了する。
-                # 処理結果に"1"（外部システムAPが異常終了またはシステムエラー）、
-                # 処理結果（外部システム）に"-1"（異常終了）を設定し返却する。
-                return self.sys_err_code, self.result_err_code
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
 
-        # 結果返却
-        # 業務AP終了ステータス戻り値判定
-        # 業務AP終了ステータスが”0”以外（外部システムAPが異常終了時のステータスコード、システムエラー）の場合
-        if result != 0:
-            # 異常終了する。
-            # 処理結果に"1"（外部システムAPが異常終了）、処理結果（外部システム）に業務AP終了ステータスを設定し返却する。
-            return self.sys_err_code, result
+    raise argparse.ArgumentTypeError(
+        "上書きオプションは true または false を指定してください"
+    )
 
-        # 上記以外の場合
-        # 正常終了する。
-        # 処理結果に"0"（正常終了）、処理結果（外部システム）に"0"（正常終了）を設定し返却する。
 
-        return 0, 0
+def parse_args(argv=None) -> argparse.Namespace:
+    parser = ReturnCodeArgumentParser(
+        description="S3のファイルをEFSにコピーします"
+    )
+
+    parser.add_argument("file", help="コピー元(s3://バケット/キー)")
+    parser.add_argument(
+        "file_path",
+        help="コピー先(EFSのファイルパス、またはディレクトリパス)",
+    )
+    parser.add_argument(
+        "over_write_flg",
+        nargs="?",
+        default="true",
+        type=parse_bool,
+        help="上書きする場合は true、しない場合は false(省略時は true)",
+    )
+
+    return parser.parse_args(argv)
+
+
+def main(argv=None) -> int:
+    """
+    標準出力に処理結果、終了コードに処理結果（システム）を設定する。
+
+    標準出力　：0（正常終了）、1（処理エラー）、-1（例外）
+    終了コード：0（正常終了）、1（処理エラー、例外）
+    """
+    try:
+        # 取り込み失敗（boto3未導入など）の場合も例外として扱うため、ここで取り込む。
+        from kikin.fw.infra.unyo import apCopyFileS3EfsService
+
+        args = parse_args(argv)
+        result = apCopyFileS3EfsService.run(args)
+    except Exception as exc:
+        # どの場合も、処理結果が返らない状態にしない。
+        print(f"例外: {exc}", file=sys.stderr)
+        result = -1
+
+    print(result)
+    return 0 if result == 0 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
