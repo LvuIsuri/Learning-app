@@ -1,232 +1,218 @@
-import argparse
-import os
-import sys
-import tempfile
-from pathlib import Path, PurePosixPath
+#!/usr/bin/python3 -B
+# -*- coding: utf-8 -*-
 
+
+"""
+ * 開発システム ： レセプト電算処理システム 等
+ * ファイル名   ： SqsUtil.py
+ * 著作権       ： Copyright (C) 2022, 社会保険診療報酬支払基金
+ * 会社名       ： NTT DATA Corporation
+ * 更新日       ： $Date: 2022年6月30日 10:00:00 $
+"""
+
+import os
 import boto3
+from botocore.config import Config
+from kikin.fw.infra.common import confUtils
 from botocore.exceptions import ClientError
 
-WILDCARD_CHARS = ("*", "?")
 
-
-def split_s3_uri(uri: str):
+class DynamoDBUtils:
     """
-    s3://バケット/キー をバケットとキーに分割する。
-
-    形式が不正な場合は ValueError を返す。
+    DynamoDBの操作処理を行う。
     """
-    if not uri.startswith("s3://"):
-        raise ValueError(f"コピー元の形式が不正です(s3://バケット/キー): {uri}")
-    if any(char in uri for char in WILDCARD_CHARS):
-        raise ValueError(f"コピー元にワイルドカードは指定できません: {uri}")
 
-    bucket, _, key = uri[len("s3://"):].partition("/")
-    if not bucket or not key:
-        raise ValueError(f"コピー元にバケットまたはキーがありません: {uri}")
-    if key.endswith("/"):
-        raise ValueError(f"コピー元にディレクトリは指定できません: {uri}")
+    GLOBAL_SECONDARY_INDEX01 = "queueMonitorGsi01"
 
-    return bucket, key
+    def __init__(self):
+        """
+        DynamoDBUtilsのクラスの初期化
+        """
+        # 設定ファイルからキュー監視テーブルのテーブル名を取得する
+        self.__table_name = confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.QUEUE,
+                                                              "queueInfo", "queueMonitorTableName")
 
+        tmp_endpoint = os.environ.get('DYNAMODB_DEBUG_ENDPOINT')
+        if tmp_endpoint:
+            self.endpoint = tmp_endpoint
+        else:
+            self.endpoint = "https://dynamodb.ap-northeast-1.amazonaws.com/"
+        self.region = "ap-northeast-1"
+        # AWS SDK(boto3)の設定(Config)にリトライ回数を5に設定する。
+        self.aws_config = Config(
+            retries={
+                'max_attempts': 5,
+            })
 
-def create_s3_client():
-    """
-    S3クライアントを作成する。
+    def get_client(self):
+        """
+        DynamoDBクライアントを生成する。
+        :return: DynamoDBクライアント
+        """
+        return boto3.resource('dynamodb', config=self.aws_config,
+                              region_name=self.region,
+                              endpoint_url=self.endpoint).Table(self.__table_name)
 
-    接続先は環境変数 S3_ENDPOINT_URL があればそちらを使う(試験環境: Floci)。
-    認証情報は環境変数、AWSプロファイル、IAMロールなどから取得する。
-    """
-    session = boto3.Session(
-        region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1"),
-    )
-    return session.client(
-        "s3",
-        endpoint_url=os.environ.get("S3_ENDPOINT_URL") or None,
-    )
-
-
-def run(args: argparse.Namespace) -> int:
-    """
-    処理結果を返す。
-
-    0: 正常終了
-    1: 処理エラー(引数不正、S3にファイルなし、上書き不可)
-    -1: 例外(S3接続・権限、EFS書込、ダウンロード失敗、想定外)
-    """
-    try:
-        if not args.file or not args.file_path:
-            print("処理エラー: コピー元またはコピー先が空です", file=sys.stderr)
-            return 1
-
+    @staticmethod
+    def put_item(dynamodb_client, item, condition=None):
+        """
+        DynamoDBに項目を登録する。
+        :param dynamodb_client:DynamoDBクライアント
+        :param item: 登録する項目
+        :param condition: 条件式（オプション）
+        :return: 処理結果 True;正常終了
+                          False:条件式に一致しないため登録不可
+        """
+        options = {
+            'Item': item,
+        }
+        if condition is not None:
+            options['ConditionExpression'] = condition
         try:
-            bucket, key = split_s3_uri(args.file)
-        except ValueError as exc:
-            print(f"処理エラー: {exc}", file=sys.stderr)
-            return 1
-
-        # コピー先がディレクトリの場合は、コピー元のファイル名でコピーする。
-        filename = PurePosixPath(key).name
-        destination_path = Path(args.file_path)
-        if destination_path.is_dir():
-            destination_path = destination_path / filename
-        destination_dir = destination_path.resolve().parent
-
-        # コピー先フォルダが存在しない場合は例外とする(作成しない)。
-        if not destination_dir.is_dir():
-            print(
-                f"例外: コピー先ディレクトリが存在しません: {destination_dir}",
-                file=sys.stderr,
-            )
-            return -1
-        if not os.access(destination_dir, os.W_OK | os.X_OK):
-            print(
-                f"例外: コピー先ディレクトリに書込権限がありません: {destination_dir}",
-                file=sys.stderr,
-            )
-            return -1
-
-        if destination_path.exists():
-            if not args.over_write_flg:
-                print(
-                    f"処理エラー: コピー先にファイルが存在します: {destination_path}",
-                    file=sys.stderr,
-                )
-                return 1
-            if not os.access(destination_path, os.W_OK):
-                print(
-                    f"例外: 既存ファイルが上書きできません: {destination_path}",
-                    file=sys.stderr,
-                )
-                return -1
-
-        s3 = create_s3_client()
-
-        # コピー元の存在確認。ファイルなし、バケットなしは処理エラー、
-        # 権限や接続の問題は例外(-1)とする。
-        try:
-            s3.head_object(Bucket=bucket, Key=key)
-        except ClientError as exc:
-            code = str(exc.response.get("Error", {}).get("Code", ""))
-            if code in ("404", "NoSuchKey", "NotFound", "NoSuchBucket"):
-                print(
-                    f"処理エラー: S3にコピー元が存在しません: s3://{bucket}/{key}",
-                    file=sys.stderr,
-                )
-                return 1
-            raise
-
-        # ダウンロード途中のファイルがコピー先に残らないよう、一時ファイルを使う。
-        fd, temporary_name = tempfile.mkstemp(
-            dir=destination_dir,
-            prefix=f".{filename}.",
-            suffix=".part",
-        )
-        os.close(fd)
-        temporary_path = Path(temporary_name)
-
-        try:
-            s3.download_file(bucket, key, str(temporary_path))
-
-            # 一時ファイルは権限0600で作成されるため、コピー先の権限を0664にする。
-            # (新規・上書きともに0664。上書きの場合も既存ファイルの権限は引き継がない)
-            os.chmod(temporary_path, 0o664)
-
-            if args.over_write_flg:
-                # 上書きあり: 一時ファイルをコピー先へ置き換える。
-                os.replace(temporary_path, destination_path)
+            dynamodb_client.put_item(**options)
+        except ClientError as error:
+            if error.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                return False
             else:
-                # 上書きなし: コピー先が既に作られていた場合は上書きしない。
-                try:
-                    os.link(temporary_path, destination_path)
-                except FileExistsError:
-                    print(
-                        f"処理エラー: コピー先にファイルが存在します: "
-                        f"{destination_path}",
-                        file=sys.stderr,
-                    )
-                    return 1
-        finally:
-            temporary_path.unlink(missing_ok=True)
-
-        # 標準出力には処理結果のみを出力するため、メッセージは標準エラー出力に出力する。
-        print(f"保存しました: {destination_path}", file=sys.stderr)
-        return 0
-
-    except Exception as exc:
-        print(f"例外: {exc}", file=sys.stderr)
-        return -1
-import argparse
-import sys
-
-
-class ReturnCodeArgumentParser(argparse.ArgumentParser):
-    """引数エラーを、処理結果1（処理エラー）、終了コード1で終了するパーサー。"""
-
-    def error(self, message: str) -> None:
-        self.print_usage(sys.stderr)
-        print(f"{self.prog}: 引数エラー: {message}", file=sys.stderr)
-        # 標準出力に処理結果を出力する。
-        print(1)
-        self.exit(1)
-
-
-def parse_bool(value: str) -> bool:
-    """true/false文字列をboolに変換する。"""
-    normalized = value.strip().lower()
-
-    if normalized == "true":
+                raise error
         return True
-    if normalized == "false":
-        return False
 
-    raise argparse.ArgumentTypeError(
-        "上書きオプションは true または false を指定してください"
-    )
+    @staticmethod
+    def get_item(dynamodb_client, key, projection, is_consistent_read):
+        """
+        DynamoDBから一意の項目を取得する。
+        :param dynamodb_client: DynamoDBクライアント
+        :param key: プライマリキー情報
+        :param projection: 取得カラム
+        :param is_consistent_read: 強い整合性の有無
+        :return:項目情報
+        """
+        options = {
+            'Key': key,
+            'ConsistentRead': is_consistent_read,
+            'ProjectionExpression': projection,
+        }
+        response = dynamodb_client.get_item(**options)
+        response_item = None
+        if 'Item' in response:
+            response_item = response['Item']
+        return response_item
+
+    @staticmethod
+    def delete_item(dynamodb_client, key, condition=None):
+        """
+        DynamoDBから項目を削除する。
+        :param dynamodb_client: DynamoDBクライアント
+        :param key: プライマリキー情報
+        :param condition: 条件式（オプション）
+        :return:処理結果 True;正常終了
+                         False:条件式に一致しないため削除不可
+        """
+        options = {
+            'Key': key,
+        }
+        if condition is not None:
+            options['ConditionExpression'] = condition
+        try:
+            dynamodb_client.delete_item(**options)
+        except ClientError as error:
+            if error.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                return False
+            else:
+                raise error
+        return True
+
+    @staticmethod
+    def query_item(dynamodb_client, key_condition, projection, index_name=None, filter_expression=None):
+        """
+        DynamoDBから指定したパーティションキー、ソートキーに一致する項目情報のリストを取得する。
+        :param dynamodb_client: DynamoDBクライアント
+        :param key_condition: キー情報
+        :param projection: 取得カラム
+        :param index_name: インデックス名（オプション）
+        :param filter_expression: フィルター式（オプション）
+        :return: 項目情報のリスト
+        """
+        response_list = list()
+
+        options = {
+            'KeyConditionExpression': key_condition,
+            'ProjectionExpression': projection,
+        }
+        if index_name is not None:
+            options['IndexName'] = index_name
+        if filter_expression is not None:
+            options['FilterExpression'] = filter_expression
+
+        while True:
+            response = dynamodb_client.query(**options)
+            response_list += response['Items']
+
+            if "LastEvaluatedKey" in response:
+                options['ExclusiveStartKey'] = response['LastEvaluatedKey']
+            else:
+                break
+
+        return response_list
+
+    @staticmethod
+    def query_num_item(dynamodb_client, key_condition, index_name=None, filter_expression=None):
+        """
+        DynamoDBから指定したパーティションキー、ソートキーに一致する項目情報の件数を取得する。
+        :param key_condition: キー情報
+        :param index_name: インデックス名（オプション）
+        :param filter_expression: フィルター式（オプション）
+        :param dynamodb_client: DynamoDBクライアント
+        :return: 項目情報の件数
+        """
+        cnt = 0
+        options = {
+            'KeyConditionExpression': key_condition,
+            'Select': 'COUNT',
+        }
+        if index_name is not None:
+            options['IndexName'] = index_name
+        if filter_expression is not None:
+            options['FilterExpression'] = filter_expression
+
+        while True:
+            response = dynamodb_client.query(**options)
+            cnt = cnt + response['Count']
+
+            if "LastEvaluatedKey" in response:
+                options['ExclusiveStartKey'] = response['LastEvaluatedKey']
+            else:
+                break
+
+        return cnt
 
 
-def parse_args(argv=None) -> argparse.Namespace:
-    parser = ReturnCodeArgumentParser(
-        description="S3のファイルをEFSにコピーします"
-    )
-
-    parser.add_argument("file", help="コピー元(s3://バケット/キー)")
-    parser.add_argument(
-        "file_path",
-        help="コピー先(EFSのファイルパス、またはディレクトリパス)",
-    )
-    parser.add_argument(
-        "over_write_flg",
-        nargs="?",
-        default="true",
-        type=parse_bool,
-        help="上書きする場合は true、しない場合は false(省略時は true)",
-    )
-
-    return parser.parse_args(argv)
-
-
-def main(argv=None) -> int:
+class QueueMessageInfo:
     """
-    標準出力に処理結果、終了コードに処理結果（システム）を設定する。
-
-    標準出力　：0（正常終了）、1（処理エラー）、-1（例外）
-    終了コード：0（正常終了）、1（処理エラー、例外）
+    キュー監視テーブルに登録するキュー情報モデルを定義する。
     """
-    try:
-        # 取り込み失敗（boto3未導入など）の場合も例外として扱うため、ここで取り込む。
-        from kikin.fw.infra.unyo import apCopyFileS3EfsService
+    MESSAGE_ID = "id"
+    QUEUE_KEY = "queue_key"
+    STATUS = "message_status"
+    BODY = "message_body"
+    HANDLE = "message_handle"
+    DATE = "message_date"
 
-        args = parse_args(argv)
-        result = apCopyFileS3EfsService.run(args)
-    except Exception as exc:
-        # どの場合も、処理結果が返らない状態にしない。
-        print(f"例外: {exc}", file=sys.stderr)
-        result = -1
+    def __init__(self,message_id="", queue_key="", message_status="", message_body="", message_handle="",
+                 message_date=""):
+        self.id = message_id
+        self.queue_key = queue_key
+        self.message_status = message_status
+        self.message_body = message_body
+        self.message_handle = message_handle
+        self.message_date = message_date
 
-    print(result)
-    return 0 if result == 0 else 1
 
+class StopMonitoringInfo:
+    """
+    キュー監視テーブルに登録するキュー監視停止情報モデルを定義する。
+    """
+    QUEUE_KEY = "id"
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+    def __init__(self, queue_key=""):
+        self.id = queue_key
