@@ -337,3 +337,16 @@ def run(argv) -> int:
     except Exception as exc:
         print(f"例外: {exc}", file=sys.stderr)
         return -1
+
+
+    # ネガティブキャッシュでファイルが見えていない可能性があるため、キャッシュのリフレッシュを行う。
+    # (親ディレクトリの一覧を取得する。親ディレクトリが存在しない場合は、ファイルなしとして扱う)
+    try:
+        with os.scandir(source_path.parent) as entries:
+            next(entries, None)
+    except FileNotFoundError:
+        pass
+    # リフレッシュでもNGの場合、ファイルが存在しないと判定し処理エラーとする。
+    if not source_path.exists():
+        print(f"処理エラー: コピー元ファイルが存在しません: {source_path}", file=sys.stderr)
+        return 1
