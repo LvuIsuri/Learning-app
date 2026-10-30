@@ -1,9 +1,339 @@
-// ネガティブキャッシュでファイルが見えていない可能性があるため、キャッシュのリフレッシュを行う
-try(Stream<Path> stream = Files.list(Paths.get(seiqpath))){
-stream.findFirst();
-// リフレッシュでもNGの場合ファイルが存在しないと判定し異常終了
-if (Files.notExists(path)) {
-throw new IllegalArgumentException("ファイルが存在しません:" + path.toString());
-}
-}
-}
+import sys
+
+
+def main(argv=None) -> int:
+    """
+    コマンドライン引数をサービスに渡し、処理結果を出力する。(条件の判定はサービスで行う)
+
+    標準出力　：0（正常終了）、1（処理エラー）、-1（例外）
+    終了コード：0（正常終了）、1（処理エラー、例外）
+    """
+    if argv is None:
+        argv = sys.argv[1:]
+
+    try:
+        # 取り込み失敗（boto3未導入など）の場合も例外として扱うため、ここで取り込む。
+        from kikin.fw.infra.unyo import apCopyFileS3EfsService
+
+        result = apCopyFileS3EfsService.run(argv)
+    except Exception as exc:
+        # どの場合も、処理結果が返らない状態にしない。
+        print(f"例外: {exc}", file=sys.stderr)
+        result = -1
+
+    print(result)
+    return 0 if result == 0 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+import os
+import sys
+import tempfile
+from pathlib import Path, PurePosixPath
+
+import boto3
+from botocore.exceptions import ClientError
+
+S3_PREFIX = "s3://"
+WILDCARD_CHARS = ("*", "?")
+# S3にファイルが存在しないことを表すエラーコード
+NOT_FOUND_CODES = ("404", "NoSuchKey", "NotFound", "NoSuchBucket")
+# EFSで許可するディレクトリを指定する環境変数。
+# (仮)未設定の場合は制限しない。正式な許可ディレクトリと取得元が決まり次第、置き換える。
+ALLOWED_DIR_ENV = "EFS_ALLOWED_DIR"
+
+
+def split_s3_uri(uri: str, label: str = "コピー元"):
+    """
+    s3://バケット/キー をバケットとキーに分割する。
+
+    形式が不正な場合は ValueError を返す。
+    label: エラーメッセージに使う名称(コピー元/コピー先)
+    """
+    if not uri.startswith(S3_PREFIX):
+        raise ValueError(f"{label}の形式が不正です(s3://バケット/キー): {uri}")
+    if any(char in uri for char in WILDCARD_CHARS):
+        raise ValueError(f"{label}にワイルドカードは指定できません: {uri}")
+
+    bucket, _, key = uri[len(S3_PREFIX):].partition("/")
+    if not bucket or not key:
+        raise ValueError(f"{label}にバケットまたはキーがありません: {uri}")
+    if key.endswith("/"):
+        raise ValueError(f"{label}にディレクトリは指定できません: {uri}")
+
+    return bucket, key
+
+
+def parse_over_write_flg(value: str) -> bool:
+    """
+    true/false文字列を真偽値に変換する。
+
+    true/false以外(空文字を含む)の場合は ValueError を返す。
+    """
+    normalized = value.strip().lower()
+
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+
+    raise ValueError("上書きオプションは true または false を指定してください")
+
+
+def is_allowed_path(path: Path) -> bool:
+    """
+    ディレクトリトラバーサル対策。
+    パスを正規化(../ やシンボリックリンクを解決)したうえで、許可ディレクトリ配下か判定する。
+    """
+    allowed_dir = os.environ.get(ALLOWED_DIR_ENV)
+    if not allowed_dir:
+        return True
+
+    allowed = Path(allowed_dir).resolve()
+    target = path.resolve()
+    return target == allowed or allowed in target.parents
+
+
+def create_s3_client():
+    """
+    S3クライアントを作成する。
+
+    接続先は環境変数 S3_ENDPOINT_URL があればそちらを使う(試験環境: Floci)。
+    認証情報は環境変数、AWSプロファイル、IAMロールなどから取得する。
+    """
+    session = boto3.Session(
+        region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1"),
+    )
+    return session.client(
+        "s3",
+        endpoint_url=os.environ.get("S3_ENDPOINT_URL") or None,
+    )
+
+
+def s3_exists(s3, bucket: str, key: str) -> bool:
+    """
+    S3にファイルが存在するか確認する。
+    ファイルなし、バケットなしは False、権限や接続の問題は例外とする。
+    """
+    try:
+        s3.head_object(Bucket=bucket, Key=key)
+    except ClientError as exc:
+        code = str(exc.response.get("Error", {}).get("Code", ""))
+        if code in NOT_FOUND_CODES:
+            return False
+        raise
+    return True
+
+
+def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
+    """S3のファイルをEFSにコピーする。処理結果(0、1、-1)を返す。"""
+    try:
+        bucket, key = split_s3_uri(file, "コピー元")
+    except ValueError as exc:
+        print(f"処理エラー: {exc}", file=sys.stderr)
+        return 1
+
+    # コピー先がディレクトリの場合は、コピー元のファイル名でコピーする。
+    filename = PurePosixPath(key).name
+    if filename in (".", ".."):
+        print(f"処理エラー: コピー元のファイル名が不正です: {filename}", file=sys.stderr)
+        return 1
+    destination_path = Path(file_path)
+    if destination_path.is_dir():
+        destination_path = destination_path / filename
+
+    # ディレクトリトラバーサル対策:コピー先(ディレクトリ+ファイル名)を確認する。
+    if not is_allowed_path(destination_path):
+        print(
+            f"処理エラー: コピー先が許可されたディレクトリ外です: {destination_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    destination_dir = destination_path.resolve().parent
+
+    # コピー先フォルダが存在しない場合は例外とする(作成しない)。
+    if not destination_dir.is_dir():
+        print(
+            f"例外: コピー先ディレクトリが存在しません: {destination_dir}",
+            file=sys.stderr,
+        )
+        return -1
+    if not os.access(destination_dir, os.W_OK | os.X_OK):
+        print(
+            f"例外: コピー先ディレクトリに書込権限がありません: {destination_dir}",
+            file=sys.stderr,
+        )
+        return -1
+
+    if destination_path.exists():
+        if not over_write:
+            print(
+                f"処理エラー: コピー先にファイルが存在します: {destination_path}",
+                file=sys.stderr,
+            )
+            return 1
+        if not os.access(destination_path, os.W_OK):
+            print(
+                f"例外: 既存ファイルが上書きできません: {destination_path}",
+                file=sys.stderr,
+            )
+            return -1
+
+    s3 = create_s3_client()
+
+    # コピー元の存在確認。ファイルなし、バケットなしは処理エラー、
+    # 権限や接続の問題は例外(-1)とする。
+    if not s3_exists(s3, bucket, key):
+        print(
+            f"処理エラー: S3にコピー元が存在しません: s3://{bucket}/{key}",
+            file=sys.stderr,
+        )
+        return 1
+
+    # ダウンロード途中のファイルがコピー先に残らないよう、一時ファイルを使う。
+    fd, temporary_name = tempfile.mkstemp(
+        dir=destination_dir,
+        prefix=f".{filename}.",
+        suffix=".part",
+    )
+    os.close(fd)
+    temporary_path = Path(temporary_name)
+
+    try:
+        s3.download_file(bucket, key, str(temporary_path))
+
+        # 一時ファイルは権限0600で作成されるため、コピー先の権限を0664にする。
+        # (新規・上書きともに0664。上書きの場合も既存ファイルの権限は引き継がない)
+        os.chmod(temporary_path, 0o664)
+
+        if over_write:
+            # 上書きあり: 一時ファイルをコピー先へ置き換える。
+            os.replace(temporary_path, destination_path)
+        else:
+            # 上書きなし: コピー先が既に作られていた場合は上書きしない。
+            try:
+                os.link(temporary_path, destination_path)
+            except FileExistsError:
+                print(
+                    f"処理エラー: コピー先にファイルが存在します: "
+                    f"{destination_path}",
+                    file=sys.stderr,
+                )
+                return 1
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+    # 標準出力には処理結果のみを出力するため、メッセージは標準エラー出力に出力する。
+    print(f"保存しました: {destination_path}", file=sys.stderr)
+    return 0
+
+
+def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
+    """EFSのファイルをS3にコピーする。処理結果(0、1、-1)を返す。"""
+    # コピー元(EFS)の確認。ファイルを指定する必要がある。
+    if any(char in file for char in WILDCARD_CHARS):
+        print(
+            f"処理エラー: コピー元にワイルドカードは指定できません: {file}",
+            file=sys.stderr,
+        )
+        return 1
+
+    source_path = Path(file)
+
+    # ディレクトリトラバーサル対策:コピー元を確認する。
+    if not is_allowed_path(source_path):
+        print(
+            f"処理エラー: コピー元が許可されたディレクトリ外です: {source_path}",
+            file=sys.stderr,
+        )
+        return 1
+    if not source_path.exists():
+        print(f"処理エラー: コピー元ファイルが存在しません: {source_path}", file=sys.stderr)
+        return 1
+    if not source_path.is_file():
+        print(
+            f"処理エラー: コピー元にファイルを指定してください: {source_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        bucket, key = split_s3_uri(file_path, "コピー先")
+    except ValueError as exc:
+        print(f"処理エラー: {exc}", file=sys.stderr)
+        return 1
+
+    s3 = create_s3_client()
+
+    # 上書きしない場合は、コピー先にファイルが存在すると処理エラーとする。
+    if not over_write and s3_exists(s3, bucket, key):
+        print(
+            f"処理エラー: コピー先にファイルが存在します: s3://{bucket}/{key}",
+            file=sys.stderr,
+        )
+        return 1
+
+    # アップロード。失敗した場合(バケットなし、権限、接続など)は例外となり、-1とする。
+    s3.upload_file(str(source_path), bucket, key)
+
+    print(f"アップロードしました: s3://{bucket}/{key}", file=sys.stderr)
+    return 0
+
+
+def run(argv) -> int:
+    """
+    引数のチェックからコピーまでを行い、処理結果を返す。
+    コピー元とコピー先の指定から、コピー方向を判定する。
+    (S3→EFS、EFS→S3。両方S3、または両方EFSは処理エラー)
+
+    argv: コマンドライン引数(スクリプト名を除く)
+          [コピー元, コピー先, 上書きオプション(省略可。省略時はtrue)]
+
+    0: 正常終了
+    1: 処理エラー(引数不正、ファイルなし、上書き不可、許可範囲外)
+    -1: 例外(S3接続・権限、EFS書込、ダウンロード・アップロード失敗、想定外)
+    """
+    try:
+        # 引数の数を確認する。
+        if len(argv) < 2 or len(argv) > 3:
+            print(
+                "処理エラー: 引数の数が不正です(コピー元 コピー先 [上書きオプション])",
+                file=sys.stderr,
+            )
+            return 1
+
+        file = argv[0]
+        file_path = argv[1]
+        # 上書きオプションが省略された場合は、true(上書きする)とする。
+        over_write_flg = argv[2] if len(argv) > 2 else "true"
+
+        if not file or not file_path:
+            print("処理エラー: コピー元またはコピー先が空です", file=sys.stderr)
+            return 1
+
+        try:
+            over_write = parse_over_write_flg(over_write_flg)
+        except ValueError as exc:
+            print(f"処理エラー: {exc}", file=sys.stderr)
+            return 1
+
+        # コピー方向を判定する。
+        source_is_s3 = file.startswith(S3_PREFIX)
+        destination_is_s3 = file_path.startswith(S3_PREFIX)
+
+        if source_is_s3 == destination_is_s3:
+            print(
+                "処理エラー: コピー元とコピー先は、一方をS3、もう一方をEFSで指定してください",
+                file=sys.stderr,
+            )
+            return 1
+
+        if source_is_s3:
+            return copy_s3_to_efs(file, file_path, over_write)
+        return copy_efs_to_s3(file, file_path, over_write)
+
+    except Exception as exc:
+        print(f"例外: {exc}", file=sys.stderr)
+        return -1
