@@ -43,25 +43,33 @@ from botocore.exceptions import ClientError
 
 S3_PREFIX = "s3://"
 WILDCARD_CHARS = ("*", "?")
-# S3にファイルが存在しないことを表すエラーコード
+# HeadObjectで「オブジェクトまたはバケットなし」と判定するエラーコード。
 NOT_FOUND_CODES = ("404", "NoSuchKey", "NotFound", "NoSuchBucket")
-# EFSで許可するディレクトリを指定する環境変数。
-# (仮)未設定の場合は制限しない。正式な許可ディレクトリと取得元が決まり次第、置き換える。
+# EFSでアクセスを許可するルートディレクトリを指定する環境変数。
+# 未設定時はディレクトリ制限を行わない。
 ALLOWED_DIR_ENV = "EFS_ALLOWED_DIR"
 
 
 def split_s3_uri(uri: str, label: str = "コピー元"):
-    """
-    s3://バケット/キー をバケットとキーに分割する。
+    """S3 URIを検証し、バケット名とオブジェクトキーに分割する。
 
-    形式が不正な場合は ValueError を返す。
-    label: エラーメッセージに使う名称(コピー元/コピー先)
+    Args:
+        uri: s3://バケット/キー 形式のURI。
+        label: エラーメッセージに表示する「コピー元」または「コピー先」。
+
+    Returns:
+        (バケット名, オブジェクトキー)。
+
+    Raises:
+        ValueError: URI形式、ワイルドカード、バケット名またはキーが不正な場合。
     """
+    # S3 URI以外やワイルドカード指定は、単一ファイルの指定ではないため拒否する。
     if not uri.startswith(S3_PREFIX):
         raise ValueError(f"{label}の形式が不正です(s3://バケット/キー): {uri}")
     if any(char in uri for char in WILDCARD_CHARS):
         raise ValueError(f"{label}にワイルドカードは指定できません: {uri}")
 
+    # 最初の「/」より前をバケット名、後ろをオブジェクトキーとして扱う。
     bucket, _, key = uri[len(S3_PREFIX):].partition("/")
     if not bucket or not key:
         raise ValueError(f"{label}にバケットまたはキーがありません: {uri}")
@@ -72,11 +80,12 @@ def split_s3_uri(uri: str, label: str = "コピー元"):
 
 
 def parse_over_write_flg(value: str) -> bool:
-    """
-    true/false文字列を真偽値に変換する。
+    """コマンドラインの上書き指定をbool値に変換する。
 
-    true/false以外(空文字を含む)の場合は ValueError を返す。
+    Raises:
+        ValueError: true/false以外（空文字を含む）が指定された場合。
     """
+    # 大文字・小文字と前後の空白を許容してから値を判定する。
     normalized = value.strip().lower()
 
     if normalized == "true":
@@ -88,25 +97,23 @@ def parse_over_write_flg(value: str) -> bool:
 
 
 def is_allowed_path(path: Path) -> bool:
-    """
-    ディレクトリトラバーサル対策。
-    パスを正規化(../ やシンボリックリンクを解決)したうえで、許可ディレクトリ配下か判定する。
-    """
+    """EFS_ALLOWED_DIRが設定されている場合、パスが許可ルート配下か判定する。"""
     allowed_dir = os.environ.get(ALLOWED_DIR_ENV)
     if not allowed_dir:
+        # 許可ルートが未設定の場合は、パス制限を適用しない。
         return True
 
+    # 相対パス、親参照、シンボリックリンクを解決してから許可ルート配下か判定する。
     allowed = Path(allowed_dir).resolve()
     target = path.resolve()
     return target == allowed or allowed in target.parents
 
 
 def create_s3_client():
-    """
-    S3クライアントを作成する。
+    """環境変数の接続先・リージョンを使ってS3クライアントを作成する。
 
-    接続先は環境変数 S3_ENDPOINT_URL があればそちらを使う(試験環境: Floci)。
-    認証情報は環境変数、AWSプロファイル、IAMロールなどから取得する。
+    S3_ENDPOINT_URLが設定されていればFlociなどの指定先を使い、
+    未設定の場合はboto3の標準AWS認証情報チェーンを利用する。
     """
     session = boto3.Session(
         region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1"),
@@ -118,9 +125,10 @@ def create_s3_client():
 
 
 def s3_exists(s3, bucket: str, key: str) -> bool:
-    """
-    S3にファイルが存在するか確認する。
-    ファイルなし、バケットなしは False、権限や接続の問題は例外とする。
+    """HeadObjectでS3オブジェクトの存在を確認する。
+
+    オブジェクトまたはバケットがない場合はFalseを返す。
+    AccessDeniedや接続エラーなど、存在確認以外の失敗は呼び出し元へ送出する。
     """
     try:
         s3.head_object(Bucket=bucket, Key=key)
@@ -133,14 +141,21 @@ def s3_exists(s3, bucket: str, key: str) -> bool:
 
 
 def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
-    """S3のファイルをEFSにコピーする。処理結果(0、1、-1)を返す。"""
+    """S3からEFSへ単一ファイルをコピーする。
+
+    戻り値:
+        0: コピー成功。
+        1: URI不正、コピー元なし、上書き不可などの入力・処理エラー。
+        -1: EFS書込、S3接続、権限、ダウンロードなどの例外。
+    """
     try:
+        # コピー元URIを検証し、S3 APIで使うバケット名とキーを取得する。
         bucket, key = split_s3_uri(file, "コピー元")
     except ValueError :
 
         return 1
 
-    # コピー先がディレクトリの場合は、コピー元のファイル名でコピーする。
+    # ディレクトリ指定ならS3キーの末尾をファイル名としてコピー先に追加する。
     filename = PurePosixPath(key).name
     if filename in (".", ".."):
         
@@ -149,13 +164,13 @@ def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
     if destination_path.is_dir():
         destination_path = destination_path / filename
 
-    # ディレクトリトラバーサル対策:コピー先(ディレクトリ+ファイル名)を確認する。
+    # 許可ルート外への出力を防ぎ、コピー先の親ディレクトリを確定する。
     if not is_allowed_path(destination_path):
         return 1
 
     destination_dir = destination_path.resolve().parent
 
-    # コピー先フォルダが存在しない場合は例外とする(作成しない)。
+    # 出力先ディレクトリは自動作成せず、存在と書込権限を事前確認する。
     if not destination_dir.is_dir():
         return -1
     
@@ -170,12 +185,11 @@ def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
 
     s3 = create_s3_client()
 
-    # コピー元の存在確認。ファイルなし、バケットなしは処理エラー、
-    # 権限や接続の問題は例外(-1)とする。
+    # ダウンロード前にS3上のコピー元を確認する。未存在は処理エラーとして返す。
     if not s3_exists(s3, bucket, key):
         return 1
 
-    # ダウンロード途中のファイルがコピー先に残らないよう、一時ファイルを使う。
+    # 同じディレクトリに一時ファイルを作り、不完全なコピー先が残るのを防ぐ。
     fd, temporary_name = tempfile.mkstemp(
         dir=destination_dir,
         prefix=f".{filename}.",
@@ -185,6 +199,7 @@ def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
     temporary_path = Path(temporary_name)
 
     try:
+        # まず一時ファイルへダウンロードし、完了後にコピー先へ反映する。
         s3.download_file(bucket, key, str(temporary_path))
 
         # 一時ファイルは権限0600で作成されるため、コピー先の権限を0664にする。
@@ -192,32 +207,39 @@ def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
         os.chmod(temporary_path, 0o664)
 
         if over_write:
-            # 上書きあり: 一時ファイルをコピー先へ置き換える。
+            # 上書きあり: 完成した一時ファイルで既存ファイルを置き換える。
             os.replace(temporary_path, destination_path)
         else:
-            # 上書きなし: コピー先が既に作られていた場合は上書きしない。
+            # 上書きなし: 競合で先にファイルが作られた場合も上書きしない。
             try:
                 os.link(temporary_path, destination_path)
             except FileExistsError:
                 return 1
     finally:
+        # 成功・失敗のどちらでも一時ファイルを残さない。
         temporary_path.unlink(missing_ok=True)
 
     return 0
 
 
 def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
-    """EFSのファイルをS3にコピーする。処理結果(0、1、-1)を返す。"""
-    # コピー元(EFS)の確認。ファイルを指定する必要がある。
+    """EFSからS3へ単一ファイルをコピーする。
+
+    戻り値:
+        0: アップロード成功。
+        1: コピー元なし、URI不正、上書き不可、コピー先バケットなしなど。
+        -1: S3接続、権限、その他アップロード時の例外。
+    """
+    # EFS側も単一ファイルのみを受け付け、ワイルドカード指定は拒否する。
     if any(char in file for char in WILDCARD_CHARS):
         return 1
 
     source_path = Path(file)
 
-    # ディレクトリトラバーサル対策:コピー元を確認する。
+    # コピー元が許可ルート内か確認する。
     if not is_allowed_path(source_path):
         return 1
-    # ネガティブキャッシュでファイルが見えていない可能性があるため、キャッシュのリフレッシュを行う。
+    # EFSのネガティブキャッシュを避けるため、親ディレクトリを走査してから存在を確認する。
     
     try:
         with os.scandir(source_path.parent) as entries:
@@ -225,7 +247,7 @@ def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
     except FileNotFoundError:
         pass
 
-    # リフレッシュでもNGの場合、ファイルが存在しないと判定し処理エラーとする。
+    # コピー元が存在し、通常ファイルであることを確認する。
     if not source_path.exists():
         return 1
     
@@ -233,17 +255,18 @@ def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
         return 1
 
     try:
+        # コピー先をS3 URIとして検証する。
         bucket, key = split_s3_uri(file_path, "コピー先")
     except ValueError:
         return 1
 
     s3 = create_s3_client()
 
-    # 上書きしない場合は、コピー先にファイルが存在すると処理エラーとする。
+    # 上書きfalseの場合だけ、S3上に同じキーがないことを事前確認する。
     if not over_write and s3_exists(s3, bucket, key): 
         return 1
 
-    # バケットが存在しない場合は入力エラー、それ以外のアップロード失敗は例外とする。
+    # NoSuchBucketだけを処理エラーとして扱い、それ以外の転送失敗は呼び出し元へ送出する。
     try:
         s3.upload_file(str(source_path), bucket, key)
     except S3UploadFailedError as exc:
@@ -257,48 +280,52 @@ def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
 
 
 def run(argv) -> int:
-    """
-    引数のチェックからコピーまでを行い、処理結果を返す。
-    コピー元とコピー先の指定から、コピー方向を判定する。
-    (S3→EFS、EFS→S3。両方S3、または両方EFSは処理エラー)
+    """引数を検証し、指定された方向でコピー処理を実行する。
 
-    argv: コマンドライン引数(スクリプト名を除く)
-          [コピー元, コピー先, 上書きオプション(省略可。省略時はtrue)]
+    Args:
+        argv: スクリプト名を除く引数。
+            [コピー元, コピー先, 上書きオプション（省略可、既定値true）]
 
-    0: 正常終了
-    1: 処理エラー(引数不正、ファイルなし、上書き不可、許可範囲外)
-    -1: 例外(S3接続・権限、EFS書込、ダウンロード・アップロード失敗、想定外)
+    Returns:
+        0: コピー成功。
+        1: 引数、ファイル、URI、上書きなどの処理エラー。
+        -1: S3接続・権限、EFS書込、転送中などの例外。
     """
     try:
-        # 引数の数を確認する。
+        # コピー元・コピー先と、任意の上書きオプションだけを受け付ける。
         if len(argv) < 2 or len(argv) > 3:
             return 1
 
         file = argv[0]
         file_path = argv[1]
-        # 上書きオプションが省略された場合は、true(上書きする)とする。
+        # 上書きオプションの省略時はtrue（上書きする）として扱う。
         over_write_flg = argv[2] if len(argv) > 2 else "true"
 
+        # 空のコピー元またはコピー先は処理できない。
         if not file or not file_path:
             return 1
 
+        # 上書き指定をboolに変換し、不正値は引数エラーとして返す。
         try:
             over_write = parse_over_write_flg(over_write_flg)
         except ValueError:   
             return 1
 
-        # コピー方向を判定する。
+        # S3 URIの有無で方向を決める。一方だけがS3である必要がある。
         source_is_s3 = file.startswith(S3_PREFIX)
         destination_is_s3 = file_path.startswith(S3_PREFIX)
 
         if source_is_s3 == destination_is_s3:
             return 1
 
+        # 方向ごとの処理に委譲する。
         if source_is_s3:
             return copy_s3_to_efs(file, file_path, over_write)
         return copy_efs_to_s3(file, file_path, over_write)
 
     except Exception:
+        # 呼び出し元には処理結果コードで例外を通知する。
+        return -1
 
 def test10(floci_s3):
     """test10：コピー元のS3バケットが存在しない場合の異常系。
