@@ -327,6 +327,252 @@ def run(argv) -> int:
         # 呼び出し元には処理結果コードで例外を通知する。
         return -1
 
+import uuid
+from pathlib import Path
+
+import boto3
+import pytest
+from botocore.config import Config
+from botocore.exceptions import ClientError
+
+from kikin.fw.infra.external import fileCopyS3EfsService as service
+
+
+S3_TEST_PREFIX = "s3://test-bucket/test/"
+S3_ENDPOINT_URL = "http://localhost:4566"
+EFS_OUTPUT_DIR = Path.home() / "efs_test" / "out"
+TEST_CONTENT = b"pytest Floci S3-EFS integration test\n"
+ORIGINAL_CONTENT = b"original content\n"
+
+
+@pytest.fixture
+def floci_s3(monkeypatch):
+    """Floci接続設定を準備し、テスト用S3クライアントを返す。"""
+    # AWS接続先をローカルFlociに固定し、実AWSへの接続を防ぐ。
+    monkeypatch.setenv("S3_ENDPOINT_URL", S3_ENDPOINT_URL)
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "ap-northeast-1")
+    monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
+    monkeypatch.delenv("EFS_ALLOWED_DIR", raising=False)
+
+    # テスト用バケットの存在を確認し、EFS出力ディレクトリを準備する。
+    client = boto3.client(
+        "s3",
+        endpoint_url=S3_ENDPOINT_URL,
+        region_name="ap-northeast-1",
+    )
+    client.head_bucket(Bucket="test-bucket")
+    EFS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    return client
+
+
+def new_test_object_key(extension: str = ".txt") -> str:
+    """テスト間で重複しないS3オブジェクトキーを作成する。"""
+    return f"test/pytest-{uuid.uuid4().hex}{extension}"
+
+
+def s3_uri(key: str) -> str:
+    """S3オブジェクトキーをテスト用S3 URIに変換する。"""
+    return f"{S3_TEST_PREFIX}{Path(key).name}"
+
+
+def read_s3_object(client, key: str) -> bytes:
+    """S3オブジェクトの本文を読み取り、レスポンスストリームを閉じる。"""
+    response = client.get_object(Bucket="test-bucket", Key=key)
+    try:
+        return response["Body"].read()
+    finally:
+        response["Body"].close()
+
+
+def assert_s3_object_missing(client, key: str) -> None:
+    """S3オブジェクトが存在せず、Not Found系エラーになることを確認する。"""
+    with pytest.raises(ClientError) as exc_info:
+        client.head_object(Bucket="test-bucket", Key=key)
+    assert exc_info.value.response["Error"]["Code"] in {
+        "404",
+        "NoSuchKey",
+        "NotFound",
+    }
+
+
+def make_client_error(code: str, operation: str = "HeadObject") -> ClientError:
+    """AccessDeniedなどのS3エラーをテスト用に作成する。"""
+    return ClientError(
+        {"Error": {"Code": code, "Message": "test error"}},
+        operation,
+    )
+
+
+def make_source_file(content: bytes = TEST_CONTENT) -> Path:
+    """EFS→S3テスト用の一意な入力ファイルを作成する。"""
+    source = EFS_OUTPUT_DIR / f"pytest-source-{uuid.uuid4().hex}.txt"
+    source.write_bytes(content)
+    return source
+
+
+def test1(floci_s3):
+    """test1：引数なしの入力チェック。
+
+    ・引数を空のリストでrunに渡す。
+    ・入力エラーとして戻り値が1になることを確認する。
+    """
+    # 引数なしで実行し、引数不足の戻り値を確認する。
+    assert service.run([]) == 1
+
+
+def test2(floci_s3):
+    """test2：コピー元が空文字の場合の入力チェック。
+
+    ・コピー先パスを指定し、コピー元を空文字にする。
+    ・入力エラーとして戻り値が1になることを確認する。
+    """
+    # コピー元が空文字の引数を指定して実行する。
+    assert service.run(["", str(EFS_OUTPUT_DIR / "new.csv")]) == 1
+
+
+def test3(floci_s3):
+    """test3：コピー先パスを省略した場合の入力チェック。
+
+    ・Floci上にコピー元オブジェクトを用意する。
+    ・コピー先を省略してrunを実行する。
+    ・戻り値が1になることを確認する。
+    """
+    # コピー元オブジェクトをFlociに作成する。
+    key = new_test_object_key()
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    try:
+        # コピー元だけを指定し、コピー先引数の不足を確認する。
+        assert service.run([s3_uri(key)]) == 1
+    finally:
+        # テスト用オブジェクトをFlociから削除する。
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test4(floci_s3):
+    """test4：コピー先パスが空文字の場合の入力チェック。
+
+    ・Floci上にコピー元オブジェクトを用意する。
+    ・コピー先に空文字を指定する。
+    ・戻り値が1になることを確認する。
+    """
+    # コピー元オブジェクトをFlociに作成する。
+    key = new_test_object_key()
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    try:
+        # コピー先を空文字にして実行する。
+        assert service.run([s3_uri(key), ""]) == 1
+    finally:
+        # テスト用オブジェクトをFlociから削除する。
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test5(floci_s3):
+    """test5：上書きオプションが空文字の場合の入力チェック。
+
+    ・Floci上にコピー元オブジェクトを用意する。
+    ・上書きオプションを空文字にしてrunを実行する。
+    ・戻り値が1で、コピー先ファイルが作成されないことを確認する。
+    """
+    # コピー元と一意なEFSコピー先を準備する。
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-empty-flag-{uuid.uuid4().hex}.csv"
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    try:
+        # 空の上書きオプションを指定して実行する。
+        result = service.run([s3_uri(key), str(destination), ""])
+        # 入力エラーの戻り値とコピー先ファイルの不存在を確認する。
+        assert result == 1
+        assert not destination.exists()
+    finally:
+        # Floci上のコピー元オブジェクトを削除する。
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test6(floci_s3):
+    """test6：S3コピー元にワイルドカードを指定した場合の異常系。
+
+    ・Floci上にCSVファイルを用意する。
+    ・コピー元にワイルドカードを指定してrunを実行する。
+    ・戻り値が1で、コピー先ファイルが作成されないことを確認する。
+    """
+    # ワイルドカードに一致するCSVオブジェクトをFlociに作成する。
+    key = new_test_object_key(".csv")
+    destination = EFS_OUTPUT_DIR / f"pytest-wildcard-{uuid.uuid4().hex}.csv"
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    try:
+        # S3コピー元にワイルドカードを指定する。
+        result = service.run([f"{S3_TEST_PREFIX}*.csv", str(destination)])
+        # 異常終了し、コピー先ファイルが作成されていないことを確認する。
+        assert result == 1
+        assert not destination.exists()
+    finally:
+        # EFSとFlociのテストデータを削除する。
+        destination.unlink(missing_ok=True)
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test7(floci_s3):
+    """test7：S3コピー元にディレクトリを指定した場合の異常系。
+
+    ・Flociのtest/配下にファイルを用意する。
+    ・コピー元に末尾がスラッシュのS3 URIを指定する。
+    ・戻り値が1で、コピー先ファイルが作成されないことを確認する。
+    """
+    # ディレクトリ指定時にも配下にファイルが存在する状態を作る。
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-directory-{uuid.uuid4().hex}.csv"
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    try:
+        # ファイルキーではなくディレクトリ形式のURIを指定する。
+        result = service.run([S3_TEST_PREFIX, str(destination)])
+        # 入力エラーの戻り値とコピー先の不存在を確認する。
+        assert result == 1
+        assert not destination.exists()
+    finally:
+        # Floci上のテストオブジェクトを削除する。
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test8(floci_s3):
+    """test8：上書きオプションにtrue/false以外を指定した場合の異常系。
+
+    ・Floci上にコピー元オブジェクトを用意する。
+    ・上書きオプションにabcを指定する。
+    ・戻り値が1で、コピー先ファイルが作成されないことを確認する。
+    """
+    # コピー元と一意なコピー先を準備する。
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-invalid-flag-{uuid.uuid4().hex}.csv"
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    try:
+        # 不正な上書きオプションを指定して実行する。
+        result = service.run([s3_uri(key), str(destination), "abc"])
+        # 入力エラーの戻り値とコピー先の不存在を確認する。
+        assert result == 1
+        assert not destination.exists()
+    finally:
+        # Floci上のコピー元オブジェクトを削除する。
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test9(floci_s3):
+    """test9：コピー元ファイルがS3に存在しない場合の異常系。
+
+    ・Flociに登録していないS3キーをコピー元に指定する。
+    ・戻り値が1で、コピー先ファイルが作成されないことを確認する。
+    """
+    # 未登録のS3キーとEFSコピー先を準備する。
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / Path(key).name
+    # 存在しないオブジェクトのコピーを実行する。
+    result = service.run([s3_uri(key), str(destination), "false"])
+    # オブジェクトなしの戻り値とコピー先の不存在を確認する。
+    assert result == 1
+    assert not destination.exists()
+
+
 def test10(floci_s3):
     """test10：コピー元のS3バケットが存在しない場合の異常系。
 
@@ -951,5 +1197,6 @@ def test35(floci_s3):
         # EFSファイルとFloci上のS3オブジェクトを削除する。
         source.unlink(missing_ok=True)
         floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
 
         return -1
