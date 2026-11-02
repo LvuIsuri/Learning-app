@@ -471,4 +471,68 @@
 		assertEquals("変更前ファイルパスが存在するファイルではありません:" + path.toString(),
 				ex.getMessage());
 
+
+	public int upload(String originalFilename, String filePath, boolean overWritteFlg, InputStream is, long timeStamp) throws IOException {
+		
+		// 末尾がワイルドカード（*）の場合除去する。
+		String outputPath;
+		if (filePath.endsWith("*")) {
+			outputPath = filePath.substring(0, filePath.length() - 1);
+		} else {
+			outputPath = filePath;
+		}
+
+		// 共有名を変換する。
+		outputPath = replaceSeparator(outputPath);
+		Path path = shareNameMapper.getRealPath(outputPath);
+
+		// アップロード先パスがディレクトリの場合アップロード先パスにアップロードファイルのオリジナルファイル名を付与する。
+		if ((Files.exists(path) && Files.isDirectory(path)) 
+				|| outputPath.endsWith(DIRECTORY_SEPARATOR)) {
+			path = path.resolve(originalFilename);
+		}
+
+		// 上書きオプションがFalseでアップロード先パスに同名のファイルが存在する場合
+		if (!overWritteFlg && Files.exists(path) && Files.isRegularFile(path)) {
+			logger.warn("同名のファイルが存在します。" + path.toString());
+			return 1;
+		}
+		
+		// 書き込み先のディレクトリが存在しない場合ディレクトリを作成する。
+		if (!Files.exists(path.getParent())) {
+			Files.createDirectories(path.getParent());
+		}
+
+		// アップロード先パスにアップロードファイルを書き込む
+		try (OutputStream os = new BufferedOutputStream(new FileOutputStream(path.toString()))) {
+			is.transferTo(os);
+			os.flush();
+		}
+		
+		// アップロードファイルのタイムスタンプを更新
+		Files.setLastModifiedTime(path, FileTime.from(timeStamp, TimeUnit.NANOSECONDS));
+		
+		return 0;
+		
+	}
+
+	/**
+	 * ダウンロードパス取得
+	 * @param requestFilePath
+	 * @return
+	 */
+	@Override
+	public Path getDownloadFilePath(String requestFilePath) {
+		// 共有名を変換する。
+		String formattedFilePath = replaceSeparator(requestFilePath);
+		Path path = shareNameMapper.getRealPath(formattedFilePath);
+
+		// ファイルが存在しない、またはディレクトリの場合異常終了
+		if (!Files.exists(path) || Files.isDirectory(path)) {
+			throw new IllegalArgumentException("ファイルが存在しません:" + path.toString());
+		}
+		return path;
+	}
+
+
 	}
