@@ -1,538 +1,446 @@
-	// テスト用ディレクトリ
-	private static final String testDir = "testDir";
-	// テスト用入力ディレクトリ
-	private static final String testInDir = "testDir/in";
-	// テスト用出力ディレクトリ
-	private static final String testOutDir = "testDir/out";
-	
-//	private static Logger logger = LoggerFactory.getLogger(FileSystemServiceImpl.class);
-	private AutoCloseable closable;
-	
-	@Mock
-	private ShareNameMapper shareNameMapper;
-	
-	@InjectMocks
-	private FileSystemServiceImpl fileSystemService;
+import uuid
+from pathlib import Path
 
-    /**
-     * 各テストの実行前に行う処理について記述する。
-     */
-    @BeforeEach
-    void setup() throws Throwable {
-    	// Mock準備
-    	closable= MockitoAnnotations.openMocks(this);
-    	
-		// テスト用ディレクトリ作成
-		File fTestDir = new File(testDir);
-		if (fTestDir.exists()) {
-			// テスト用ディレクトリが存在していた場合は削除してから作成する
-			FileUtils.deleteDirectory(fTestDir);
-		}
-		// 入力ディレクトリ作成
-		Path pTestInDir = Paths.get(testInDir);
-		Files.createDirectories(pTestInDir);
+import boto3
+import pytest
+from botocore.config import Config
+from botocore.exceptions import ClientError
+
+from kikin.fw.infra.external import fileCopyS3EfsService as service
+
+
+S3_TEST_PREFIX = "s3://test-bucket/test/"
+S3_ENDPOINT_URL = "http://localhost:4566"
+EFS_OUTPUT_DIR = Path.home() / "efs_test" / "out"
+TEST_CONTENT = b"pytest Floci S3-EFS integration test\n"
+ORIGINAL_CONTENT = b"original content\n"
+
+
+@pytest.fixture
+def floci_s3(monkeypatch):
+    monkeypatch.setenv("S3_ENDPOINT_URL", S3_ENDPOINT_URL)
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "ap-northeast-1")
+    monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
+    monkeypatch.delenv("EFS_ALLOWED_DIR", raising=False)
+
+    client = boto3.client(
+        "s3",
+        endpoint_url=S3_ENDPOINT_URL,
+        region_name="ap-northeast-1",
+    )
+    client.head_bucket(Bucket="test-bucket")
+    EFS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    return client
+
+
+def new_test_object_key() -> str:
+    return f"test/pytest-{uuid.uuid4().hex}.txt"
+
+
+def s3_uri(key: str) -> str:
+    return f"{S3_TEST_PREFIX}{Path(key).name}"
+
+
+def read_s3_object(client, key: str) -> bytes:
+    response = client.get_object(Bucket="test-bucket", Key=key)
+    try:
+        return response["Body"].read()
+    finally:
+        response["Body"].close()
+
+
+def assert_s3_object_missing(client, key: str) -> None:
+    with pytest.raises(ClientError) as exc_info:
+        client.head_object(Bucket="test-bucket", Key=key)
+    assert exc_info.value.response["Error"]["Code"] in {
+        "404",
+        "NoSuchKey",
+        "NotFound",
     }
-    
-    /**
-     * uploadテスト01：上書き禁止時の出力先同名ファイル存在エラー
-     * ・出力パスの末尾がワイルドカード（*）でない
-     * ・出力パスをファイル名まで指定
-     * ・上書きオプションがFalse
-     * ・アップロード先パスに同名のファイルが存在する
-     */
-	@Test
-	void testUpload_01() throws Throwable {
-		int result = 0;
-		
-		// 入力情報定義
-		String targetFile = "test001.txt";
-		boolean overWritteFlg = false;
-		long timeStamp = 0;
-		
-		// 入力ファイル作成
-		String inFilePath = testInDir + "/" + targetFile;
-		File inFile = new File(inFilePath);
-		inFile.createNewFile();
-		
-		// 出力ディレクトリ作成
-		Path pTestOutDir = Paths.get(testOutDir);
-		Files.createDirectories(pTestOutDir);
-		
-		// 出力ファイル作成
-		String outFilePath = testOutDir + "/" + targetFile;
-		File outFile = new File(outFilePath);
-		outFile.createNewFile();
-		
-		// 共有名変換のMock設定
-		Path path  = Paths.get(outFilePath);
-		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
-		
-		try (InputStream is = new FileInputStream(inFile)) {
-			// upload実行
-			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
-		}
-		
-		// 結果判定
-		assertEquals(1,result);
-	}
-	
-    /**
-     * uploadテスト02：単独ファイルアップロード正常終了（出力先ディレクトリ既存/上書きなし）
-     * ・出力パスの末尾がワイルドカード（*）でない
-     * ・出力パスをファイル名まで指定
-     * ・上書きオプションがFalse
-     * ・アップロード先パスに同名のファイルが存在しない
-     * ・アップロード先パスがディレクトリではない
-     * ・書き込み先のディレクトリが存在する
-     */
-	@Test
-	void testUpload_02() throws Throwable {
-		int result = 0;
-		
-		// 入力情報定義
-		String targetFile = "test001.txt";
-		boolean overWritteFlg = false;
-		
-		// タイムスタンプ設定
-		String strTimeStamp = "2025-09-10T15:49:23";
-		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
-		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
-		FileTime ft = FileTime.from(instant);
-		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
-		
-		// 入力ファイル作成
-		String inFilePath = testInDir + "/" + targetFile;
-		File inFile = new File(inFilePath);
-		//inFile.createNewFile();
-		
-		// 入力ファイルに書き込み
-		try(FileWriter fw = new FileWriter(inFilePath)){
-			fw.write("testUpload_02");
-		}
-		
-		// 入力ファイルにタイムスタンプ設定
-		//Path pInFile = Paths.get(inFilePath);
-		//Files.setLastModifiedTime(pInFile,ft);
-		
-		// 出力ディレクトリ作成
-		Path pTestOutDir = Paths.get(testOutDir);
-		Files.createDirectories(pTestOutDir);
-		
-		// 出力ファイルパス設定
-		String outFilePath = testOutDir + "/" + targetFile;;
-		
-		// 共有名変換のMock設定
-		Path path  = Paths.get(outFilePath);
-		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
-		
-		try (InputStream is = new FileInputStream(inFile)) {
-			// upload実行
-			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
-		}
-		
-		// 戻り値判定
-		assertEquals(0,result);
-		
-		// 出力先にファイルが出力されているか
-		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
-		
-		// 出力ファイルのタイムスタンプが想定通りか
-		FileTime ftOut = Files.getLastModifiedTime(path);
-		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
-		
-		// ファイルの内容が一致しているか
-		assertTrue(Arrays.equals(Files.readAllBytes(Paths.get(inFilePath)), 
-				Files.readAllBytes(path)),"ファイル内容が不一致");
-	}
-	
-    /**
-     * uploadテスト03：単独ファイルアップロード正常終了（出力先ディレクトリ既存/上書きあり）
-     * ・出力パスの末尾がワイルドカード（*）でない
-     * ・出力パスをファイル名まで指定
-     * ・上書きオプションがtrue
-     * ・アップロード先パスに同名のファイルが存在する
-     * ・アップロード先パスがディレクトリではない
-     * ・書き込み先のディレクトリが存在する
-     */
-	@Test
-	void testUpload_03() throws Throwable {
-		int result = 0;
-		
-		// 入力情報定義
-		String targetFile = "test001.txt";
-		boolean overWritteFlg = true;
-		
-		// タイムスタンプ設定
-		String strTimeStamp = "2025-09-10T15:49:23";
-		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
-		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
-		FileTime ft = FileTime.from(instant);
-		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
-		
-		// 入力ファイル作成
-		String inFilePath = testInDir + "/" + targetFile;
-		File inFile = new File(inFilePath);
-		inFile.createNewFile();
-		
-		// 出力ディレクトリ作成
-		Path pTestOutDir = Paths.get(testOutDir);
-		Files.createDirectories(pTestOutDir);
-		
-		// 出力ファイル作成
-		String outFilePath = testOutDir + "/" + targetFile;
-		File outFile = new File(outFilePath);
-		outFile.createNewFile();
-		
-		// 共有名変換のMock設定
-		Path path  = Paths.get(outFilePath);
-		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
-		
-		try (InputStream is = new FileInputStream(inFile)) {
-			// upload実行
-			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
-		}
-		
-		// 結果判定
-		assertEquals(0,result);
-		
-		// 出力先にファイルが出力されているか
-		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
-		
-		// 出力ファイルのタイムスタンプが想定通りか
-		FileTime ftOut = Files.getLastModifiedTime(path);
-		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
-	}
-
-    /**
-     * uploadテスト04：単独ファイルアップロード正常終了（出力先ディレクトリなし/ファイル名指定）
-     * ・出力パスの末尾がワイルドカード（*）でない
-     * ・出力パスをファイル名まで指定
-     * ・上書きオプションがtrue
-     * ・アップロード先パスに同名のファイルが存在しない
-     * ・アップロード先パスがディレクトリ
-     * ・書き込み先のディレクトリが存在しない
-     */
-	@Test
-	void testUpload_04() throws Throwable {
-		int result = 0;
-		
-		// 入力情報定義
-		String targetFile = "test001.txt";
-		boolean overWritteFlg = true;
-		
-		// タイムスタンプ設定
-		String strTimeStamp = "2025-09-10T15:49:23";
-		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
-		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
-		FileTime ft = FileTime.from(instant);
-		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
-		
-		// 入力ファイル作成
-		String inFilePath = testInDir + "/" + targetFile;
-		File inFile = new File(inFilePath);
-		inFile.createNewFile();
-		
-		// 出力ディレクトリパス設定
-		String outFilePath = testOutDir + "/" + targetFile;
-		
-		// 共有名変換のMock設定
-		Path path  = Paths.get(outFilePath);
-		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
-		
-		try (InputStream is = new FileInputStream(inFile)) {
-			// upload実行
-			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
-		}
-		
-		// 結果判定
-		assertEquals(0,result);
-		
-		// 出力ファイルパス設定
-		//outFilePath = testOutDir + "/" + targetFile;
-		//path  = Paths.get(outFilePath);
-		
-		// 出力先にファイルが出力されているか
-		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
-		
-		// 出力ファイルのタイムスタンプが想定通りか
-		FileTime ftOut = Files.getLastModifiedTime(path);
-		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
-	}
-	
-    /**
-     * uploadテスト05：単独ファイルアップロード正常終了（出力先ディレクトリなし/ディレクトリ指定）
-     * ・出力パスの末尾がワイルドカード（*）でない
-     * ・出力パスをディレクトリで指定（末尾"/")
-     * ・上書きオプションがtrue
-     * ・アップロード先パスに同名のファイルが存在しない
-     * ・アップロード先パスがディレクトリ
-     * ・書き込み先のディレクトリが存在しない
-     */
-	@Test
-	void testUpload_05() throws Throwable {
-		int result = 0;
-		
-		// 入力情報定義
-		String targetFile = "test001.txt";
-		boolean overWritteFlg = true;
-		
-		// タイムスタンプ設定
-		String strTimeStamp = "2025-09-10T15:49:23";
-		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
-		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
-		FileTime ft = FileTime.from(instant);
-		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
-		
-		// 入力ファイル作成
-		String inFilePath = testInDir + "/" + targetFile;
-		File inFile = new File(inFilePath);
-		inFile.createNewFile();
-		
-		// 出力ディレクトリパス設定
-		String outFilePath = testOutDir + "/";
-		
-		// 共有名変換のMock設定
-		Path path  = Paths.get(outFilePath);
-		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
-		
-		try (InputStream is = new FileInputStream(inFile)) {
-			// upload実行
-			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
-		}
-		
-		// 結果判定
-		assertEquals(0,result);
-		
-		// 出力ファイルパス設定
-		outFilePath = testOutDir + "/" + targetFile;
-		path  = Paths.get(outFilePath);
-		
-		// 出力先にファイルが出力されているか
-		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
-		
-		// 出力ファイルのタイムスタンプが想定通りか
-		FileTime ftOut = Files.getLastModifiedTime(path);
-		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
-	}
 
 
-    /**
-     * uploadテスト06：単独ファイルアップロード正常終了（出力先ディレクトリあり/ワイルドカード指定）
-     * ・出力パスの末尾がワイルドカード（*）
-     * ・上書きオプションがtrue
-     * ・アップロード先パスに同名のファイルが存在しない
-     * ・アップロード先パスがディレクトリ
-     * ・書き込み先のディレクトリが存在する
-     */
-	@Test
-	void testUpload_06() throws Throwable {
-		int result = 0;
-		
-		// 入力情報定義
-		String targetFile = "test001.txt";
-		boolean overWritteFlg = true;
-		
-		// タイムスタンプ設定
-		String strTimeStamp = "2025-09-10T15:49:23";
-		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
-		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
-		FileTime ft = FileTime.from(instant);
-		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
-		
-		// 入力ファイル作成
-		String inFilePath = testInDir + "/" + targetFile;
-		File inFile = new File(inFilePath);
-		inFile.createNewFile();
-		
-		// 出力ディレクトリ作成
-		Path pTestOutDir = Paths.get(testOutDir);
-		Files.createDirectories(pTestOutDir);
-		
-		// 出力ファイルパス設定
-		String outFilePath = testOutDir + "/";
-		
-		// 共有名変換のMock設定
-		Path path  = Paths.get(outFilePath);
-		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
-		
-		// 出力ファイルパス設定
-		outFilePath = outFilePath + "*";
-		
-		try (InputStream is = new FileInputStream(inFile)) {
-			// upload実行
-			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
-		}
-		
-		// 結果判定
-		assertEquals(0,result);
-		
-		// 出力ファイルパス設定
-		outFilePath = testOutDir + "/" + targetFile;
-		path  = Paths.get(outFilePath);
-		
-		// 出力先にファイルが出力されているか
-		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
-		
-		// 出力ファイルのタイムスタンプが想定通りか
-		FileTime ftOut = Files.getLastModifiedTime(path);
-		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
-	}
-	
-    /**
-     * getDownloadFilePathテスト01：正常終了
-     * ・対象パスが存在
-     * ・対象パスがファイル
-     */
-	@Test
-	void testGetDownloadFilePath_01() throws Throwable {
-		
-		// 入力情報定義
-		String targetFile = "test001.txt";
-		
-		// 対象ディレクトリ作成
-		Path pTestInDir = Paths.get(testInDir);
-		Files.createDirectories(pTestInDir);
-		
-		// 対象ファイル作成
-		String inFilePath = testInDir + "/" + targetFile;
-		File inFile = new File(inFilePath);
-		inFile.createNewFile();
-		
-		// 共有名変換のMock設定
-		Path path  = Paths.get(inFilePath);
-		when(shareNameMapper.getRealPath(inFilePath)).thenReturn(path);
-		
-		// ダウンロードパス取得実行
-		Path pathDL = fileSystemService.getDownloadFilePath(inFilePath);
-		
-		// 取得パスが想定通りか
-		assertTrue(pathDL.compareTo(path) == 0, "取得パスの不一致");
-	}
-
-    /**
-     * getDownloadFilePathテスト02：例外終了
-     * ・対象パスが存在
-     * ・対象パスがディレクトリ
-     */
-	@Test
-	void testGetDownloadFilePath_02() throws Throwable {
-		
-		// 対象ディレクトリ作成
-		Path pTestInDir = Paths.get(testInDir);
-		Files.createDirectories(pTestInDir);
-		
-		// 対象ディレクトリ設定
-		String inFilePath = testInDir + "/";
-		
-		// 共有名変換のMock設定
-		Path path  = Paths.get(inFilePath);
-		when(shareNameMapper.getRealPath(inFilePath)).thenReturn(path);
-		
-		// ダウンロードパス取得実行
-		IllegalArgumentException ex = 
-				assertThrows(IllegalArgumentException.class, 
-						() -> fileSystemService.getDownloadFilePath(inFilePath));
-		
-		// 想定通りの例外が発生しているかp；l。k、」；：￥・ｌｋｊｈｇ*//85　
-		assertEquals("ファイルが存在しません:" + path.toString(),
-				ex.getMessage());
-
-	}
-
-    /**
-     * getDownloadFilePathテスト03：例外終了
-     * ・対象パスが存在しない
-     * ・対象パスがファイル
-     */
-	@Test
-	void testGetDownloadFilePath_03() throws Throwable {
-		
-		// 入力情報定義
-		String targetFile = "test001.txt";
-		
-		// 対象ディレクトリ作成
-		Path pTestInDir = Paths.get(testInDir);
-		Files.createDirectories(pTestInDir);
-		
-		// 対象パス設定
-		String inFilePath = testInDir + "/" + targetFile;;
-		
-		// 共有名変換のMock設定
-		Path path  = Paths.get(inFilePath);
-		when(shareNameMapper.getRealPath(inFilePath)).thenReturn(path);
-		
-		
-		// ダウンロードパス取得実行
-		IllegalArgumentException ex = 
-				assertThrows(IllegalArgumentException.class, 
-						() -> fileSystemService.getDownloadFilePath(inFilePath));
-		
-		// 想定通りの例外が発生しているか
-		assertEquals("変更前ファイルパスが存在するファイルではありません:" + path.toString(),
-				ex.getMessage());
+def make_client_error(code: str, operation: str = "HeadObject") -> ClientError:
+    return ClientError(
+        {"Error": {"Code": code, "Message": "test error"}},
+        operation,
+    )
 
 
-	public int upload(String originalFilename, String filePath, boolean overWritteFlg, InputStream is, long timeStamp) throws IOException {
-		
-		// 末尾がワイルドカード（*）の場合除去する。
-		String outputPath;
-		if (filePath.endsWith("*")) {
-			outputPath = filePath.substring(0, filePath.length() - 1);
-		} else {
-			outputPath = filePath;
-		}
-
-		// 共有名を変換する。
-		outputPath = replaceSeparator(outputPath);
-		Path path = shareNameMapper.getRealPath(outputPath);
-
-		// アップロード先パスがディレクトリの場合アップロード先パスにアップロードファイルのオリジナルファイル名を付与する。
-		if ((Files.exists(path) && Files.isDirectory(path)) 
-				|| outputPath.endsWith(DIRECTORY_SEPARATOR)) {
-			path = path.resolve(originalFilename);
-		}
-
-		// 上書きオプションがFalseでアップロード先パスに同名のファイルが存在する場合
-		if (!overWritteFlg && Files.exists(path) && Files.isRegularFile(path)) {
-			logger.warn("同名のファイルが存在します。" + path.toString());
-			return 1;
-		}
-		
-		// 書き込み先のディレクトリが存在しない場合ディレクトリを作成する。
-		if (!Files.exists(path.getParent())) {
-			Files.createDirectories(path.getParent());
-		}
-
-		// アップロード先パスにアップロードファイルを書き込む
-		try (OutputStream os = new BufferedOutputStream(new FileOutputStream(path.toString()))) {
-			is.transferTo(os);
-			os.flush();
-		}
-		
-		// アップロードファイルのタイムスタンプを更新
-		Files.setLastModifiedTime(path, FileTime.from(timeStamp, TimeUnit.NANOSECONDS));
-		
-		return 0;
-		
-	}
-
-	/**
-	 * ダウンロードパス取得
-	 * @param requestFilePath
-	 * @return
-	 */
-	@Override
-	public Path getDownloadFilePath(String requestFilePath) {
-		// 共有名を変換する。
-		String formattedFilePath = replaceSeparator(requestFilePath);
-		Path path = shareNameMapper.getRealPath(formattedFilePath);
-
-		// ファイルが存在しない、またはディレクトリの場合異常終了
-		if (!Files.exists(path) || Files.isDirectory(path)) {
-			throw new IllegalArgumentException("ファイルが存在しません:" + path.toString());
-		}
-		return path;
-	}
+def make_source_file() -> Path:
+    source = EFS_OUTPUT_DIR / f"pytest-source-{uuid.uuid4().hex}.txt"
+    source.write_bytes(TEST_CONTENT)
+    return source
 
 
-	}
+def test1(floci_s3):
+    assert service.run([]) == 1
+
+
+def test2(floci_s3):
+    assert service.run(["", str(EFS_OUTPUT_DIR / "new.csv")]) == 1
+
+
+def test3(floci_s3):
+    key = new_test_object_key()
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+
+    try:
+        assert service.run([s3_uri(key)]) == 1
+    finally:
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test4(floci_s3):
+    key = new_test_object_key()
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+
+    try:
+        assert service.run([s3_uri(key), ""]) == 1
+    finally:
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test5(floci_s3):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-empty-overwrite-{uuid.uuid4().hex}.csv"
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+
+    try:
+        assert service.run([s3_uri(key), str(destination), ""]) == 1
+        assert not destination.exists()
+    finally:
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test6(floci_s3):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-wildcard-{uuid.uuid4().hex}.csv"
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+
+    try:
+        result = service.run(
+            [f"{S3_TEST_PREFIX}*.csv", str(destination)]
+        )
+
+        assert result == 1
+        assert not destination.exists()
+    finally:
+        destination.unlink(missing_ok=True)
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test7(floci_s3):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-directory-{uuid.uuid4().hex}.csv"
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+
+    try:
+        result = service.run([S3_TEST_PREFIX, str(destination)])
+
+        assert result == 1
+        assert not destination.exists()
+    finally:
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test8(floci_s3):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-invalid-flag-{uuid.uuid4().hex}.csv"
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+
+    try:
+        result = service.run([s3_uri(key), str(destination), "abc"])
+
+        assert result == 1
+        assert not destination.exists()
+    finally:
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test9(floci_s3):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / Path(key).name
+
+    result = service.run([s3_uri(key), str(destination), "false"])
+
+    assert result == 1
+    assert not destination.exists()
+
+
+def test10(floci_s3):
+    destination = EFS_OUTPUT_DIR / f"pytest-no-bucket-{uuid.uuid4().hex}.csv"
+
+    result = service.run(
+        [
+            f"s3://pytest-no-bucket-{uuid.uuid4().hex}/test/sample.csv",
+            str(destination),
+            "false",
+        ]
+    )
+
+    assert result == 1
+    assert not destination.exists()
+
+
+def test11(monkeypatch):
+    destination = EFS_OUTPUT_DIR / f"pytest-offline-{uuid.uuid4().hex}.csv"
+    client = boto3.client(
+        "s3",
+        endpoint_url="http://127.0.0.1:1",
+        region_name="ap-northeast-1",
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        config=Config(
+            connect_timeout=1,
+            read_timeout=1,
+            retries={"total_max_attempts": 1},
+        ),
+    )
+    monkeypatch.setattr(service, "create_s3_client", lambda: client)
+
+    result = service.run(
+        [
+            f"{S3_TEST_PREFIX}sample.csv",
+            str(destination),
+            "false",
+        ]
+    )
+
+    assert result == -1
+    assert not destination.exists()
+
+
+def test12(monkeypatch, tmp_path):
+    class AccessDeniedS3:
+        def head_object(self, **kwargs):
+            raise make_client_error("403")
+
+    monkeypatch.setattr(service, "create_s3_client", AccessDeniedS3)
+
+    result = service.run(
+        [
+            f"{S3_TEST_PREFIX}sample.csv",
+            str(tmp_path / "access-denied.csv"),
+            "false",
+        ]
+    )
+
+    assert result == -1
+    assert not (tmp_path / "access-denied.csv").exists()
+
+
+def test13(floci_s3):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / "pytest-no-dir" / Path(key).name
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+
+    try:
+        result = service.run([s3_uri(key), str(destination), "false"])
+
+        assert result == -1
+        assert not destination.exists()
+        assert not destination.parent.exists()
+    finally:
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test14(floci_s3, monkeypatch):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / Path(key).name
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    real_access = service.os.access
+
+    def deny_directory_write(path, mode):
+        if Path(path).resolve() == EFS_OUTPUT_DIR.resolve():
+            return False
+        return real_access(path, mode)
+
+    monkeypatch.setattr(service.os, "access", deny_directory_write)
+
+    try:
+        result = service.run([s3_uri(key), str(destination), "false"])
+
+        assert result == -1
+        assert not destination.exists()
+    finally:
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test15(floci_s3, monkeypatch):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-readonly-{uuid.uuid4().hex}.csv"
+    destination.write_bytes(ORIGINAL_CONTENT)
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    real_access = service.os.access
+
+    def deny_destination_write(path, mode):
+        if Path(path).resolve() == destination.resolve():
+            return False
+        return real_access(path, mode)
+
+    monkeypatch.setattr(service.os, "access", deny_destination_write)
+
+    try:
+        result = service.run([s3_uri(key), str(destination), "true"])
+
+        assert result == -1
+        assert destination.read_bytes() == ORIGINAL_CONTENT
+    finally:
+        destination.unlink(missing_ok=True)
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test16(floci_s3, monkeypatch):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-download-fail-{uuid.uuid4().hex}.csv"
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    client = service.create_s3_client()
+
+    def fail_download(bucket, object_key, filename):
+        raise RuntimeError("download failed")
+
+    monkeypatch.setattr(service, "create_s3_client", lambda: client)
+    monkeypatch.setattr(client, "download_file", fail_download)
+
+    try:
+        result = service.run([s3_uri(key), str(destination), "false"])
+
+        assert result == -1
+        assert not destination.exists()
+        assert not list(EFS_OUTPUT_DIR.glob(f".{destination.name}.*.part"))
+    finally:
+        destination.unlink(missing_ok=True)
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test17(floci_s3, monkeypatch):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / f"pytest-overwrite-fail-{uuid.uuid4().hex}.csv"
+    destination.write_bytes(ORIGINAL_CONTENT)
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+    client = service.create_s3_client()
+
+    def fail_download(bucket, object_key, filename):
+        raise RuntimeError("download failed")
+
+    monkeypatch.setattr(service, "create_s3_client", lambda: client)
+    monkeypatch.setattr(client, "download_file", fail_download)
+
+    try:
+        result = service.run([s3_uri(key), str(destination), "true"])
+
+        assert result == -1
+        assert destination.read_bytes() == ORIGINAL_CONTENT
+        assert not list(EFS_OUTPUT_DIR.glob(f".{destination.name}.*.part"))
+    finally:
+        destination.unlink(missing_ok=True)
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test26(floci_s3):
+    key = new_test_object_key()
+    floci_s3.put_object(Bucket="test-bucket", Key=key, Body=TEST_CONTENT)
+
+    try:
+        result = service.run([s3_uri(key), f"{S3_TEST_PREFIX}copy-{Path(key).name}"])
+
+        assert result == 1
+        assert_s3_object_missing(floci_s3, f"test/copy-{Path(key).name}")
+    finally:
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test27(floci_s3):
+    source = make_source_file()
+    destination = EFS_OUTPUT_DIR / f"pytest-efs-copy-{uuid.uuid4().hex}.csv"
+
+    try:
+        assert service.run([str(source), str(destination)]) == 1
+        assert not destination.exists()
+    finally:
+        source.unlink(missing_ok=True)
+
+
+def test28(floci_s3):
+    key = new_test_object_key()
+
+    result = service.run(
+        [str(EFS_OUTPUT_DIR / "*.csv"), s3_uri(key)]
+    )
+
+    assert result == 1
+    assert_s3_object_missing(floci_s3, key)
+
+
+def test29(floci_s3):
+    key = new_test_object_key()
+
+    result = service.run([str(EFS_OUTPUT_DIR), s3_uri(key)])
+
+    assert result == 1
+    assert_s3_object_missing(floci_s3, key)
+
+
+def test30(floci_s3):
+    key = new_test_object_key()
+    source = EFS_OUTPUT_DIR / f"pytest-missing-{uuid.uuid4().hex}.csv"
+
+    result = service.run([str(source), s3_uri(key)])
+
+    assert result == 1
+    assert_s3_object_missing(floci_s3, key)
+
+
+def test31(floci_s3):
+    source = make_source_file()
+    missing_bucket = f"pytest-no-bucket-{uuid.uuid4().hex}"
+
+    try:
+        result = service.run(
+            [str(source), f"s3://{missing_bucket}/test/upload.csv"]
+        )
+
+        assert result == 1
+    finally:
+        source.unlink(missing_ok=True)
+
+
+def test32(floci_s3, monkeypatch):
+    source = make_source_file()
+    key = new_test_object_key()
+    client = service.create_s3_client()
+
+    def fail_upload(*args, **kwargs):
+        raise RuntimeError("upload failed")
+
+    monkeypatch.setattr(service, "create_s3_client", lambda: client)
+    monkeypatch.setattr(client, "upload_file", fail_upload)
+
+    try:
+        result = service.run([str(source), s3_uri(key)])
+
+        assert result == -1
+        assert_s3_object_missing(floci_s3, key)
+    finally:
+        source.unlink(missing_ok=True)
+
+
+def test33(floci_s3, monkeypatch):
+    source = make_source_file()
+
+    class AccessDeniedS3:
+        def head_object(self, **kwargs):
+            raise make_client_error("403")
+
+    monkeypatch.setattr(service, "create_s3_client", AccessDeniedS3)
+
+    try:
+        result = service.run(
+            [str(source), f"{S3_TEST_PREFIX}denied-{uuid.uuid4().hex}.csv", "false"]
+        )
+
+        assert result == -1
+    finally:
+        source.unlink(missing_ok=True)
