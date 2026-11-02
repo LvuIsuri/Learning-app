@@ -1,352 +1,211 @@
-import sys
-
-
-def main(argv=None) -> int:
-    """
-    コマンドライン引数をサービスに渡し、処理結果を出力する。(条件の判定はサービスで行う)
-
-    標準出力　：0（正常終了）、1（処理エラー）、-1（例外）
-    終了コード：0（正常終了）、1（処理エラー、例外）
-    """
-    if argv is None:
-        argv = sys.argv[1:]
-
-    try:
-        # 取り込み失敗（boto3未導入など）の場合も例外として扱うため、ここで取り込む。
-        from kikin.fw.infra.unyo import apCopyFileS3EfsService
-
-        result = apCopyFileS3EfsService.run(argv)
-    except Exception as exc:
-        # どの場合も、処理結果が返らない状態にしない。
-        print(f"例外: {exc}", file=sys.stderr)
-        result = -1
-
-    print(result)
-    return 0 if result == 0 else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-import os
-import sys
-import tempfile
-from pathlib import Path, PurePosixPath
-
-import boto3
-from botocore.exceptions import ClientError
-
-S3_PREFIX = "s3://"
-WILDCARD_CHARS = ("*", "?")
-# S3にファイルが存在しないことを表すエラーコード
-NOT_FOUND_CODES = ("404", "NoSuchKey", "NotFound", "NoSuchBucket")
-# EFSで許可するディレクトリを指定する環境変数。
-# (仮)未設定の場合は制限しない。正式な許可ディレクトリと取得元が決まり次第、置き換える。
-ALLOWED_DIR_ENV = "EFS_ALLOWED_DIR"
-
-
-def split_s3_uri(uri: str, label: str = "コピー元"):
-    """
-    s3://バケット/キー をバケットとキーに分割する。
-
-    形式が不正な場合は ValueError を返す。
-    label: エラーメッセージに使う名称(コピー元/コピー先)
-    """
-    if not uri.startswith(S3_PREFIX):
-        raise ValueError(f"{label}の形式が不正です(s3://バケット/キー): {uri}")
-    if any(char in uri for char in WILDCARD_CHARS):
-        raise ValueError(f"{label}にワイルドカードは指定できません: {uri}")
-
-    bucket, _, key = uri[len(S3_PREFIX):].partition("/")
-    if not bucket or not key:
-        raise ValueError(f"{label}にバケットまたはキーがありません: {uri}")
-    if key.endswith("/"):
-        raise ValueError(f"{label}にディレクトリは指定できません: {uri}")
-
-    return bucket, key
-
-
-def parse_over_write_flg(value: str) -> bool:
-    """
-    true/false文字列を真偽値に変換する。
-
-    true/false以外(空文字を含む)の場合は ValueError を返す。
-    """
-    normalized = value.strip().lower()
-
-    if normalized == "true":
-        return True
-    if normalized == "false":
-        return False
-
-    raise ValueError("上書きオプションは true または false を指定してください")
-
-
-def is_allowed_path(path: Path) -> bool:
-    """
-    ディレクトリトラバーサル対策。
-    パスを正規化(../ やシンボリックリンクを解決)したうえで、許可ディレクトリ配下か判定する。
-    """
-    allowed_dir = os.environ.get(ALLOWED_DIR_ENV)
-    if not allowed_dir:
-        return True
-
-    allowed = Path(allowed_dir).resolve()
-    target = path.resolve()
-    return target == allowed or allowed in target.parents
-
-
-def create_s3_client():
-    """
-    S3クライアントを作成する。
-
-    接続先は環境変数 S3_ENDPOINT_URL があればそちらを使う(試験環境: Floci)。
-    認証情報は環境変数、AWSプロファイル、IAMロールなどから取得する。
-    """
-    session = boto3.Session(
-        region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1"),
-    )
-    return session.client(
-        "s3",
-        endpoint_url=os.environ.get("S3_ENDPOINT_URL") or None,
-    )
-
-
-def s3_exists(s3, bucket: str, key: str) -> bool:
-    """
-    S3にファイルが存在するか確認する。
-    ファイルなし、バケットなしは False、権限や接続の問題は例外とする。
-    """
-    try:
-        s3.head_object(Bucket=bucket, Key=key)
-    except ClientError as exc:
-        code = str(exc.response.get("Error", {}).get("Code", ""))
-        if code in NOT_FOUND_CODES:
-            return False
-        raise
-    return True
-
-
-def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
-    """S3のファイルをEFSにコピーする。処理結果(0、1、-1)を返す。"""
-    try:
-        bucket, key = split_s3_uri(file, "コピー元")
-    except ValueError as exc:
-        print(f"処理エラー: {exc}", file=sys.stderr)
-        return 1
-
-    # コピー先がディレクトリの場合は、コピー元のファイル名でコピーする。
-    filename = PurePosixPath(key).name
-    if filename in (".", ".."):
-        print(f"処理エラー: コピー元のファイル名が不正です: {filename}", file=sys.stderr)
-        return 1
-    destination_path = Path(file_path)
-    if destination_path.is_dir():
-        destination_path = destination_path / filename
-
-    # ディレクトリトラバーサル対策:コピー先(ディレクトリ+ファイル名)を確認する。
-    if not is_allowed_path(destination_path):
-        print(
-            f"処理エラー: コピー先が許可されたディレクトリ外です: {destination_path}",
-            file=sys.stderr,
-        )
-        return 1
-
-    destination_dir = destination_path.resolve().parent
-
-    # コピー先フォルダが存在しない場合は例外とする(作成しない)。
-    if not destination_dir.is_dir():
-        print(
-            f"例外: コピー先ディレクトリが存在しません: {destination_dir}",
-            file=sys.stderr,
-        )
-        return -1
-    if not os.access(destination_dir, os.W_OK | os.X_OK):
-        print(
-            f"例外: コピー先ディレクトリに書込権限がありません: {destination_dir}",
-            file=sys.stderr,
-        )
-        return -1
-
-    if destination_path.exists():
-        if not over_write:
-            print(
-                f"処理エラー: コピー先にファイルが存在します: {destination_path}",
-                file=sys.stderr,
-            )
-            return 1
-        if not os.access(destination_path, os.W_OK):
-            print(
-                f"例外: 既存ファイルが上書きできません: {destination_path}",
-                file=sys.stderr,
-            )
-            return -1
-
-    s3 = create_s3_client()
-
-    # コピー元の存在確認。ファイルなし、バケットなしは処理エラー、
-    # 権限や接続の問題は例外(-1)とする。
-    if not s3_exists(s3, bucket, key):
-        print(
-            f"処理エラー: S3にコピー元が存在しません: s3://{bucket}/{key}",
-            file=sys.stderr,
-        )
-        return 1
-
-    # ダウンロード途中のファイルがコピー先に残らないよう、一時ファイルを使う。
-    fd, temporary_name = tempfile.mkstemp(
-        dir=destination_dir,
-        prefix=f".{filename}.",
-        suffix=".part",
-    )
-    os.close(fd)
-    temporary_path = Path(temporary_name)
-
-    try:
-        s3.download_file(bucket, key, str(temporary_path))
-
-        # 一時ファイルは権限0600で作成されるため、コピー先の権限を0664にする。
-        # (新規・上書きともに0664。上書きの場合も既存ファイルの権限は引き継がない)
-        os.chmod(temporary_path, 0o664)
-
-        if over_write:
-            # 上書きあり: 一時ファイルをコピー先へ置き換える。
-            os.replace(temporary_path, destination_path)
-        else:
-            # 上書きなし: コピー先が既に作られていた場合は上書きしない。
-            try:
-                os.link(temporary_path, destination_path)
-            except FileExistsError:
-                print(
-                    f"処理エラー: コピー先にファイルが存在します: "
-                    f"{destination_path}",
-                    file=sys.stderr,
-                )
-                return 1
-    finally:
-        temporary_path.unlink(missing_ok=True)
-
-    # 標準出力には処理結果のみを出力するため、メッセージは標準エラー出力に出力する。
-    print(f"保存しました: {destination_path}", file=sys.stderr)
-    return 0
-
-
-def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
-    """EFSのファイルをS3にコピーする。処理結果(0、1、-1)を返す。"""
-    # コピー元(EFS)の確認。ファイルを指定する必要がある。
-    if any(char in file for char in WILDCARD_CHARS):
-        print(
-            f"処理エラー: コピー元にワイルドカードは指定できません: {file}",
-            file=sys.stderr,
-        )
-        return 1
-
-    source_path = Path(file)
-
-    # ディレクトリトラバーサル対策:コピー元を確認する。
-    if not is_allowed_path(source_path):
-        print(
-            f"処理エラー: コピー元が許可されたディレクトリ外です: {source_path}",
-            file=sys.stderr,
-        )
-        return 1
-    if not source_path.exists():
-        print(f"処理エラー: コピー元ファイルが存在しません: {source_path}", file=sys.stderr)
-        return 1
-    if not source_path.is_file():
-        print(
-            f"処理エラー: コピー元にファイルを指定してください: {source_path}",
-            file=sys.stderr,
-        )
-        return 1
-
-    try:
-        bucket, key = split_s3_uri(file_path, "コピー先")
-    except ValueError as exc:
-        print(f"処理エラー: {exc}", file=sys.stderr)
-        return 1
-
-    s3 = create_s3_client()
-
-    # 上書きしない場合は、コピー先にファイルが存在すると処理エラーとする。
-    if not over_write and s3_exists(s3, bucket, key):
-        print(
-            f"処理エラー: コピー先にファイルが存在します: s3://{bucket}/{key}",
-            file=sys.stderr,
-        )
-        return 1
-
-    # アップロード。失敗した場合(バケットなし、権限、接続など)は例外となり、-1とする。
-    s3.upload_file(str(source_path), bucket, key)
-
-    print(f"アップロードしました: s3://{bucket}/{key}", file=sys.stderr)
-    return 0
-
-
-def run(argv) -> int:
-    """
-    引数のチェックからコピーまでを行い、処理結果を返す。
-    コピー元とコピー先の指定から、コピー方向を判定する。
-    (S3→EFS、EFS→S3。両方S3、または両方EFSは処理エラー)
-
-    argv: コマンドライン引数(スクリプト名を除く)
-          [コピー元, コピー先, 上書きオプション(省略可。省略時はtrue)]
-
-    0: 正常終了
-    1: 処理エラー(引数不正、ファイルなし、上書き不可、許可範囲外)
-    -1: 例外(S3接続・権限、EFS書込、ダウンロード・アップロード失敗、想定外)
-    """
-    try:
-        # 引数の数を確認する。
-        if len(argv) < 2 or len(argv) > 3:
-            print(
-                "処理エラー: 引数の数が不正です(コピー元 コピー先 [上書きオプション])",
-                file=sys.stderr,
-            )
-            return 1
-
-        file = argv[0]
-        file_path = argv[1]
-        # 上書きオプションが省略された場合は、true(上書きする)とする。
-        over_write_flg = argv[2] if len(argv) > 2 else "true"
-
-        if not file or not file_path:
-            print("処理エラー: コピー元またはコピー先が空です", file=sys.stderr)
-            return 1
-
-        try:
-            over_write = parse_over_write_flg(over_write_flg)
-        except ValueError as exc:
-            print(f"処理エラー: {exc}", file=sys.stderr)
-            return 1
-
-        # コピー方向を判定する。
-        source_is_s3 = file.startswith(S3_PREFIX)
-        destination_is_s3 = file_path.startswith(S3_PREFIX)
-
-        if source_is_s3 == destination_is_s3:
-            print(
-                "処理エラー: コピー元とコピー先は、一方をS3、もう一方をEFSで指定してください",
-                file=sys.stderr,
-            )
-            return 1
-
-        if source_is_s3:
-            return copy_s3_to_efs(file, file_path, over_write)
-        return copy_efs_to_s3(file, file_path, over_write)
-
-    except Exception as exc:
-        print(f"例外: {exc}", file=sys.stderr)
-        return -1
-
-
-    # ネガティブキャッシュでファイルが見えていない可能性があるため、キャッシュのリフレッシュを行う。
-    # (親ディレクトリの一覧を取得する。親ディレクトリが存在しない場合は、ファイルなしとして扱う)
-    try:
-        with os.scandir(source_path.parent) as entries:
-            next(entries, None)
-    except FileNotFoundError:
-        pass
-    # リフレッシュでもNGの場合、ファイルが存在しないと判定し処理エラーとする。
-    if not source_path.exists():
-        print(f"処理エラー: コピー元ファイルが存在しません: {source_path}", file=sys.stderr)
-        return 1
+"コンポーネント作成
+ユニットテストケース表"																
+																
+システム名		製品分類		共通部品ID/共通部品名			作成者	作成日								
+AP共通基盤				RE_Q_031_01 4.59 ファイルコピー（S3⇔EFS）			ヴー	2026/10/15								
+																
+クラス名				メソッド名			更新者	更新日								
+apCopyFileS3EfsService				run（apCopyFileS3EfsService.py）／main（apCopyFileS3Efs.py）			ヴー	2026/11/02								
+																
+ID		テスト項目表（メイン）					テスト項目表（サブ）									
+入力要素		"引数（半角スペース区切り）：コピー元、コピー先、上書きオプション（省略可、省略時true）
+　コピー元・コピー先は、一方をS3（s3://バケット/キー）、もう一方をEFSのパスで指定する。（コピー方向は指定により決まる）
+試験環境：S3はFloci（http://localhost:4566）、EFSはpytestのtmp_path配下のディレクトリで代用（表中の「EFS」）
+ディレクトリトラバーサルの試験は、環境変数 EFS_ALLOWED_DIR に許可ディレクトリ（EFS/out）を設定して実施する。（設定方法は確認中）"														
+出力要素		"標準出力：0（正常終了）、1（処理エラー）、-1（例外）
+終了コード：0（正常終了）、1（処理エラー、例外）
+コピー先ファイル（EFSまたはS3）"														
+テスト手順書		pytest -v で実行する。					レビュー実施日									
+テストコード		test_apCopyFileS3Efs.py（試験項目のtest番号を関数名に対応させる）					レビュー実施者									
+																
+テスト観点		テスト項目		テストケース					確認日	確認者	判定	"確認した
+V/R"	"修正
+確認日"	"修正
+確認者"	"修正確認済
+V/R"	備考
+項番	テスト観点	項番	テスト項目	項番	テストケース概要	事前条件	入力値	期待結果								
+	入力チェックについて、チェック条件のパターンを網羅的に確認する。	test1	引数が指定されていない場合		引数が足りない場合の動作が確認できること	－	（引数なし）	標準出力に1が出力される（終了コード1）								戻り値は1（処理エラー）。標準出力と終了コードのどちらを参照するかは確認中
+		test2	コピー元ファイルが空文字の場合		コピー元が空文字の場合の動作が確認できること	－	file="" EFS/out/new.csv	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								
+		test3	コピー先パスが未指定の場合		コピー先パスがない場合（引数の数が不正）の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								
+		test4	コピー先パスが空文字の場合		コピー先が空文字の場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv ""	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								
+		test5	上書きオプションが空文字の場合		上書きオプションが空文字の場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv EFS/out/new.csv ""	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								空文字は上書きオプションの値不正として1とする。省略扱い（true）とするかは確認中
+		test26	引数が4つ以上の場合		引数が多い場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv EFS/out/new.csv true extra	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								
+		test27	コピー元、コピー先がともにS3の場合		S3からS3のコピーができないこと	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv s3://test-bucket/test/copy.csv	"標準出力に1が出力される（終了コード1）
+S3に test/copy.csv が作成されない"								コピー方向は指定により決まる。S3同士は処理エラー（1）
+		test28	コピー元、コピー先がともにEFSの場合		EFSからEFSのコピーができないこと	EFS/out/src.csv が存在する。（内容：EFS）	EFS/out/src.csv EFS/out/copy.csv	"標準出力に1が出力される（終了コード1）
+EFS/out/copy.csv が作成されない"								EFS同士は処理エラー（1）
+	取り扱うデータについて、バリエーション（有効な値、無効な値）を網羅的に確認する。	test6	コピー元（S3）にワイルドカードを指定した場合		ワイルドカード指定が異常になること	S3に test/ 配下のcsvファイルが存在する。	s3://test-bucket/test/*.csv EFS/out/new.csv	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								禁止は確認済み（処理エラー：1）
+		test7	コピー元（S3）にディレクトリを指定した場合		ディレクトリ指定が異常になること	S3に test/ 配下のファイルが存在する。	s3://test-bucket/test/ EFS/out/new.csv	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								禁止は確認済み（処理エラー：1）
+		test8	上書きオプションにtrue/false以外を指定した場合		無効な値の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv EFS/out/new.csv abc	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								
+		test29	コピー元（EFS）にワイルドカードを指定した場合		EFSのワイルドカード指定が異常になること	EFS/out に csv ファイルが存在する。	EFS/out/*.csv s3://test-bucket/test/up.csv	"標準出力に1が出力される（終了コード1）
+S3にファイルが作成されない"								
+		test30	コピー元（EFS）にディレクトリを指定した場合		ディレクトリ指定が異常になること	EFS/out が存在する。	EFS/out s3://test-bucket/test/up.csv	"標準出力に1が出力される（終了コード1）
+S3にファイルが作成されない"								
+		test31	コピー先（S3）のキーが不正な場合（キーなし、末尾が「/」）		コピー先S3の形式不正が異常になること	EFS/out/src.csv が存在する。（内容：EFS）	"EFS/out/src.csv s3://test-bucket/
+EFS/out/src.csv s3://test-bucket/test/"	"標準出力に1が出力される（終了コード1）
+S3にファイルが作成されない"								2つの入力値をそれぞれ確認する
+		test32	コピー元（S3）のファイル名が「..」の場合		不正なファイル名が異常になること	－	s3://test-bucket/test/.. EFS/out	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								
+	取り扱うデータについて、境界値を網羅的に確認する。															結合試験で確認する
+	"繰り返し処理について、繰り返しのパターンを網羅的に確認する。
+
+（例）
+・繰り返し回数のパターン（0回、1回、通常回数、最大回数、最大回数‐1回など）を確認する。"															
+	"ロジックについて、処理フローのパターンを網羅的に確認する。
+
+（例）
+・すべての命令を実行するよう確認する。
+・すべての条件分岐および例外処理を最低1回は実行されるよう確認する。"	test9	コピー元ファイルがS3に存在しない場合		S3にファイルがない場合の動作が確認できること	S3に test/none.csv が存在しない。	s3://test-bucket/test/none.csv EFS/out/new.csv false	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								
+		test10	S3バケットが存在しない場合		バケットがない場合の動作が確認できること	バケット no-bucket が存在しない。	s3://no-bucket/test/sample.csv EFS/out/new.csv false	"標準出力に1が出力される（終了コード1）
+コピー先にファイルが作成されない"								
+		test11	S3に接続できない場合		S3通信異常時の動作が確認できること	"S3（Floci）が起動していない。
+（接続先を http://localhost:9999 にする）"	s3://test-bucket/test/sample.csv EFS/out/new.csv false	"標準出力に-1が出力される（終了コード1）
+コピー先にファイルが作成されない"								リトライなしは確認中
+		test12	S3へのアクセス権限がない場合		AccessDenied時の動作が確認できること	S3アクセスでAccessDeniedを発生させる。（モック）	s3://test-bucket/test/sample.csv EFS/out/new.csv false	"標準出力に-1が出力される（終了コード1）
+コピー先にファイルが作成されない"								Flociでは再現しにくいためモックで確認
+		test13	コピー先ディレクトリが存在しない場合		コピー先がない場合の動作が確認できること	"S3に test/sample.csv が存在する。
+EFS/nodir が存在しない。"	s3://test-bucket/test/sample.csv EFS/nodir/new.csv false	"標準出力に-1が出力される（終了コード1）
+コピー先にファイルが作成されない"								ディレクトリを作成するかは確認中。作成する場合は戻り値0に修正
+		test14	コピー先ディレクトリに書込権限がない場合		書込不可時の動作が確認できること	"S3に test/sample.csv が存在する。
+EFS/ro が書込不可（chmod 555）。"	s3://test-bucket/test/sample.csv EFS/ro/new.csv false	"標準出力に-1が出力される（終了コード1）
+コピー先にファイルが作成されない"								rootユーザでは権限が効かないため、一般ユーザで実行する
+		test15	コピー先の既存ファイルが読み取り専用で上書きできない場合		既存ファイルが上書きできない場合の動作が確認できること	"S3に test/sample.csv が存在する。
+EFS/out/old.csv が存在する。（内容：OLD、chmod 444）"	s3://test-bucket/test/sample.csv EFS/out/old.csv true	"標準出力に-1が出力される（終了コード1）
+EFS/out/old.csv の内容がOLDのまま変わらない"								"既存ファイルが読み取り専用の場合の方針（上書き不可：-1）は確認中。
+rootユーザでは権限が効かないため、一般ユーザで実行する"
+		test16	ダウンロード途中で例外が発生した場合		途中で失敗してもファイルが残らないこと	"S3に test/sample.csv が存在する。
+ダウンロード処理で例外を発生させる。（モック）"	s3://test-bucket/test/sample.csv EFS/out/new.csv false	"標準出力に-1が出力される（終了コード1）
+コピー先ファイル、一時ファイルが残らない"								
+		test17	上書きコピー中にダウンロードが失敗した場合		既存ファイルが壊れないこと	"S3に test/sample.csv が存在する。
+EFS/out/old.csv が存在する。（内容：OLD）
+ダウンロード処理で例外を発生させる。（モック）"	s3://test-bucket/test/sample.csv EFS/out/old.csv true	"標準出力に-1が出力される（終了コード1）
+EFS/out/old.csv の内容がOLDのまま変わらない"								一時ファイル経由で置き換える方針で実装済み
+		test33	コピー先（EFS）に「../」を含み、許可ディレクトリの外になる場合		ディレクトリトラバーサルが拒否されること	"S3に test/sample.csv が存在する。
+許可ディレクトリ：EFS/out（環境変数 EFS_ALLOWED_DIR に設定する）"	s3://test-bucket/test/sample.csv EFS/out/../outside.csv	"標準出力に1が出力される（終了コード1）
+EFS/outside.csv が作成されない"								許可ディレクトリの設定方法は確認中（現在は環境変数）
+		test34	コピー先（EFS）が許可ディレクトリ外の絶対パスの場合		許可ディレクトリ外が拒否されること	"S3に test/sample.csv が存在する。
+許可ディレクトリ：EFS/out（環境変数 EFS_ALLOWED_DIR に設定する）"	s3://test-bucket/test/sample.csv /tmp/outside.csv	"標準出力に1が出力される（終了コード1）
+/tmp/outside.csv が作成されない"								
+		test35	コピー先ディレクトリが許可ディレクトリ外を指すシンボリックリンクの場合		シンボリックリンク経由の抜け道が拒否されること	"S3に test/sample.csv が存在する。
+EFS/out/link が許可ディレクトリ外（EFS/other）へのシンボリックリンクである。
+許可ディレクトリ：EFS/out（環境変数 EFS_ALLOWED_DIR に設定する）"	s3://test-bucket/test/sample.csv EFS/out/link/new.csv	"標準出力に1が出力される（終了コード1）
+EFS/other/new.csv が作成されない"								
+		test36	許可ディレクトリと名前の先頭が同じ別のディレクトリの場合		前方一致で許可されないこと	"S3に test/sample.csv が存在する。
+EFS/out_evil が存在する。
+許可ディレクトリ：EFS/out（環境変数 EFS_ALLOWED_DIR に設定する）"	s3://test-bucket/test/sample.csv EFS/out_evil/new.csv	"標準出力に1が出力される（終了コード1）
+EFS/out_evil/new.csv が作成されない"								
+		test37	コピー元（EFS）が許可ディレクトリ外の場合		EFSのコピー元でも許可ディレクトリ外が拒否されること	"EFS/other/src.csv が存在する。
+許可ディレクトリ：EFS/out（環境変数 EFS_ALLOWED_DIR に設定する）"	EFS/out/../other/src.csv s3://test-bucket/test/up.csv	"標準出力に1が出力される（終了コード1）
+S3にファイルが作成されない"								
+		test38	許可ディレクトリ内のサブディレクトリにコピーする場合		許可範囲内は通常どおりコピーできること（回帰確認）	"S3に test/sample.csv が存在する。
+EFS/out/sub が存在する。
+許可ディレクトリ：EFS/out（環境変数 EFS_ALLOWED_DIR に設定する）"	s3://test-bucket/test/sample.csv EFS/out/sub/new.csv	"標準出力に0が出力される（終了コード0）
+EFS/out/sub/new.csv が作成され、内容がS3と一致する"								
+		test39	コピー元（EFS）のファイルが存在しない場合		EFSにファイルがない場合の動作が確認できること	EFS/out/none.csv が存在しない。	EFS/out/none.csv s3://test-bucket/test/up.csv	"標準出力に1が出力される（終了コード1）
+S3にファイルが作成されない"								
+		test40	コピー先（S3）のバケットが存在しない場合		コピー先バケットがない場合の動作が確認できること	"EFS/out/src.csv が存在する。（内容：EFS）
+バケット no-bucket が存在しない。"	EFS/out/src.csv s3://no-bucket/test/up.csv	"標準出力に-1が出力される（終了コード1）
+S3にファイルが作成されない"								バケットなしを1とするか-1とするかは確認中（コピー元S3の場合は1）
+		test41	S3へのアップロード中に例外が発生した場合		アップロード失敗時の動作が確認できること	"EFS/out/src.csv が存在する。（内容：EFS）
+アップロード処理で例外を発生させる。（モック）"	EFS/out/src.csv s3://test-bucket/test/up.csv	"標準出力に-1が出力される（終了コード1）
+S3にファイルが作成されない"								アップロード失敗の戻り値（-1）は確認中
+		test42	コピー先（S3）の存在確認でアクセス権限がない場合		AccessDenied時の動作が確認できること	"EFS/out/src.csv が存在する。（内容：EFS）
+S3の存在確認でAccessDeniedを発生させる。（モック）"	EFS/out/src.csv s3://test-bucket/test/up.csv false	"標準出力に-1が出力される（終了コード1）
+S3にファイルが作成されない"								Flociでは再現しにくいためモックで確認
+		test43	ファイルの置換で例外が発生した場合		置換に失敗しても既存ファイルが壊れず、一時ファイルが残らないこと	"S3に test/sample.csv が存在する。
+EFS/out/old.csv が存在する。（内容：OLD）
+ファイルの置換処理で例外を発生させる。（モック）"	s3://test-bucket/test/sample.csv EFS/out/old.csv true	"標準出力に-1が出力される（終了コード1）
+EFS/out/old.csv の内容がOLDのまま変わらない
+一時ファイルが残らない"								
+		test44	想定外の例外が発生した場合		想定外の例外でも処理結果が返ること	"S3に test/sample.csv が存在する。
+S3クライアントの作成で想定外の例外を発生させる。（モック）"	s3://test-bucket/test/sample.csv EFS/out/new.csv	"標準出力に-1が出力される（終了コード1）
+コピー先にファイルが作成されない"								
+		test45	ライブラリ（boto3）の取り込みに失敗する場合		取り込み失敗でも処理結果が返ること	boto3 を取り込めない状態にする。（モック）	s3://test-bucket/test/sample.csv EFS/out/new.csv	"標準出力に-1が出力される（終了コード1）
+処理結果が返らない状態にならない"								mainで例外として処理する
+		test46	上書きなしでコピー中に、同名ファイルが別に作成された場合		競合時に上書きされないこと	"S3に test/sample.csv が存在する。
+EFS/out/new.csv が存在しない。
+置換の直前に EFS/out/new.csv を作成する。（モック）"	s3://test-bucket/test/sample.csv EFS/out/new.csv false	"標準出力に1が出力される（終了コード1）
+作成された EFS/out/new.csv の内容が変わらない
+一時ファイルが残らない"								
+		test47	キャッシュのリフレッシュ後もコピー元（EFS）のファイルが存在しない場合		リフレッシュしても存在しなければ処理エラーになること	EFS/out/none.csv が存在しない。	EFS/out/none.csv s3://test-bucket/test/up.csv	"標準出力に1が出力される（終了コード1）
+S3にファイルが作成されない"								キャッシュのリフレッシュ処理は実装予定。実装後に確認する
+	"取り扱うデータについて、特殊な数値のパターンを網羅的に確認する。
+
+（例）
+・ゼロやマイナス、言語仕様上の上限・下限、誤差（桁落ちなど）、概算（四捨五入など）の場合について確認する。"															
+	"取り扱うデータについて、特殊な日付のパターンを網羅的に確認する。
+
+（例）
+・うるう年や存在しない日付、祝祭日、元号の切り替わり、業務上の特殊日などの場合について確認する。"															
+	"取り扱うデータについて、特殊な時刻のパターンを網羅的に確認する。
+
+（例）
+・日付が変わる前後や特殊な時刻（25時など）、存在しない時刻などの場合について確認する。"															
+	"取り扱うデータについて、特殊な文字列のパターンを網羅的に確認する。
+
+（例）
+・NULL、空文字、スペース、エスケープシーケンス（\t、\nなど）、機種依存文字(丸数字など)といった場合について確認する。"															
+	"複数の入力要素のそれぞれで確認が必要なデータについて、組合せのパターンを網羅的に確認する。
+
+（例）
+・複数の入力要素のそれぞれで確認が必要なすべてのデータの組合せを網羅する。
+・すべての2つの入力要素の組合せにおいて、確認が必要なすべてのデータの組合せを網羅する。
+・1つの入力要素で確認が必要なすべてのデータと、残りの入力要素の最も標準的なデータとの組合せを網羅する。
+・すべての入力要素で確認が必要なデータが少なくとも一度は確認されるように組み合わせる。"	test18	コピー元にS3ファイル、コピー先にEFSファイルを指定、コピー先が新規の場合		新規のファイルにコピーできること	"S3に test/sample.csv が存在する。
+EFS/out が空。"	s3://test-bucket/test/sample.csv EFS/out/new.csv	"標準出力に0が出力される（終了コード0）
+EFS/out/new.csv が作成され、内容がS3と一致する"								
+		test19	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプション省略、コピー先に同名ファイルがある場合		省略時（true）に上書きされること	"S3に test/sample.csv が存在する。
+EFS/out/old.csv が存在する。（内容：OLD）"	s3://test-bucket/test/sample.csv EFS/out/old.csv	"標準出力に0が出力される（終了コード0）
+EFS/out/old.csv がS3の内容に上書きされる"								デフォルトはtrue（上書き）
+		test20	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションtrue、コピー先に同名ファイルがある場合		trueで上書きされること	"S3に test/sample.csv が存在する。
+EFS/out/old.csv が存在する。（内容：OLD）"	s3://test-bucket/test/sample.csv EFS/out/old.csv true	"標準出力に0が出力される（終了コード0）
+EFS/out/old.csv がS3の内容に上書きされる"								
+		test21	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションfalse、コピー先が新規の場合		falseでも新規ならコピーできること	"S3に test/sample.csv が存在する。
+EFS/out が空。"	s3://test-bucket/test/sample.csv EFS/out/new.csv false	"標準出力に0が出力される（終了コード0）
+EFS/out/new.csv が作成され、内容がS3と一致する"								
+		test22	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseで上書きされないこと	"S3に test/sample.csv が存在する。
+EFS/out/old.csv が存在する。（内容：OLD）"	s3://test-bucket/test/sample.csv EFS/out/old.csv false	"標準出力に1が出力される（終了コード1）
+EFS/out/old.csv の内容がOLDのまま変わらない"								上書き不可は処理エラー（1）
+		test23	コピー先にEFSディレクトリを指定、同名ファイルがない場合		ディレクトリ指定でコピー元のファイル名でコピーされること	"S3に test/sample.csv が存在する。
+EFS/out が空。"	s3://test-bucket/test/sample.csv EFS/out	"標準出力に0が出力される（終了コード0）
+EFS/out/sample.csv が作成され、内容がS3と一致する"								
+		test24	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションtrueの場合		ディレクトリ指定で同名ファイルが上書きされること	"S3に test/sample.csv が存在する。
+EFS/out/sample.csv が存在する。（内容：OLD）"	s3://test-bucket/test/sample.csv EFS/out true	"標準出力に0が出力される（終了コード0）
+EFS/out/sample.csv がS3の内容に上書きされる"								
+		test25	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションfalseの場合		ディレクトリ指定で同名ファイルが上書きされないこと	"S3に test/sample.csv が存在する。
+EFS/out/sample.csv が存在する。（内容：OLD）"	s3://test-bucket/test/sample.csv EFS/out false	"標準出力に1が出力される（終了コード1）
+EFS/out/sample.csv の内容がOLDのまま変わらない"								上書き不可は処理エラー（1）
+		test48	コピー元にEFSファイル、コピー先にS3ファイルを指定、コピー先が新規の場合		EFSのファイルをS3にコピーできること	"EFS/out/src.csv が存在する。（内容：EFS）
+S3に test/up.csv が存在しない。"	EFS/out/src.csv s3://test-bucket/test/up.csv	"標準出力に0が出力される（終了コード0）
+S3の test/up.csv が作成され、内容がEFSと一致する"								
+		test49	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプション省略、コピー先に同名ファイルがある場合		省略時（true）にS3が上書きされること	"EFS/out/src.csv が存在する。（内容：EFS）
+S3に test/up.csv が存在する。（内容：OLD）"	EFS/out/src.csv s3://test-bucket/test/up.csv	"標準出力に0が出力される（終了コード0）
+S3の test/up.csv がEFSの内容に上書きされる"								デフォルトはtrue（上書き）
+		test50	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプションtrue、コピー先に同名ファイルがある場合		trueでS3が上書きされること	"EFS/out/src.csv が存在する。（内容：EFS）
+S3に test/up.csv が存在する。（内容：OLD）"	EFS/out/src.csv s3://test-bucket/test/up.csv true	"標準出力に0が出力される（終了コード0）
+S3の test/up.csv がEFSの内容に上書きされる"								
+		test51	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプションfalse、コピー先が新規の場合		falseでも新規ならコピーできること	"EFS/out/src.csv が存在する。（内容：EFS）
+S3に test/up.csv が存在しない。"	EFS/out/src.csv s3://test-bucket/test/up.csv false	"標準出力に0が出力される（終了コード0）
+S3の test/up.csv が作成され、内容がEFSと一致する"								
+		test52	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseでS3が上書きされないこと	"EFS/out/src.csv が存在する。（内容：EFS）
+S3に test/up.csv が存在する。（内容：OLD）"	EFS/out/src.csv s3://test-bucket/test/up.csv false	"標準出力に1が出力される（終了コード1）
+S3の test/up.csv の内容がOLDのまま変わらない"								
+		test53	S3→EFSの新規コピー後のファイル権限		コピー先ファイルの権限が664になること	"S3に test/sample.csv が存在する。
+EFS/out が空。"	s3://test-bucket/test/sample.csv EFS/out/new.csv	"標準出力に0が出力される（終了コード0）
+EFS/out/new.csv の権限が664である"								
+		test54	S3→EFSの上書きコピー後のファイル権限		既存ファイルの権限に関わらず664になること	"S3に test/sample.csv が存在する。
+EFS/out/old.csv が存在する。（内容：OLD、権限：640）"	s3://test-bucket/test/sample.csv EFS/out/old.csv true	"標準出力に0が出力される（終了コード0）
+EFS/out/old.csv がS3の内容に上書きされ、権限が664である"								
+	画面・帳票のレイアウト（配置、色、サイズ、フォントなど）が正しいことを確認する。															
+	画面の制御が正しいことを確認する。															
+	"SQLの処理時間や実行計画に問題ないか確認する。
+データ量が性能に影響する処理では、データの少ない状態でSQLの単性能テストを行っても問題が顕在化しない可能性がある。可能であれば、この段階で本番環境に近いデータ量、データ特性（カージナリティ等）をもったテストデータを用意する。"															
