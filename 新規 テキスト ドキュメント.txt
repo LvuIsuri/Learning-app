@@ -198,3 +198,78 @@ def test_copy_efs_to_s3_returns_error_when_source_is_missing(monkeypatch, tmp_pa
     )
 
     assert result == 1
+import uuid
+from pathlib import Path
+
+import boto3
+import pytest
+
+from kikin.fw.infra.external import fileCopyS3EfsService as service
+
+
+S3_TEST_PREFIX = "s3://test-bucket/test/"
+S3_ENDPOINT_URL = "http://localhost:4566"
+EFS_OUTPUT_DIR = Path.home() / "efs_test" / "out"
+TEST_CONTENT = b"pytest Floci S3-EFS integration test\n"
+
+
+@pytest.fixture
+def floci_s3(monkeypatch):
+    monkeypatch.setenv("S3_ENDPOINT_URL", S3_ENDPOINT_URL)
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "ap-northeast-1")
+    monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
+
+    client = boto3.client(
+        "s3",
+        endpoint_url=S3_ENDPOINT_URL,
+        region_name="ap-northeast-1",
+    )
+    client.head_bucket(Bucket="test-bucket")
+    EFS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    return client
+
+
+def new_test_object_key() -> str:
+    return f"test/pytest-{uuid.uuid4().hex}.txt"
+
+
+def test_floci_copies_s3_object_to_efs(floci_s3):
+    key = new_test_object_key()
+    destination = EFS_OUTPUT_DIR / Path(key).name
+    floci_s3.put_object(
+        Bucket="test-bucket",
+        Key=key,
+        Body=TEST_CONTENT,
+    )
+
+    try:
+        result = service.run(
+            [f"{S3_TEST_PREFIX}{Path(key).name}", str(destination), "true"]
+        )
+
+        assert result == 0, f"S3からEFSへのコピーが失敗しました: result={result}"
+        assert destination.read_bytes() == TEST_CONTENT
+    finally:
+        destination.unlink(missing_ok=True)
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
+
+def test_floci_copies_efs_file_to_s3(floci_s3):
+    key = new_test_object_key()
+    source = EFS_OUTPUT_DIR / f"pytest-source-{uuid.uuid4().hex}.txt"
+    source.write_bytes(TEST_CONTENT)
+
+    try:
+        result = service.run(
+            [str(source), f"{S3_TEST_PREFIX}{Path(key).name}", "true"]
+        )
+
+        assert result == 0, f"EFSからS3へのコピーが失敗しました: result={result}"
+        downloaded = floci_s3.get_object(Bucket="test-bucket", Key=key)["Body"].read()
+        assert downloaded == TEST_CONTENT
+    finally:
+        source.unlink(missing_ok=True)
+        floci_s3.delete_object(Bucket="test-bucket", Key=key)
+
