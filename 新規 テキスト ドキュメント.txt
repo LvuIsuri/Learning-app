@@ -1200,3 +1200,83 @@ def test35(floci_s3):
 
 
         return -1
+
+1.hang so
+hang so s3_prefix
+wildcard
+loi aws bao objec hoac bucket k ton tai
+allowed_dir_env bien moi truong dk pheo truy cap
+	
+2.split _s3_uri
+k duoc co wildcard va bat dau bang s3://
+s3://test-bucket/test/sample.csv
+
+bucket :test-bucket
+key:tes/sample.csv
+ 	chua wildcard:loi
+	ko chi dinh thu muc:loi
+	k co key loi
+bucket :test-bucket
+key:test/sample.csv
+
+3.
+prase_over_write_flag
+true/false 
+k co thi mac dinh true
+ngoai ra la loi
+
+4.
+is_allowed_path
+phan chong directory traversal
+vidu
+efs_allowed_dir /home/user/aaa/bbb
+/home/user/aaa/bbb/../../../tmp/text.txt
+->tmp/text.txt
+/aaa/bbb/../../etc/pwd
+->tmp/text.txt
+5.
+create_s3_client
+tao s3(floci)
+6.
+s3_exists
+7.
+copy_s3_to_efs
+tach s3 lay bucket,key
+tach filename
+dich neu la thu muc thi ghep filename vao
+ dicrectory travesal
+ kiem tra
+ file dich ton tai k
+ quyen ghi
+ kiem tra object s3 ton tai hay k
+ tao file tam set quyen va download
+ true/false
+ xoa file tam
+
+9. copy_efs_to_s3
+check wildcard
+chong directory tranversal
+cache refesh khi co loi
+kiem tra co phai file k
+tach s3 o file dich
+tao s3 over_write=false s3 ton tai thi return 1
+upload file len s3 kiem tra co bucket hay k
+
+10 run
+
+kiem tra 2 hoac 3. file: file nguon filepath file dich overwrite true/false
+k co file hoac filepath thi loi
+ghi de phai la true/false. mac dinh la true
+source_is_s3:file bat dau s3://
+destination_is_s3:filepath bat dau s3://
+file=filepath: loi 1
+source_is_s3 true destination_is_s3 false :s3toefs
+source_is_s3 false destination_is_s3 true :efstos3
+
+
+ 
+
+
+
+
+
