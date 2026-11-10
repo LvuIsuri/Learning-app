@@ -77,6 +77,9 @@ def is_allowed_path(path: Path) -> bool:
     target = path.resolve()
     return target == allowed or allowed in target.parents
 
+def has_parent_reference(path: str) -> bool:
+    """パスを[/]で分割し、「..」が含まれるか判定する。"""
+    return ".." in path.split("/")
 
 def create_s3_client():
     """環境変数の接続先・リージョンを使ってS3クライアントを作成する。
@@ -127,16 +130,13 @@ def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
         return 1
 
     # ディレクトリ指定ならS3キーの末尾をファイル名としてコピー先に追加する。
-    filename = PurePosixPath(key).name
 
+    if has_parent_reference(file_path):
+        return 1   
+    filename = PurePosixPath(key).name
     destination_path = Path(file_path)
     if destination_path.is_dir():
         destination_path = destination_path / filename
-
-    # 許可ルート外への出力を防ぎ、コピー先の親ディレクトリを確定する。
-    if not is_allowed_path(destination_path):
-        return 1
-
     destination_dir = destination_path.resolve().parent
 
     # 出力先ディレクトリは自動作成せず、存在と書込権限を事前確認する。
@@ -199,14 +199,14 @@ def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
         1: コピー元なし、URI不正、上書き不可、コピー先バケットなしなど。
         -1: S3接続、権限、その他アップロード時の例外。
     """
+
+    if has_parent_reference(file):
+        return 1
+
     source_path = Path(file)
 
-    # コピー元が許可ルート内か確認する。
-    if not is_allowed_path(source_path):
-        return 1
-    
     if source_path.is_dir():
-            return 1
+        return 1
         
     if not source_path.is_file():
         try:
@@ -272,6 +272,12 @@ def run(argv) -> int:
         if not file or not file_path:
             return 1
 
+        for path in (file, file_path):
+
+        #s3://か/か始まらない場合はエラーとする。
+            if not (path.startswith(S3_PREFIX) or path.startswith("/")):
+                return 1
+
         # コピー元・コピー先のワイルドカード指定を拒否する。
         if any(char in path for path in (file, file_path) for char in WILDCARD_CHARS):
             return 1
@@ -297,26 +303,3 @@ def run(argv) -> int:
     except Exception:
         # 呼び出し元には処理結果コードで例外を通知する。
         return -1
-ヴーさん
-
- 
-
- 
-
-お疲れ様です。高橋です。
-
- 
-
-確認しました。
-
-ヴーさんの指摘通り38万円以上の送金要件は該当しませんでした。すみません。
-
-（該当するのは30歳以上70歳未満でした）
-
- 
-
-但し、金額の法的な最低ラインはありませんが、形式的な少額送金だけでは「実際に扶養している」
-
-と認められない可能性があります。継続して送金されていることが重要となります。
-
-従って念のために先に連絡した追加書類の提出をお願いします。
