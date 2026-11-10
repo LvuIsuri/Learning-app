@@ -330,3 +330,33 @@ class ApExecExReqSeikyusienService(appBase.AppBaseClass):
     <errMsg>業務APを強制異常終了します。起動プログラム：{0} 起動パラメータ：{1}</errMsg>
   </errInfo>
 </confValue>
+"""
+ * 開発システム ： オンライン請求システム
+ * ファイル名   ： apExecExReqSeikyusien.py
+ * 著作権       ： Copyright (C) 2020, 社会保険診療報酬支払基金
+ * 会社名       ： NTT DATA Corporation
+ * 更新日       ： $Date: 2026年5月19日 17::55 $
+"""
+
+import sys
+from kikin.fw.infra.external import apExecExReqSeikyusienService
+
+# メイン処理。コマンドラインから引数を受け取り、クラスを生成したのち、クラス内のメソッドを実行する。
+if __name__ == '__main__':
+    business_info_list = sys.argv[1]
+    retry_flag = sys.argv[2]
+    retry_count = sys.argv[3]
+    retry_wait_time = sys.argv[4]
+    
+    exe = apExecExReqSeikyusienService.ApExecExReqSeikyusienService\
+    (business_info_list, retry_flag, retry_count, retry_wait_time)
+    res = exe.run(exe.do_http_external_form)
+
+    if res == 1:
+        print('-1')
+        sys.exit('1')
+
+    result_sys = res[0]
+    result_external = res[1]
+    print(result_external)
+    sys.exit(result_sys)
