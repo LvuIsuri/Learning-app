@@ -1,66 +1,299 @@
-	項番	システム	機能名	点数表	工程	"レビュー
-種類"	"レビュー
-実施日"	"レビュー
-回次"	レビュー管理ID	文書名	頁	行	指摘内容	修正内容または検討結果	直接原因	根本原因	事象に対する横並び	根本原因に対する横並び	エラー現象	発生種別	混入工程	エラー原因	重要度	修正年月日	"修正
-担当者"	"修正
-確認者"	"修正
-確認日"	
-	記載内容	システム名	機能名	点数表名	レビュー対象の工程	レビュー種類	レビュー実施日	レビュー回次	レビュー管理IDとの紐づけ	"指摘された箇所。
-※再レビューの際、箇所を特定できるよう記載。"			指摘内容	"修正内容。
-追加調査等の指摘を受けた場合はその調査内容と結果を記載すること。"	エラーに対する直接的な原因	"エラーに対する根本的な原因
-（注）「考慮漏れ」や「業務知識の不足」ではなく、横並びに繋げるために「どのようなプロセスが不足していたのか」を記載すること。
-※何をすれば防げたのかで考えてみる。"	"事象に対する横並びとその結果を記載。
-【観点】事象を踏まえて何を確認するのか
-【手段】具体的な確認手段（Grep、消込、ソーストレース等々）
-【範囲】担当者観点または案件・事象などの観点で範囲を決める
-例　担当者が担当した全案件の今回改修範囲
-　　該当共通関数を参照している全案件の今回改修範囲
-　　最大値を判断している当案件の今回改修範囲
-【結果】他に問題がないことを確認した。／他にN件の問題を発見し同様に修正した。"	"根本原因に対する横並びとその結果を記載。
-【観点】根本原因を踏まえて何を確認するのか
-【手段】具体的な確認手段（Grep、消込、ソーストレース等々）
-【範囲】担当者観点または案件・事象などの観点で範囲を決める
-例　担当者が担当した全案件の今回改修範囲
-　　該当共通関数を参照している全案件の今回改修範囲
-　　最大値を判断している当案件の今回改修範囲
-【結果】他に問題がないことを確認した。／他にN件の問題を発見し同様に修正した。"	「エラー分類方法」シート参照					指摘内容を修正した日付	修正した担当者	修正を確認したレビュア	修正後確認を実施した日	
-	記載例	0.出産	SF03_原審査（審査事務）	0.出産	2.BD	1.中間	26/07/30	1	SF1	SF03_原審査（審査事務）_業務フロー図.xlsx	1		サブジェクトエリア名が最新の名称に更新されていない。	最新のサブジェクトエリア一覧を確認し、業務フロー図に記載されているサブジェクトエリア名を最新の名称に修正した。	業務フロー図の作成時に旧版のサブジェクトエリア一覧を参照したため、変更後の名称を反映できていなかった。	設計着手時およびレビュー依頼前に、最新のサブジェクトエリア一覧を取得し、設計書の記載内容との整合性を確認する手順が定められていなかった。	"【観点】最新のサブジェクトエリア一覧と、同種ドキュメントに記載されたサブジェクトエリア名の整合性
-【手段】最新のサブジェクトエリア一覧を基に、対象ドキュメントに記載された名称を一件ずつ突合した。
-【範囲】担当者が作成または修正した、今回の改修範囲に含まれるすべての業務フロー図
-【結果】他に問題がないことを確認した。"	"【観点】最新版の参照資料を使用し、設計書との整合性を確認しているか
-【手段】チェックリストおよび参照資料の版数を確認
-【範囲】担当者が作成または修正した、今回の改修範囲の設計書
-【結果】他に同様の問題がないことを確認した。あわせて、レビュー依頼前に参照資料の最新版確認を行う項目をチェックリストに追加した。"	7.設計の改善	2.ドキュメント化	2.BD	H.修正ミス	S.小	2026/7/31	■■	●●SGL	2026/8/3	
-	必須/任意	必須	必須	必須	任意	必須	必須	必須	必須	必須	必須	任意	必須	必須	必須	必須	必須	必須	必須	必須	必須	必須	任意	必須	必須	必須	必須	
-	1	0.出産	フロントエンド詳細設計書	0.出産	3.DD	2.プロジェクト内	26/09/15	1	SF1	エラーハンドリング.md	1		使用例でフック関数はuseEffect内での使用にすること	"フック関数は「useEffect内でしか使用できない」ではなく、正しくは「関数コンポーネントでしか使用できない」でした。
-そのため、使用例では関数コンポーネント内で使用する例に修正した。"	使用例がフック関数の特性を考慮していなかった。	関数、フック関数、関数コンポーネントの各特性ごとの記載方法が意識できていなかった。	"【観点】フック関数を記載している箇所の確認
-【手段】Grep
-【範囲】フロントエンド詳細設計書
-【結果】他に2箇所にて横並び対応を実施"	"【観点】関数、関数コンポーネントの使用例が正しく記載できているか
-【手段】目視
-【範囲】フロントエンド詳細設計書
-【結果】他に問題ないことを確認した。"	3.説明内容不明確	2.ドキュメント化	3.DD	G.表現上の配慮不足		2026/9/15	山内	幸川	2026/9/15	
+import os
+import sys
+import tempfile
+from pathlib import Path, PurePosixPath
 
-システム	品質管理単位/機能名	点数表	工程	レビューの種類	発生種別	エラー現象	重要度	エラー原因	システム要素	重要度			
-0.出産	00_全体	0.出産	1.要件定義	1.中間	1.設計	1.設計もれ	L.大	A.要求の確認不足	0A:ニーズの把握	L.大			
-1.レセ電	SF01_月次開始処理	1.共通	2.BD	2.プロジェクト内	2.ドキュメント化	2.設計誤り	M.中	B.設計条件の確認不足	0B:経営要求の確認	M.中			
-2.再審査	SF02_原審査（受付・点検処理）	2.医科	3.DD	3.お客様	3.お客様要求仕様の変更	3.説明内容不明確	S.小	C.実現方式の検討不足	0C:システム課題の設定	S.小			
-3.オンライン	SF03_原審査（審査事務）	3.DPC	4.PD			4.標準違反		D.設計技術の習熟不足	0D:システム構想の立案				
-4.共通帳票	SF04_再審査（過誤請求）	4.歯科	5.M			5.再利用誤り		E.業務知識の習熟不足	4A:その他(企画)				
-5.統合管理	SF05_未調整管理	5.調剤	6.UT2			6.表現上の記述不良		F.周知連絡の不徹底	1A:要求の把握				
-6.算定条件	SF06_請求・支払処理		7.SI1			7.設計の改善		G.表現上の配慮不足	1B:業務機能分析				
-7.認証局	SF07_月内締め・月次終了処理		8.SI2			0.非エラー扱い		H.修正ミス	2A:業務データ分析				
-8.特定健診	SF09_業務共通（ログイン認証）		9.SI3					非エラー扱い	3A:システム方式概要設計				
-9.分析評価	SF10_業務共通（ユーザー設定）		10.PT						4B:その他(要件定義)				
-	SF11_業務共通（レセプト参照）								1C:ソフトウェアアーキテクチャ設計				
-									1D:ユーザインタフェース設計				
-									1E:業務処理設計				
-									1F:プログラム設計				
-									2B:業務データ設計				
-									3B:システム方式詳細設計				
-									3C:システム共通				
-									3D:移行準備				
-									3E:環境構築				
-									4C:その他(設計)				
-													
+import boto3
+from boto3.exceptions import S3UploadFailedError
+from botocore.exceptions import ClientError
 
+S3_PREFIX = "s3://"
+WILDCARD_CHARS = ("*", "?")
+# HeadObjectで「オブジェクトまたはバケットなし」と判定するエラーコード。
+NOT_FOUND_CODES = ("404", "NoSuchKey", "NotFound", "NoSuchBucket")
+# EFSでアクセスを許可するルートディレクトリを指定する環境変数。
+# 未設定時はディレクトリ制限を行わない。
+ALLOWED_DIR_ENV = "EFS_ALLOWED_DIR"
+
+
+def split_s3_uri(
+    uri: str,
+    label: str = "source",
+    allow_empty_key: bool = False,
+):
+    """S3 URIを検証し、バケット名とオブジェクトキーに分割する。
+
+    Args:
+        uri: s3://バケット/キー 形式のURI。
+        label: エラーメッセージに表示する「コピー元」または「コピー先」。
+
+    Returns:
+        (バケット名, オブジェクトキー)。
+
+    Raises: 
+        ValueError: URI形式、ワイルドカード、バケット名またはキーが不正な場合。
+    """
+    # S3 URI以外やワイルドカード指定は、単一ファイルの指定ではないため拒否する。
+    if not uri.startswith(S3_PREFIX):
+        raise ValueError(f"{label}の形式が不正です(s3://バケット/キー): {uri}")
+    if any(char in uri for char in WILDCARD_CHARS):
+        raise ValueError(f"{label}にワイルドカードは指定できません: {uri}")
+
+    # 最初の「/」より前をバケット名、後ろをオブジェクトキーとして扱う。
+    bucket, _, key = uri[len(S3_PREFIX):].partition("/")
+
+    if not bucket or (not key and not allow_empty_key):
+        raise ValueError(f"{label}にバケットまたはキーがありません: {uri}")
+
+    return bucket, key
+
+
+def parse_over_write_flg(value: str) -> bool:
+    """コマンドラインの上書き指定をbool値に変換する。
+
+    Raises:
+        ValueError: true/false以外（空文字を含む）が指定された場合。
+    """
+    # 大文字・小文字と前後の空白を許容してから値を判定する。
+    normalized = value.strip().lower()
+
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+
+    raise ValueError("上書きオプションは true または false を指定してください")
+
+
+def is_allowed_path(path: Path) -> bool:
+    """EFS_ALLOWED_DIRが設定されている場合、パスが許可ルート配下か判定する。"""
+    allowed_dir = os.environ.get(ALLOWED_DIR_ENV)
+    if not allowed_dir:
+        # 許可ルートが未設定の場合は、パス制限を適用しない。
+        return True
+
+    # 相対パス、親参照、シンボリックリンクを解決してから許可ルート配下か判定する。
+    allowed = Path(allowed_dir).resolve()
+    target = path.resolve()
+    return target == allowed or allowed in target.parents
+
+
+def create_s3_client():
+    """環境変数の接続先・リージョンを使ってS3クライアントを作成する。
+
+    S3_ENDPOINT_URLが設定されていればFlociなどの指定先を使い、
+    未設定の場合はboto3の標準AWS認証情報チェーンを利用する。
+    """
+    session = boto3.Session(
+        region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1"),
+    )
+    return session.client(
+        "s3",
+        endpoint_url=os.environ.get("S3_ENDPOINT_URL") or None,
+    )
+
+
+def s3_exists(s3, bucket: str, key: str) -> bool:
+    """HeadObjectでS3オブジェクトの存在を確認する。
+
+    オブジェクトまたはバケットがない場合はFalseを返す。
+    AccessDeniedや接続エラーなど、存在確認以外の失敗は呼び出し元へ送出する。
+    """
+    try:
+        s3.head_object(Bucket=bucket, Key=key)
+    except ClientError as exc:
+        code = str(exc.response.get("Error", {}).get("Code", ""))
+        if code in NOT_FOUND_CODES:
+            return False
+        raise
+    return True
+
+
+def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
+    """S3からEFSへ単一ファイルをコピーする。
+
+    戻り値:
+        0: コピー成功。
+        1: URI不正、コピー元なし、上書き不可などの入力・処理エラー。
+        -1: EFS書込、S3接続、権限、ダウンロードなどの例外。
+    """
+    try:
+        # コピー元URIを検証し、S3 APIで使うバケット名とキーを取得する。
+        bucket, key = split_s3_uri(file, "source")
+        if key.endswith("/"):
+            raise ValueError(f"にディレクトリは指定できません: {file}")
+    except ValueError :
+
+        return 1
+
+    # ディレクトリ指定ならS3キーの末尾をファイル名としてコピー先に追加する。
+    filename = PurePosixPath(key).name
+
+    destination_path = Path(file_path)
+    if destination_path.is_dir():
+        destination_path = destination_path / filename
+
+    # 許可ルート外への出力を防ぎ、コピー先の親ディレクトリを確定する。
+    if not is_allowed_path(destination_path):
+        return 1
+
+    destination_dir = destination_path.resolve().parent
+
+    # 出力先ディレクトリは自動作成せず、存在と書込権限を事前確認する。
+    if not destination_dir.is_dir():
+        return 1
+    
+    if not os.access(destination_dir, os.W_OK | os.X_OK):
+        return -1
+    
+    if destination_path.is_file():
+        if not over_write:
+            return 1
+        if not os.access(destination_path, os.W_OK):
+            return -1
+
+    s3 = create_s3_client()
+
+    # ダウンロード前にS3上のコピー元を確認する。未存在は処理エラーとして返す。
+    if not s3_exists(s3, bucket, key):
+        return 1
+
+    # 同じディレクトリに一時ファイルを作り、不完全なコピー先が残るのを防ぐ。
+    fd, temporary_name = tempfile.mkstemp(
+        dir=destination_dir,
+        prefix=f".{filename}.",
+        suffix=".part",
+    )
+    os.close(fd)
+    temporary_path = Path(temporary_name)
+
+    try:
+        # まず一時ファイルへダウンロードし、完了後にコピー先へ反映する。
+        s3.download_file(bucket, key, str(temporary_path))
+
+        # 一時ファイルは権限0600で作成されるため、コピー先の権限を0664にする。
+        # (新規・上書きともに0664。上書きの場合も既存ファイルの権限は引き継がない)
+        os.chmod(temporary_path, 0o664)
+
+        if over_write:
+            # 上書きあり: 完成した一時ファイルで既存ファイルを置き換える。
+            os.replace(temporary_path, destination_path)
+        else:
+            # 上書きなし: 競合で先にファイルが作られた場合も上書きしない。
+            try:
+                os.link(temporary_path, destination_path)
+            except FileExistsError:
+                return 1
+    finally:
+        # 成功・失敗のどちらでも一時ファイルを残さない。
+        temporary_path.unlink(missing_ok=True)
+
+    return 0
+
+
+def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
+    """EFSからS3へ単一ファイルをコピーする。
+
+    戻り値:
+        0: アップロード成功。
+        1: コピー元なし、URI不正、上書き不可、コピー先バケットなしなど。
+        -1: S3接続、権限、その他アップロード時の例外。
+    """
+    source_path = Path(file)
+
+    # コピー元が許可ルート内か確認する。
+    if not is_allowed_path(source_path):
+        return 1
+    
+    if source_path.is_dir():
+            return 1
+        
+    if not source_path.is_file():
+        try:
+            with os.scandir(source_path.parent) as entries:
+                next(entries, None)
+            if not source_path.is_file():
+                return 1
+        except FileNotFoundError:
+            pass
+            
+    try:
+        # コピー先をS3 URIとして検証する。
+        bucket, key = split_s3_uri(
+            file_path, "destination", allow_empty_key=True
+        )
+        if not key:
+            key = source_path.name
+    except ValueError:
+        return 1
+
+    s3 = create_s3_client()
+
+    # 上書きfalseの場合だけ、S3上に同じキーがないことを事前確認する。
+    if not over_write and s3_exists(s3, bucket, key): 
+        return 1
+
+    # NoSuchBucketだけを処理エラーとして扱い、それ以外の転送失敗は呼び出し元へ送出する。
+    try:
+        s3.upload_file(str(source_path), bucket, key)
+    except S3UploadFailedError as exc:
+        cause = exc.__context__
+        if isinstance(cause, ClientError):
+            code = str(cause.response.get("Error", {}).get("Code", ""))
+            if code == "NoSuchBucket":
+                return 1
+        raise
+    return 0
+
+
+def run(argv) -> int:
+    """引数を検証し、指定された方向でコピー処理を実行する。
+
+    Args:
+        argv: スクリプト名を除く引数。
+            [コピー元, コピー先, 上書きオプション（省略可、既定値true）]
+
+    Returns:
+        0: コピー成功。
+        1: 引数、ファイル、URI、上書きなどの処理エラー。
+        -1: S3接続・権限、EFS書込、転送中などの例外。
+    """
+    try:
+        # コピー元・コピー先と、任意の上書きオプションだけを受け付ける。
+        if len(argv) < 2 or len(argv) > 3:
+            return 1
+
+        file = argv[0]
+        file_path = argv[1]
+        # 上書きオプションの省略時はtrue（上書きする）として扱う。
+        over_write_flg = argv[2] if len(argv) > 2 else "true"
+
+        # 空のコピー元またはコピー先は処理できない。
+        if not file or not file_path:
+            return 1
+
+        # コピー元・コピー先のワイルドカード指定を拒否する。
+        if any(char in path for path in (file, file_path) for char in WILDCARD_CHARS):
+            return 1
+        
+        # 上書き指定をboolに変換し、不正値は引数エラーとして返す。
+        try:
+            over_write = parse_over_write_flg(over_write_flg)
+        except ValueError:   
+            return 1
+
+        # S3 URIの有無で方向を決める。一方だけがS3である必要がある。
+        source_is_s3 = file.startswith(S3_PREFIX)
+        destination_is_s3 = file_path.startswith(S3_PREFIX)
+
+        if source_is_s3 == destination_is_s3:
+            return 1
+
+        # 方向ごとの処理に委譲する。
+        if source_is_s3:
+            return copy_s3_to_efs(file, file_path, over_write)
+        return copy_efs_to_s3(file, file_path, over_write)
+
+    except Exception:
+        # 呼び出し元には処理結果コードで例外を通知する。
+        return -1
