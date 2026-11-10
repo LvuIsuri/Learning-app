@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import tempfile
 from pathlib import Path, PurePosixPath
 
@@ -110,11 +111,11 @@ def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
         if key.endswith("/"):
             raise ValueError(f"にディレクトリは指定できません: {file}")
     except ValueError:
-        logger.warning("S3からEFSへのコピーを中止しました。コピー元URIが不正です。")
+        logger.warning("S3からEFSへのコピーを中止しました。コピー元URIが不正です: %s", file)
         return 1
 
     if has_parent_reference(file_path):
-        logger.warning("S3からEFSへのコピーを中止しました。コピー先パスに「..」は指定できません。")
+        logger.warning("S3からEFSへのコピーを中止しました。コピー先パスに「..」は指定できません: %s", file_path)
         return 1
 
     # ディレクトリ指定ならS3キーの末尾をファイル名としてコピー先に追加する。
@@ -127,26 +128,26 @@ def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
 
     # 出力先ディレクトリは自動作成せず、存在と書込権限を事前確認する。
     if not destination_dir.is_dir():
-        logger.warning("S3からEFSへのコピーを中止しました。コピー先ディレクトリが存在しません。")
+        logger.warning("S3からEFSへのコピーを中止しました。コピー先ディレクトリが存在しません: %s", destination_dir)
         return 1
 
     if not os.access(destination_dir, os.W_OK | os.X_OK):
-        logger.error("S3からEFSへのコピーに失敗しました。コピー先ディレクトリに書き込めません。")
+        logger.error("S3からEFSへのコピーに失敗しました。コピー先ディレクトリに書き込めません: %s", destination_dir)
         return -1
 
     if destination_path.is_file():
         if not over_write:
-            logger.warning("S3からEFSへのコピーを中止しました。コピー先ファイルが存在し、上書きが許可されていません。")
+            logger.warning("S3からEFSへのコピーを中止しました。コピー先ファイルが存在し、上書きが許可されていません: %s", destination_path)
             return 1
         if not os.access(destination_path, os.W_OK):
-            logger.error("S3からEFSへのコピーに失敗しました。コピー先ファイルに書き込めません。")
+            logger.error("S3からEFSへのコピーに失敗しました。コピー先ファイルに書き込めません: %s", destination_path)
             return -1
 
     s3 = create_s3_client()
 
     # ダウンロード前にS3上のコピー元を確認する。未存在は処理エラーとして返す。
     if not s3_exists(s3, bucket, key):
-        logger.warning("S3からEFSへのコピーを中止しました。コピー元オブジェクトが存在しません。")
+        logger.warning("S3からEFSへのコピーを中止しました。コピー元オブジェクトが存在しません: s3://%s/%s", bucket, key)
         return 1
 
     # 同じディレクトリに一時ファイルを作り、不完全なコピー先が残るのを防ぐ。
@@ -174,7 +175,7 @@ def copy_s3_to_efs(file: str, file_path: str, over_write: bool) -> int:
             try:
                 os.link(temporary_path, destination_path)
             except FileExistsError:
-                logger.warning("S3からEFSへのコピーを中止しました。処理中に別プロセスがコピー先ファイルを作成しました。")
+                logger.warning("S3からEFSへのコピーを中止しました。処理中に別プロセスがコピー先ファイルを作成しました: %s", destination_path)
                 return 1
     finally:
         # 成功・失敗のどちらでも一時ファイルを残さない。
@@ -193,13 +194,13 @@ def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
     """
 
     if has_parent_reference(file):
-        logger.warning("EFSからS3へのコピーを中止しました。コピー元パスに「..」は指定できません。")
+        logger.warning("EFSからS3へのコピーを中止しました。コピー元パスに「..」は指定できません: %s", file)
         return 1
 
     source_path = Path(file)
 
     if source_path.is_dir():
-        logger.warning("EFSからS3へのコピーを中止しました。コピー元にディレクトリは指定できません。")
+        logger.warning("EFSからS3へのコピーを中止しました。コピー元にディレクトリは指定できません: %s", file)
         return 1
 
     if not source_path.is_file():
@@ -209,10 +210,10 @@ def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
                 for _ in entries:
                     pass
             if not source_path.is_file():
-                logger.warning("EFSからS3へのコピーを中止しました。コピー元ファイルが存在しません。")
+                logger.warning("EFSからS3へのコピーを中止しました。コピー元ファイルが存在しません: %s", file)
                 return 1
         except FileNotFoundError:
-            logger.warning("EFSからS3へのコピーを中止しました。コピー元ディレクトリが存在しません。")
+            logger.warning("EFSからS3へのコピーを中止しました。コピー元ディレクトリが存在しません: %s", source_path.parent)
             return 1
 
     try:
@@ -223,14 +224,14 @@ def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
         if not key:
             key = source_path.name
     except ValueError:
-        logger.warning("EFSからS3へのコピーを中止しました。コピー先S3 URIが不正です。")
+        logger.warning("EFSからS3へのコピーを中止しました。コピー先S3 URIが不正です: %s", file_path)
         return 1
 
     s3 = create_s3_client()
 
     # 上書きfalseの場合だけ、S3上に同じキーがないことを事前確認する。
     if not over_write and s3_exists(s3, bucket, key):
-        logger.warning("EFSからS3へのコピーを中止しました。コピー先オブジェクトが存在し、上書きが許可されていません。")
+        logger.warning("EFSからS3へのコピーを中止しました。コピー先オブジェクトが存在し、上書きが許可されていません: s3://%s/%s", bucket, key)
         return 1
 
     # NoSuchBucketだけを処理エラーとして扱い、それ以外の転送失敗は呼び出し元へ送出する。
@@ -241,7 +242,7 @@ def copy_efs_to_s3(file: str, file_path: str, over_write: bool) -> int:
         if isinstance(cause, ClientError):
             code = str(cause.response.get("Error", {}).get("Code", ""))
             if code == "NoSuchBucket":
-                logger.warning("EFSからS3へのコピーを中止しました。コピー先バケットが存在しません。")
+                logger.warning("EFSからS3へのコピーを中止しました。コピー先バケットが存在しません: %s", bucket)
                 return 1
         raise
     return 0
@@ -262,7 +263,7 @@ def run(argv) -> int:
     try:
         # コピー元・コピー先と、任意の上書きオプションだけを受け付ける。
         if len(argv) < 2 or len(argv) > 3:
-            logger.warning("S3/EFSコピーを中止しました。引数は2個または3個指定してください。")
+            logger.warning("S3/EFSコピーを中止しました。引数は2個または3個指定してください: 指定された引数の数=%d", len(argv))
             return 1
 
         file = argv[0]
@@ -278,19 +279,19 @@ def run(argv) -> int:
         for path in (file, file_path):
             # s3://または/から始まるパスだけを受け付ける。
             if not (path.startswith(S3_PREFIX) or path.startswith("/")):
-                logger.warning("S3/EFSコピーを中止しました。パスにはS3 URIまたは絶対パスを指定してください。")
+                logger.warning("S3/EFSコピーを中止しました。パスにはS3 URIまたは絶対パスを指定してください: %s", path)
                 return 1
 
         # コピー元・コピー先のワイルドカード指定を拒否する。
         if any(char in path for path in (file, file_path) for char in WILDCARD_CHARS):
-            logger.warning("S3/EFSコピーを中止しました。ワイルドカードは指定できません。")
+            logger.warning("S3/EFSコピーを中止しました。ワイルドカードは指定できません: コピー元=%s コピー先=%s", file, file_path)
             return 1
 
         # 上書き指定をboolに変換し、不正値は引数エラーとして返す。
         try:
             over_write = parse_over_write_flg(over_write_flg)
         except ValueError:
-            logger.warning("S3/EFSコピーを中止しました。上書きオプションにはtrueまたはfalseを指定してください。")
+            logger.warning("S3/EFSコピーを中止しました。上書きオプションにはtrueまたはfalseを指定してください: %s", over_write_flg)
             return 1
 
         # S3 URIの有無で方向を決める。一方だけがS3である必要がある。
@@ -298,21 +299,35 @@ def run(argv) -> int:
         destination_is_s3 = file_path.startswith(S3_PREFIX)
 
         if source_is_s3 == destination_is_s3:
-            logger.warning("S3/EFSコピーを中止しました。コピー元またはコピー先の一方だけにS3 URIを指定してください。")
+            logger.warning("S3/EFSコピーを中止しました。コピー元またはコピー先の一方だけにS3 URIを指定してください: コピー元=%s コピー先=%s", file, file_path)
             return 1
 
         # 方向ごとの処理に委譲する。
         if source_is_s3:
             result = copy_s3_to_efs(file, file_path, over_write)
             if result == 0:
-                logger.info("S3からEFSへのコピーが完了しました。")
+                logger.info("S3からEFSへのコピーが完了しました: %s -> %s", file, file_path)
             return result
         result = copy_efs_to_s3(file, file_path, over_write)
         if result == 0:
-            logger.info("EFSからS3へのコピーが完了しました。")
+            logger.info("EFSからS3へのコピーが完了しました: %s -> %s", file, file_path)
         return result
 
-    except Exception as exc:
-        # 呼び出し元には処理結果コードで例外を通知する。
-        logger.error("S3/EFSコピー処理中にエラーが発生しました: %s", exc)
+    except Exception:
+        # 呼び出し元には処理結果コードで例外を通知する。スタックトレースもログに出力する。
+        logger.exception("S3/EFSコピー処理中にエラーが発生しました。")
         return -1
+
+
+def main() -> None:
+    """ログをstderrに出力し、処理結果(0、1、-1)をstdoutに出力する。"""
+    logging.basicConfig(
+        level=logging.INFO,
+        stream=sys.stderr,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    print(run(sys.argv[1:]))
+
+
+if __name__ == "__main__":
+    main()
