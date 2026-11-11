@@ -1,447 +1,3 @@
-"""
- * 開発システム ： オンライン請求システム
- * ファイル名   ： apExecExReqHttpFormService.py
- * 著作権       ： Copyright (C) 2020, 社会保険診療報酬支払基金
- * 会社名       ： NTT DATA Corporation
- * 更新日       ： $Date: 2026年5月19日 17:55:00 $
-"""
-import io
-import json
-import pycurl
-import time
-import re
-import os
-from urllib.parse import urlencode
-from xml.etree import ElementTree
-
-from ..common import appBase
-from ..common import confUtils
-
-
-class ApExecExReqSeikyusienService(appBase.AppBaseClass):
-
-    # 外部システム業務AP起動要求（HTTP・C++ライブラリ）（フォーム送信形式）から呼び出され、業務固有情報（フォーム）などを引数として、
-    # コールバック処理を行う。
-
-    def __init__(self, business_info_list,
-                 retry_flag, retry_count, retry_wait_time
-                 ):
-
-        # ApExecExReqHttpFormServiceクラスの初期化
-        # param business_info_list: 業務固有情報
-        # param retry_flag: リトライ要否
-        # param retry_count: リトライ回数
-        # param retry_wait_time: リトライ間隔
-
-        self.business_info_list = business_info_list
-        self.retry_flag = retry_flag
-        self.retry_count = retry_count
-        self.retry_wait_time = retry_wait_time
-
-        key_info = ' "' + self.business_info_list + '" '
-        super().__init__(__name__, key_info)
-        self.sys_err_code = 1
-        self.result_err_code = -1
-
-    def get_url(self):
-        """
-        # URL作成
-        # HTTP通信で用いるURLを作成し、返却する。
-        # :return: URL
-        """
-        # 接続先URL取得
-        # 設定ファイル（FL_001/クライアント・サーバ共通設定ファイル．外部接続先URL）から引数．要求先をキーに接続先URLIDを検索し、IDに紐づく
-        # スキーム・ホスト名を取得する。
-        # 接続先Urlを取得するために必要なcategory_valueを定義する(現時点でUrlは単数、複数になった場合はサービスの引数を変えてcategory_valueを振り分ける)
-        category_value='SEIKYUSIENAPI'
-        scheme_host_port = confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.COMN ,category_value ,'schemeHostPort', 'externalURL')
-        # URL取得に失敗した場合
-        if scheme_host_port is None:
-            # 監視ログにエラーログを出力する。
-            # メッセージID：e.p.9009
-            # 埋め込み文字{0}：設定ファイル取得キー
-            self.output_log(self.location(), self.sys_err_code, 'e.p.9009', [category_value])
-            # 例外を発生させる。
-            raise LookupError
-        # 
-        # 取得したスキーム・ホスト名・ポート番号を元に接続先URL「external_url」を設定する。
-        external_url = scheme_host_port
-        return external_url
-
-    def http_external_form(self, external_url, business_info_list):
-        """
-        HTTP通信実行
-        HTTP通信を実行し、結果を返却する。
-         :param external_url: 接続先URL
-         :param business_info_list: 業務固有情報
-         :return: HTTPステータスコード, curlコード, 業務AP終了ステータス, エラーメッセージ
-         """
-         
-        # ポストデータの作成
-        curl = pycurl.Curl()
-        byte_io = io.BytesIO()
-            
-        # ●コールバックで使用する情報は同じ
-        content_type = "Content-Type: application/x-www-form-urlencoded; charset=Windows-31J"
-        # 業務固有情報を半角スペース区切りでキー、値の形式に変換する。
-        # 請求区分、請求依頼番号、依頼内容区分、送信回、結果コード、エラーコードが来る想定
-        splited_business_info_list = business_info_list.split(' ')
-        business_info_dict = {splited_business_info_list[index] : splited_business_info_list[index + 1]
-                              for index in range(0, len(splited_business_info_list), 2)}
-        request_body = urlencode(business_info_dict)
-        
-        curl.setopt(pycurl.URL, external_url)
-        curl.setopt(pycurl.CUSTOMREQUEST, 'POST')
-        curl.setopt(pycurl.HTTP_VERSION, pycurl.CURL_HTTP_VERSION_1_1)
-        curl.setopt(pycurl.WRITEFUNCTION, byte_io.write)
-        
-        # ●環境変数API-KEY取得
-        api_key = os.getenv('API_KEY')
-        # 取得したAPIKEY情報をヘッダに設定
-        curl.setopt(pycurl.HTTPHEADER, [content_type , 'apikey:' + api_key])
-        curl.setopt(pycurl.POSTFIELDS, request_body)
-
-        # HTTPリクエスト開始
-        try:
-            curl.perform()
-            curl_code = pycurl.E_OK
-
-            # HTTPステータスコード取得
-            http_status_code = curl.getinfo(pycurl.HTTP_CODE)
-
-        except pycurl.error as e:
-            curl_code = e.args[0]
-
-            # HTTP通信自体が実行できない場合はhttp_status_codeに「-」（半角ハイフン）を設定する。
-            http_status_code = '-'
-
-        result = 0
-        err_msg = None
-
-        if (http_status_code == 200):
-            # レスポンスは半角文字のみで返却される
-            res = byte_io.getvalue().decode('cp932').strip()
-            result = int(res)
-
-        return http_status_code, curl_code, result, err_msg
-
-    def do_http_external_form(self):
-        # HTTP通信
-        # HTTP通信メソッドを用いて、リトライを含めたHTTP通信を実施する。
-        # :return 処理結果、処理結果（外部システム）
-
-        max_retry = 0
-
-        # URLを取得する。
-        try:
-            external_url = self.get_url()
-        except LookupError:
-            # 異常終了する。
-            # 処理結果に'1'（システムエラー）を設定し返却する。
-            return self.sys_err_code
-
-        # 引数．リトライ要否が要の場合
-        if self.retry_flag == "true":
-            # 引数．リトライ回数が設定されている場合
-            if self.retry_count != "0":
-                # 引数．リトライ回数をリトライ回数に設定する。
-                max_retry = int(self.retry_count)
-            # 上記以外の場合
-            else:
-                # 設定ファイル（FL_002/サーバサイド設定ファイル．リトライ．リトライ回数）をリトライ回数に設定する。
-                max_retry = int(confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.COMN, 'retry', 'retryCount'))
-
-            # 引数．リトライ間隔が設定されている場合
-            if self.retry_wait_time != "0":
-                # 引数．リトライ間隔をリトライ待機時間に設定する。
-                retry_wait_time = int(self.retry_wait_time)
-            # 上記以外の場合
-            else:
-                # 設定ファイル（FL_002/サーバサイド設定ファイル．リトライ．リトライ待機時間）を
-                # リトライ待機時間に設定する。
-                retry_wait_time = int(
-                    confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.COMN, 'retry', 'retryWaitTime'))
-        # 上記以外の場合
-        # 0をリトライ回数に設定する。（初期値が0なので処理は不要）
-
-        # リトライカウンター初期化
-        retry_counter = 0
-
-        while True:
-            http_status_code, curl_code, result, err_msg = self.http_external_form(external_url,
-                                                                                   self.business_info_list)
-            # 通信異常判定
-            # HTTPステータスコードが200以外
-            if http_status_code == 200:
-                break
-
-            # リトライ判定
-            # 通信異常（pycurlエラーコードが'7'（ホスト接続失敗）、'28'（タイムアウト）、HTTPステータスコードが500または503）
-            # かつ（設定ファイル（FL_002/サーバサイド設定ファイル．リトライ．リトライ回数）以下の場合）
-            if ((curl_code == pycurl.E_COULDNT_CONNECT or curl_code == pycurl.E_OPERATION_TIMEDOUT
-                 or http_status_code == 500 or http_status_code == 503) and retry_counter < max_retry):
-
-                # 監視ログにワーニングログを出力する。
-                # メッセージID：w.p.9001
-                # 埋め込み文字{0}：HTTPステータスコード
-                # 埋め込み文字{1}：URL
-                # 但し、HTTP通信自体が実行できない場合は{0}に「-」（半角ハイフン）を設定する。
-                self.output_log(self.location(), '', 'w.p.9001', [http_status_code, external_url])
-                # 設定したリトライ待機時間だけ処理を待つ。
-                time.sleep(retry_wait_time)
-
-                # HTTP通信をリトライする。
-                # 無限ループに入っているため、breakしなければリトライし続ける。
-                # リトライカウンター加算
-                retry_counter += 1
-
-            # 上記以外の場合
-            else:
-                # 監視ログにエラーログを出力する。
-                # メッセージID：e.p.9010
-                # 埋め込み文字{0}：HTTPステータスコード
-                # 埋め込み文字{1}：err_msg
-                # 但し、HTTP通信自体が実行できない場合は{0}に「-」（半角ハイフン）を設定する。
-                self.output_log(self.location(), self.sys_err_code, 'e.p.9010',
-                                [f'{http_status_code}, {err_msg}', external_url])
-
-                # 異常終了する。
-                # 処理結果に"1"（外部システムAPが異常終了またはシステムエラー）、
-                # 処理結果（外部システム）に"-1"（異常終了）を設定し返却する。
-                return self.sys_err_code, self.result_err_code
-
-        # 結果返却
-        # 業務AP終了ステータス戻り値判定
-        # 業務AP終了ステータスが”0”以外（外部システムAPが異常終了時のステータスコード、システムエラー）の場合
-        if result != 0:
-            # 異常終了する。
-            # 処理結果に"1"（外部システムAPが異常終了）、処理結果（外部システム）に業務AP終了ステータスを設定し返却する。
-            return self.sys_err_code, result
-
-        # 上記以外の場合
-        # 正常終了する。
-        # 処理結果に"0"（正常終了）、処理結果（外部システム）に"0"（正常終了）を設定し返却する。
-
-        return 0, 0
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<confValue>
-  <errInfo id="e.p.9001">
-    <errLevel>error</errLevel>
-    <errMsg>システムエラーが発生しました。{0}</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9002">
-    <errLevel>error</errLevel>
-    <errMsg>業務AP制御は既に起動しています。</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9003">
-    <errLevel>error</errLevel>
-    <errMsg>業務AP制御の常駐開始に失敗しました。</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9004">
-    <errLevel>error</errLevel>
-    <errMsg>業務APは既に起動しています。</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9005">
-    <errLevel>error</errLevel>
-    <errMsg>業務APの常駐開始に失敗しました。</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9006">
-    <errLevel>error</errLevel>
-    <errMsg>業務APの停止処理に失敗しました。</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9007">
-    <errLevel>error</errLevel>
-    <errMsg>業務APの常駐停止に失敗しました。</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9008">
-    <errLevel>error</errLevel>
-    <errMsg>業務AP制御の常駐停止に失敗しました。{0}</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9009">
-    <errLevel>error</errLevel>
-    <errMsg>設定取得に失敗しました。引数で渡されたキーに対応する項目が存在しません。引数として渡されたキー：{0}</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9010">
-    <errLevel>error</errLevel>
-    <errMsg>HTTP通信の実行に失敗しました。リトライ回数の超過または回復の見込みがないためリトライしません。HTTPステータスコード：{0} URL：{1}</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9011">
-    <errLevel>error</errLevel>
-    <errMsg>業務APの起動に失敗しました。起動プログラム：{0}</errMsg>
-  </errInfo>
-  <errInfo id="e.p.9012">
-    <errLevel>error</errLevel>
-    <errMsg>キュー登録に失敗しました。リランコマンド：{0}{1}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9001">
-    <errLevel>warn</errLevel>
-    <errMsg>HTTP通信の実行に失敗しました。HTTP通信をリトライします。HTTPステータスコード：{0} URL：{1}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9002">
-    <errLevel>warn</errLevel>
-    <errMsg>業務AP内で処理が失敗しました。業務AP終了ステータス：{0}</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9001">
-    <errLevel>info</errLevel>
-    <errMsg>業務APを開始します。起動プログラム：{0} 起動パラメータ：{1}</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9002">
-    <errLevel>info</errLevel>
-    <errMsg>業務APが正常終了しました。起動プログラム：{0} 起動パラメータ：{1}</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9003">
-    <errLevel>info</errLevel>
-    <errMsg>業務APが異常終了しました。起動プログラム：{0} 起動パラメータ：{1}</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9004">
-    <errLevel>info</errLevel>
-    <errMsg>キュー受信制御を起動します。</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9005">
-    <errLevel>info</errLevel>
-    <errMsg>キュー受信制御を停止します。</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9006">
-    <errLevel>info</errLevel>
-    <errMsg>キュー受信制御の停止が完了しました。</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9007">
-    <errLevel>info</errLevel>
-    <errMsg>業務APは既に起動済みのためスキップします。起動プログラム：{0} 起動パラメータ：{1}</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9008">
-    <errLevel>info</errLevel>
-    <errMsg>キュー受信処理が復旧しました。</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9009">
-    <errLevel>info</errLevel>
-    <errMsg>キュー受信処理に異常が発生しました。</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9010">
-    <errLevel>info</errLevel>
-    <errMsg>監視停止チェック処理が復旧しました。</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9011">
-    <errLevel>info</errLevel>
-    <errMsg>監視停止チェック処理に異常が発生しました。</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9012">
-    <errLevel>info</errLevel>
-    <errMsg>業務APを強制異常終了します。起動プログラム：{0} 起動パラメータ：{1}</errMsg>
-  </errInfo>
-</confValue>
-"""
- * 開発システム ： オンライン請求システム
- * ファイル名   ： apExecExReqSeikyusien.py
- * 著作権       ： Copyright (C) 2020, 社会保険診療報酬支払基金
- * 会社名       ： NTT DATA Corporation
- * 更新日       ： $Date: 2026年5月19日 17::55 $
-"""
-
-import sys
-from kikin.fw.infra.external import apExecExReqSeikyusienService
-
-# メイン処理。コマンドラインから引数を受け取り、クラスを生成したのち、クラス内のメソッドを実行する。
-if __name__ == '__main__':
-    business_info_list = sys.argv[1]
-    retry_flag = sys.argv[2]
-    retry_count = sys.argv[3]
-    retry_wait_time = sys.argv[4]
-    
-    exe = apExecExReqSeikyusienService.ApExecExReqSeikyusienService\
-    (business_info_list, retry_flag, retry_count, retry_wait_time)
-    res = exe.run(exe.do_http_external_form)
-
-    if res == 1:
-        print('-1')
-        sys.exit('1')
-
-    result_sys = res[0]
-    result_external = res[1]
-    print(result_external)
-    sys.exit(result_sys)
-#!/usr/bin/python3 -B
-# -*- coding: utf-8 -*-
-
-
-"""
- * 開発システム ： レセプト電算処理システム 等
- * ファイル名   ： appBase.py
- * 著作権       ： Copyright (C) 2019, 社会保険診療報酬支払基金
- * 会社名       ： NTT DATA Corporation
- * 更新日       ： $Date: 2019年8月13日 11:08:24 $
-"""
-
-from ..common import logUtils
-from ..common import confUtils
-import inspect
-import os
-
-
-class AppBaseClass:
-    """
-    python基底クラス
-    各サービスの基底クラス
-    """
-    # 初期化
-    def __init__(self, name, key_info):
-        """
-         AppBaseClassクラスの初期化を実行する。
-           :param name: インスタンスを作成するモジュール名
-           :param key_info:
-           """
-
-        self.key_info = key_info
-        #  ログ出力ロガー生成
-        #  ロガーを取得する。
-        # logging.basicConfig(format="$(asctime)-15c")
-        self.logger = logUtils.LogUtils.get_logger(name, key_info)
-
-        # システムID取得
-        self.system_id = os.environ['AP_SVR_ID'].split('_')[0]
-
-        # ファイル転送サーバ
-        self.tran_svr_id = {'RE':'RE_CLAIM_TRAN', 'SO':'SO_TRAN', 'ON':'ON_COMN_TRAN'}
-
-
-    # 業務起動
-    def run(self, func):
-        """
-        サービス実行
-         サービスの実行を行うメソッド。例外発生時はエラーログを出力する
-        :param func: 実行する関数名
-        :return: 関数実行成功時は実行結果、例外発生時は1
-        """
-        res = 1
-        try:
-            confUtils.ConfUtils.load()
-            res = func()
-        except:
-            import traceback
-            traceback_msg = traceback.format_exc()
-            self.output_log(self.location(), '', 'e.p.9001', [traceback_msg])
-
-        return res
-
-    def output_log(self, line_number, error_code, message_id, inner_massage=''):
-        """
-        ログ書き出し
-        logUtils内のメソッドを用いてログ書き出しの命令を実行する。
-        :param line_number:呼び出し元の行数
-        :param error_code:ログに書き出すエラーコード
-        :param message_id:ログに書き出すメッセージのID
-        :param inner_massage:ログへの埋め込み文字
-        """
-        logUtils.LogUtils.output_log(self.logger, line_number, error_code, message_id, inner_massage)
-
-    def location(self, depth=0):
-        """
-         行数読み込み
-         本メソッド呼び出し元の行数を取得し、返却する。
-        :return fame.f_lineno: 呼び出し元の行数
-        """
-        frame = inspect.currentframe().f_back
-        return frame.f_lineno
 #!/usr/bin/python3 -B
 # -*- coding: utf-8 -*-
 
@@ -691,3 +247,208 @@ class LogUtils:
                     'message_id': message_id}
 
         logger.log(cls._check_level(str(err_level).upper()), err_message, extra=log_dict)
+import logging
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+
+class _ConsoleHandler(logging.StreamHandler):
+    def emit(self, record):
+        self.stream = sys.stderr
+        super().emit(record)
+
+
+class FileCopyS3EfsBase:
+    """Provide XML-catalog logging for the standalone S3/EFS copy service."""
+
+    _LEVELS = {
+        "debug": logging.DEBUG,
+        "info": logging.INFO,
+        "warn": logging.WARNING,
+        "warning": logging.WARNING,
+        "error": logging.ERROR,
+        "critical": logging.CRITICAL,
+        "fatal": logging.CRITICAL,
+    }
+    _MESSAGE_FILE = Path(__file__).with_name("fileCopyS3EfsErrMsg.xml")
+
+    def __init__(self, logger_name: str, key_info: str):
+        self.logger = logging.getLogger(logger_name)
+        self.logger.setLevel(logging.INFO)
+        self.logger.propagate = False
+        self.key_info = key_info
+        self._messages = None
+
+    def configure_logger(self) -> None:
+        """Load the adjacent XML catalog and configure console output."""
+        if self._messages is not None:
+            return
+
+        if not any(isinstance(handler, _ConsoleHandler) for handler in self.logger.handlers):
+            handler = _ConsoleHandler()
+            handler.setFormatter(logging.Formatter(
+                fmt=(
+                    "date:%(asctime)s.%(msecs)03d\tlevel:%(levelname)s "
+                    "logger:%(name)s\terrorPoint:%(line_number)d"
+                    "\terrorData:%(key_info)s\terrorCode:%(error_code)s"
+                    "\tmessage:[%(message_id)s]%(message)s"
+                ),
+                datefmt="%Y-%m-%d %H:%M:%S",
+            ))
+            self.logger.addHandler(handler)
+
+        root = ET.parse(self._MESSAGE_FILE).getroot()
+        messages = {}
+        for err_info in root.findall("errInfo"):
+            message_id = err_info.get("id")
+            level = (err_info.findtext("errLevel") or "").strip().lower()
+            message = err_info.findtext("errMsg")
+            if not message_id or level not in self._LEVELS or message is None:
+                raise ValueError(f"Invalid error-message entry in {self._MESSAGE_FILE}")
+            messages[message_id] = (self._LEVELS[level], message)
+        self._messages = messages
+
+    def _emit_log(
+        self,
+        message_id: str,
+        inner_message,
+        line_number: int,
+        error_code: int | str,
+    ) -> None:
+        try:
+            level, message = self._messages[message_id]
+        except KeyError as exc:
+            raise KeyError(f"Message ID not found in {self._MESSAGE_FILE}: {message_id}") from exc
+
+        for index, value in enumerate(inner_message):
+            message = message.replace("{" + str(index) + "}", str(value))
+
+        self.logger.log(
+            level,
+            message,
+            extra={
+                "line_number": line_number,
+                "key_info": self.key_info,
+                "error_code": error_code,
+                "message_id": message_id,
+            },
+        )
+
+    def output_log(self, message_id: str, *inner_message: str, error_code: int | str | None = None) -> None:
+        """Format and emit a message selected by ID from the XML catalog."""
+        line_number = sys._getframe(1).f_lineno
+        self.configure_logger()
+        level = self._messages[message_id][0]
+        if error_code is None:
+            error_code = 0 if level < logging.WARNING else 1
+        self._emit_log(message_id, inner_message, line_number, error_code)
+
+    def output_system_error(self, message: str) -> None:
+        """Emit e.p.9001 from XML or a direct diagnostic if XML setup failed."""
+        line_number = sys._getframe(1).f_lineno
+        try:
+            self.configure_logger()
+            self._emit_log("e.p.9001", (message,), line_number, -1)
+        except (OSError, ET.ParseError, ValueError, KeyError):
+            self.logger.error(
+                "システムエラーが発生しました。%s",
+                message,
+                extra={
+                    "line_number": line_number,
+                    "key_info": self.key_info,
+                    "error_code": -1,
+                    "message_id": "e.p.9001",
+                },
+            )
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<confValue>
+  <errInfo id="e.p.9001">
+    <errLevel>error</errLevel>
+    <errMsg>システムエラーが発生しました。{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9001">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー元S3 URIが不正です。コピー元：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9002">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー先パスに「..」は指定できません。コピー先：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9003">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー先ディレクトリが存在しません。ディレクトリ：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9004">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー先ファイルが存在し、上書きが許可されていません。ファイル：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9005">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー元オブジェクトが存在しません。コピー元：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9006">
+    <errLevel>warn</errLevel>
+    <errMsg>処理中に別プロセスがコピー先ファイルを作成しました。ファイル：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9007">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー元パスに「..」は指定できません。コピー元：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9008">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー元にディレクトリは指定できません。コピー元：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9009">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー元ファイルが存在しません。ファイル：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9010">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー元ディレクトリが存在しません。ディレクトリ：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9011">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー先S3 URIが不正です。コピー先：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9012">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー先オブジェクトが存在し、上書きが許可されていません。コピー先：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9013">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー先バケットが存在しません。バケット：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9014">
+    <errLevel>warn</errLevel>
+    <errMsg>引数は2個または3個指定してください。指定された引数の数：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9015">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー元またはコピー先が空です。</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9016">
+    <errLevel>warn</errLevel>
+    <errMsg>パスにはS3 URIまたは絶対パスを指定してください。パス：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9017">
+    <errLevel>warn</errLevel>
+    <errMsg>ワイルドカードは指定できません。コピー元：{0} コピー先：{1}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9018">
+    <errLevel>warn</errLevel>
+    <errMsg>上書きオプションにはtrueまたはfalseを指定してください。指定値：{0}</errMsg>
+  </errInfo>
+  <errInfo id="w.p.9019">
+    <errLevel>warn</errLevel>
+    <errMsg>コピー元またはコピー先の一方だけにS3 URIを指定してください。コピー元：{0} コピー先：{1}</errMsg>
+  </errInfo>
+  <errInfo id="i.p.9002">
+    <errLevel>info</errLevel>
+    <errMsg>EFSからS3へのコピーが完了しました。コピー元：{0} コピー先：{1}</errMsg>
+  </errInfo>
+  <errInfo id="i.p.9003">
+    <errLevel>info</errLevel>
+    <errMsg>S3からEFSへのコピーが完了しました。コピー元：{0} コピー先：{1}</errMsg>
+  </errInfo>
+</confValue>
