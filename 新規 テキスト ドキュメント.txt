@@ -1,454 +1,116 @@
-#!/usr/bin/python3 -B
-# -*- coding: utf-8 -*-
+	入力チェックについて、チェック条件のパターンを網羅的に確認する。	test1	引数が指定されていない場合		引数が足りない場合の動作が確認できること		引数なし	"戻り値は1で返却される	"								
+		test2	コピー元ファイルが空文字の場合		コピー元が空文字の場合の動作が確認できること		"file="""" efs_test/out/new.csv	"""	戻り値は1で返却される					 			
+		test3	コピー先パスが未指定の場合		コピー先パスがない場合の動作が確認できること	"S3に test/sample.csv が存在する。	"	s3://test-bucket/test/sample.csv	戻り値は1で返却される								
+		test4	コピー先パスが空文字の場合		コピー先が空文字の場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv 	戻り値は1で返却される								
+		test5	上書きオプションが空文字の場合		上書きオプションが空文字の場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv efs_test/out/new.csv 	戻り値は1で返却される								
+		test6	コピー元にワイルドカードを指定した場合		ワイルドカード指定が異常になること	S3に test/ 配下のcsvファイルが存在する。	s3://test-bucket/test/*.csv efs_test/out/new.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない"								
+		test7	コピー元にディレクトリを指定した場合		ディレクトリ指定が異常になること	S3に test/ 配下のファイルが存在する。	s3://test-bucket/test/ efs_test/out/new.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない"								
+		test8	上書きオプションにtrue/false以外を指定した場合		無効な値の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv efs_test/out/new.csv abc	"戻り値は1で返却される
+コピー先にファイルが作成されない"								
+		test26	コピー元、コピー先がともにEFSの場合		S3からS3のコピーができないこと	S3に test/sample.csv が存在する	s3://test-bucket/test/sample.csv s3://test-bucket/test/copy.csv	戻り値は1で返却される								
+		test27	コピー元、コピー先がともにEFSの場合		EFSからEFSのコピーができないこと	efs_test/out/src.csv が存在する	efs_test/out/src.csv efs_test/out/copy.csv	戻り値は1で返却される								
+		test28	コピー元（EFS）にワイルドカードを指定した場合		EFSのワイルドカード指定が異常になること	efs_test/out に csv ファイルが存在する	efs_test/out/*.csv s3://test-bucket/test/up.cs	戻り値は1で返却される								
+		test29	"コピー元（EFS）にディレクトリを指定した場合	"		ディレクトリ指定が異常になること	efs_test/out/src.csv が存在する	efs_test/out s3://test-bucket/test/up.csv	戻り値は1で返却される								
+	"取り扱うデータについて、境界値を網羅的に確認する。
 
+"															
+	"繰り返し処理について、繰り返しのパターンを網羅的に確認する。
 
-"""
- * 開発システム ： レセプト電算処理システム 等
- * ファイル名   ： logUtils.py
- * 著作権       ： Copyright (C) 2019, 社会保険診療報酬支払基金
- * 会社名       ： NTT DATA Corporation
- * 更新日       ： $Date: 2019年8月13日 11:08:24 $
-"""
+（例）
+・繰り返し回数のパターン（0回、1回、通常回数、最大回数、最大回数‐1回など）を確認する。
+"															
+	"ロジックについて、処理フローのパターンを網羅的に確認する。
 
-import logging.handlers
-import os
-import time
-from stat import ST_MTIME
-if os.name != "nt":
-    import fcntl
-from ..common import confUtils
-from ..common.filePath import FilePath
+（例）
+・すべての命令を実行するよう確認する。
+・すべての条件分岐および例外処理を最低1回は実行されるよう確認する。
+"	test9	コピー元ファイルがS3に存在しない場合		S3にファイルがない場合の動作が確認できること	S3に test/none.csv が存在しない。	s3://test-bucket/test/none.csv efs_test/out/new.csv false	"戻り値は1で返却される
+コピー先にファイルが作成されない"								
+		test10	S3バケットが存在しない場合		バケットがない場合の動作が確認できること	バケット no-bucket が存在しない。	s3://no-bucket/test/sample.csv efs_test/out/new.csv false	"戻り値は1で返却される
+コピー先にファイルが作成されない"								
+		test11	S3に接続できない場合		S3通信異常時の動作が確認できること	S3（Floci）が起動していない	s3://test-bucket/test/sample.csv efs_test/out/new.csv false	"戻り値は-1で返却される
+コピー先にファイルが作成されない"								
+		test12	S3へのアクセス権限がない場合		AccessDenied時の動作が確認できること	S3アクセスでAccessDeniedを発生させる	s3://test-bucket/test/sample.csv efs_test/out/new.csv false	"戻り値は-1で返却される
+コピー先にファイルが作成されない"								
+		test13	コピー先ディレクトリが存在しない場合		ピー先がない場合の動作が確認できること	"S3に test/sample.csv が存在する。
+efs_test/nodir が存在しない"	s3://test-bucket/test/sample.csv efs_test/nodir/new.csv false	"戻り値は-1で返却される
+コピー先にファイルが作成されない"								
+		test14	コピー先ディレクトリに書込権限がない場合		書込不可時の動作が確認できること	"S3に test/sample.csv が存在する。
+efs_test/ro が書込不可（chmod 555）。"	s3://test-bucket/test/sample.csv efs_test/ro/new.csv false	戻り値は-1で返却される								
+		test15	コピー先の既存ファイルが読み取り専用で上書きできない場合		既存ファイルが上書きできない場合の動作が確認できること	"S3に test/sample.csv が存在する。
+efs_test/out/old.csv が存在する。"	s3://test-bucket/test/sample.csv efs_test/out/old.csv true	戻り値は-1で返却される								
+		test16	ダウンロード途中で例外が発生した場合		"コピー元のデイレクトリはフォルダ。
+フォルダ内のすべてのファイルをコピー
+既存のファイルは上書きされます"	途中で失敗してもファイルが残らないこと	s3://test-bucket/test/sample.csv efs_test/out/new.csv false	"戻り値は-1で返却される
+コピー先ファイル、一時ファイルが残らない"								
+		test17	上書きコピー中にダウンロードが失敗した場合		"	既存ファイルが壊れないこと"	"S3に test/sample.csv が存在する。
+efs_test/out/old.csv が存在する。
+ダウンロード処理で例外を発生させる。"	s3://test-bucket/test/sample.csv efs_test/out/old.csv true	"戻り値は-1で返却される
+efs_test/out/old.csv の内容が変わらない"								
+		test30	コピー元（EFS）のファイルが存在しない場合		既存ファイルが上書きできない場合の動作が確認できること	efs_test/out/none.csv が存在しない	efs_test/out/none.csv s3://test-bucket/test/up.csv	戻り値は1で返却される								
+		test31	コピー先（S3）のバケットが存在しない場合		コピー先バケットがない場合の動作が確認できること	efs_test/out/src.csv が存在する。バケット no-bucket が存在しない	efs_test/out/src.csv s3://no-bucket/test/up.csv	"戻り値は1で返却される
+"								
+		test32	S3へのアップロード中に例外が発生した場合		アップロード失敗時の動作が確認できるこ	"efs_test/outt/src.csv が存在する。
+アップロード処理で例外を発生させる"	efs_test/out/src.csv s3://test-bucket/test/up.csv	"戻り値は-1で返却される
+"								
+		test33	コピー先（S3）の存在確認でアクセス権限がない場合		AccessDenied時の動作が確認できること	"efs_test/outt/src.csv が存在する。
+S3の存在確認でAccessDeniedを発生させる"	efs_test/out/src.csv s3://test-bucket/test/up.csv false	"戻り値は-1で返却される
+"								
+	"取り扱うデータについて、特殊な数値のパターンを網羅的に確認する。
 
+（例）
+・ゼロやマイナス、言語仕様上の上限・下限、誤差（桁落ちなど）、概算（四捨五入など）の場合について確認する。
+"															
+	"取り扱うデータについて、特殊な日付のパターンを網羅的に確認する。
 
-# 排他処理ハンドラー
-class ExclusiveFileHandler(logging.handlers.TimedRotatingFileHandler):
-    def __init__(self, file_name, key_info=None):
-        """
-        初期化
-        ExclusiveFileHandlerクラスの初期化を実行する。
-        :param file_name:ファイル名
-        """
-        # ログファイルのローテートを1日単位に設定
-        super(ExclusiveFileHandler, self).__init__(filename=file_name, when='midnight', delay=True)
-        if key_info:
-            self.lock_file_path = FilePath.get_sqs_temp_dir() + "lockFile-" + key_info
-        else:
-            self.lock_file_path = FilePath.get_lock_file_path()
+（例）
+・うるう年や存在しない日付、祝祭日、元号の切り替わり、業務上の特殊日などの場合について確認する。
+"															
+	"取り扱うデータについて、特殊な時刻のパターンを網羅的に確認する。
 
-    def shouldRollover(self, record):
-        """
-        ログローテート判定
-        ログローテート可否をファイルのタイプスタンプを用いて判定する。
-        :param record:書き込みの際に用いられるパラメタ
-        """
-        filename = self.baseFilename
-        if os.path.exists(filename):
-            t = os.stat(filename)[ST_MTIME]
-        else:
-            t = int(time.time())
-        self.rolloverAt = self.computeRollover(t)
-        return super().shouldRollover(record)
+（例）
+・日付が変わる前後や特殊な時刻（25時など）、存在しない時刻などの場合について確認する。
+"															
+	"取り扱うデータについて、特殊な文字列のパターンを網羅的に確認する。
 
-    def emit(self, record):
-        """
-        マルチプロセス排他ログ（排他処理ハンドラー）
-        マルチプロセスでログを書き込む際に排他制御を行いながら1ファイルにログを書き込む。
-        :param record:書き込みの際に用いられるパラメタ
-        """
+（例）
+・NULL、空文字、スペース、エスケープシーケンス（\t、\nなど）、機種依存文字(丸数字など)といった場合について確認する。
+"															
+	"複数の入力要素のそれぞれで確認が必要なデータについて、組合せのパターンを網羅的に確認する。
 
-        # ファイルロック処理
-        #  設定ファイル（FL_005/排他ロックファイル）に対してファイルロックされているかを確認する。
-        with open(self.lock_file_path, 'w') as oLockFile:
-            oLockFile.write('')
-            #  ファイルロックされていない場合
-            #  flock関数で設定ファイル（FL_005/排他ロックファイル）をロック状態に更新する。
-            #  ファイルロックされている場合
-            #  ファイルロックが解除されるまで待機する。
-            # ファイルロックが解除されると自動的に1.1-aの処理を行う。
-            fcntl.flock(oLockFile.fileno(), fcntl.LOCK_EX)
-
-            try:
-                #  ログ出力処理
-                #  ログファイルを開く。
-                #  ログファイルにログ出力する。
-                super().emit(record)
-
-            finally:
-                #  ログファイルを閉じる。
-                super().close()
-
-                #  ロック解除処理
-                #  ファイルロックを解除する。
-                fcntl.flock(oLockFile.fileno(), fcntl.LOCK_UN)
-
-
-class LogUtils:
-
-    # エラーレベル変換メソッド
-    CRITICAL = 50
-    FATAL = CRITICAL
-    ERROR = 40
-    WARNING = 30
-    WARN = WARNING
-    INFO = 20
-    DEBUG = 10
-    NOTSET = 0
-
-    _nameToLevel = {
-        'CRITICAL': CRITICAL,
-        'FATAL': FATAL,
-        'ERROR': ERROR,
-        'WARN': WARNING,
-        'WARNING': WARNING,
-        'INFO': INFO,
-        'DEBUG': DEBUG,
-        'NOTSET': NOTSET,
-    }
-
-    __log_format = 'date:%(asctime)s.%(msecs)03d\tlevel:%(levelname)s logger:{0}'\
-                   + '\terrorPoint:%(line_number)d' + '\terrorData:{1}'\
-                   + '\terrorCode:%(error_code)s\tmessage:[%(message_id)s]%(message)s'
-    __log_date = '%Y-%m-%d %H:%M:%S'
-
-    @classmethod
-    def _check_level(cls, level):
-        """
-        エラーレベル変換
-        INFO、WARNING、ERRORを数値に書き換えて返却する。
-        :param level:エラーレベル（文字列）
-        :return:エラーレベル（数値）
-        """
-
-        if isinstance(level, int):
-            rv = level
-        elif str(level) == level:
-            if level not in cls._nameToLevel:
-                raise ValueError("Unknown level: %r" % level)
-            rv = cls._nameToLevel[level]
-        else:
-            raise TypeError("Level not an integer or a valid string: %r" % level)
-        return rv
-
-    @classmethod
-    def get_logger(cls, name, key_info):
-        """
-        ロガー生成
-        ログのフォーマットを設定し、ロガーを作成する。
-        :param name: ロガーの名前
-        :param key_info: ログ書き出し元が判別できるような情報
-        :return logger: ロガー
-        """
-        logger = logging.getLogger(name)
-        logger.setLevel(logging.INFO)
-
-        #  ログフォーマットを設定する。
-        formatter = logging.Formatter(
-            fmt=cls.__log_format.format(name, key_info),
-            datefmt=cls.__log_date)
-
-        #  排他処理ハンドラーインスタンスをコンストラクタ引数にログファイル名を渡して生成する。
-        # ログファイル名についてはログ設計書（監視ログ_Python）を参照のこと。
-        # ログファイルのパス
-        file_path = FilePath.get_log_file_path()
-        exclusive_handler = ExclusiveFileHandler(file_path)
-        exclusive_handler.setFormatter(formatter)
-        logger.addHandler(exclusive_handler)
-
-        return logger
-
-    @classmethod
-    def get_biz_logger(cls, name, key_info):
-        """
-        ロガー生成
-        ログのフォーマットを設定し、ロガーを作成する。
-        :param name: ロガーの名前
-        :param key_info: ログ書き出し元が判別できるような情報
-        :return logger: ロガー
-        """
-        logger = logging.getLogger(name + "_" + key_info)
-        logger.setLevel(logging.INFO)
-
-        #  ログフォーマットを設定する。
-        formatter = logging.Formatter(
-            fmt=cls.__log_format.format(name, key_info),
-            datefmt=cls.__log_date)
-
-        #  排他処理ハンドラーインスタンスをコンストラクタ引数にログファイル名を渡して生成する。
-        # ログファイル名についてはログ設計書（監視ログ_Python）を参照のこと。
-        # ログファイルのパス
-        file_path = FilePath.get_log_path() + "kikin-application-ctrlqueuercv-" + key_info + "-apbase-pymodule.log"
-        exclusive_handler = ExclusiveFileHandler(file_path, key_info)
-        exclusive_handler.setFormatter(formatter)
-        logger.addHandler(exclusive_handler)
-
-        return logger
-
-    @classmethod
-    def get_event_logger(cls, name, key_info):
-        """
-        ロガー生成
-        ログのフォーマットを設定し、ロガーを作成する。
-        :param name: ロガーの名前
-        :param key_info: ログ書き出し元が判別できるような情報
-        :return logger: ロガー
-        """
-        logger = logging.getLogger(name + "_" + key_info)
-        logger.setLevel(logging.INFO)
-
-        #  ログフォーマットを設定する。
-        formatter = logging.Formatter(
-            fmt=cls.__log_format.format(name, key_info),
-            datefmt=cls.__log_date)
-
-        #  Windowsイベントログハンドラをコンストラクタ引数にサービス名を渡して生成する。
-        ntl = logging.handlers.NTEventLogHandler(name)
-        ntl.setFormatter(formatter)
-        logger.addHandler(ntl)
-
-        return logger
-
-    @classmethod
-    def output_log(cls, logger, line_number, error_code, message_id, inner_message=''):
-        """
-        ログ書き出し実行
-        ログ書き出しを実行する。
-        :param logger:ロガー
-        :param line_number: 呼び出し元の行数
-        :param error_code:ログに書き出すエラーコード
-        :param message_id:ログに書き出すメッセージのID
-        :param inner_message:ログへの埋め込み文字
-        """
-        #  ログ出力
-        #  ログメッセージ取得
-        #  設定ファイル（FL_004/エラーメッセージ設定ファイル）からエラーメッセージIDをキーにエラーレベル、エラーメッセージを取得する。
-        # 共通部品設計書（PY_001/設定ファイル取得）を参照のこと。
-
-        # ログファイル書き出し用のエラー情報を設定ファイルから取得する。
-        try:
-            err_level = confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.ERR, message_id, 'errLevel')
-            err_message = confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.ERR, message_id, 'errMsg')
-
-        except:
-            log_dict = {'line_number': line_number, 'error_code': error_code,
-                        'message_id': 'e.p.9001'}
-            logger.log(cls._check_level('ERROR'), 'システムエラーが発生しました。'
-                                                  'ログメッセージ設定ファイルの読み込みに失敗しました。'
-                       , extra=log_dict)
-            return
-
-        # inner_messageを配列で受け取って埋め込み
-        for index in range(len(inner_message)):
-            err_message = err_message.replace('{' + str(index) + '}', str(inner_message[index]))
-
-        #  ログ出力
-        #  初期化処理で生成したロガーを取得する。
-
-        log_dict = {'line_number': line_number, 'error_code': error_code,
-                    'message_id': message_id}
-
-        logger.log(cls._check_level(str(err_level).upper()), err_message, extra=log_dict)
-import logging
-import sys
-import xml.etree.ElementTree as ET
-from pathlib import Path
-
-
-class _ConsoleHandler(logging.StreamHandler):
-    def emit(self, record):
-        self.stream = sys.stderr
-        super().emit(record)
-
-
-class FileCopyS3EfsBase:
-    """Provide XML-catalog logging for the standalone S3/EFS copy service."""
-
-    _LEVELS = {
-        "debug": logging.DEBUG,
-        "info": logging.INFO,
-        "warn": logging.WARNING,
-        "warning": logging.WARNING,
-        "error": logging.ERROR,
-        "critical": logging.CRITICAL,
-        "fatal": logging.CRITICAL,
-    }
-    _MESSAGE_FILE = Path(__file__).with_name("fileCopyS3EfsErrMsg.xml")
-
-    def __init__(self, logger_name: str, key_info: str):
-        self.logger = logging.getLogger(logger_name)
-        self.logger.setLevel(logging.INFO)
-        self.logger.propagate = False
-        self.key_info = key_info
-        self._messages = None
-
-    def configure_logger(self) -> None:
-        """Load the adjacent XML catalog and configure console output."""
-        if self._messages is not None:
-            return
-
-        if not any(isinstance(handler, _ConsoleHandler) for handler in self.logger.handlers):
-            handler = _ConsoleHandler()
-            handler.setFormatter(logging.Formatter(
-                fmt=(
-                    "date:%(asctime)s.%(msecs)03d\tlevel:%(levelname)s "
-                    "logger:%(name)s\terrorPoint:%(line_number)d"
-                    "\terrorData:%(key_info)s\terrorCode:%(error_code)s"
-                    "\tmessage:[%(message_id)s]%(message)s"
-                ),
-                datefmt="%Y-%m-%d %H:%M:%S",
-            ))
-            self.logger.addHandler(handler)
-
-        root = ET.parse(self._MESSAGE_FILE).getroot()
-        messages = {}
-        for err_info in root.findall("errInfo"):
-            message_id = err_info.get("id")
-            level = (err_info.findtext("errLevel") or "").strip().lower()
-            message = err_info.findtext("errMsg")
-            if not message_id or level not in self._LEVELS or message is None:
-                raise ValueError(f"Invalid error-message entry in {self._MESSAGE_FILE}")
-            messages[message_id] = (self._LEVELS[level], message)
-        self._messages = messages
-
-    def _emit_log(
-        self,
-        message_id: str,
-        inner_message,
-        line_number: int,
-        error_code: int | str,
-    ) -> None:
-        try:
-            level, message = self._messages[message_id]
-        except KeyError as exc:
-            raise KeyError(f"Message ID not found in {self._MESSAGE_FILE}: {message_id}") from exc
-
-        for index, value in enumerate(inner_message):
-            message = message.replace("{" + str(index) + "}", str(value))
-
-        self.logger.log(
-            level,
-            message,
-            extra={
-                "line_number": line_number,
-                "key_info": self.key_info,
-                "error_code": error_code,
-                "message_id": message_id,
-            },
-        )
-
-    def output_log(self, message_id: str, *inner_message: str, error_code: int | str | None = None) -> None:
-        """Format and emit a message selected by ID from the XML catalog."""
-        line_number = sys._getframe(1).f_lineno
-        self.configure_logger()
-        level = self._messages[message_id][0]
-        if error_code is None:
-            error_code = 0 if level < logging.WARNING else 1
-        self._emit_log(message_id, inner_message, line_number, error_code)
-
-    def output_system_error(self, message: str) -> None:
-        """Emit e.p.9001 from XML or a direct diagnostic if XML setup failed."""
-        line_number = sys._getframe(1).f_lineno
-        try:
-            self.configure_logger()
-            self._emit_log("e.p.9001", (message,), line_number, -1)
-        except (OSError, ET.ParseError, ValueError, KeyError):
-            self.logger.error(
-                "システムエラーが発生しました。%s",
-                message,
-                extra={
-                    "line_number": line_number,
-                    "key_info": self.key_info,
-                    "error_code": -1,
-                    "message_id": "e.p.9001",
-                },
-            )
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<confValue>
-  <errInfo id="e.p.9001">
-    <errLevel>error</errLevel>
-    <errMsg>システムエラーが発生しました。{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9001">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー元S3 URIが不正です。コピー元：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9002">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー先パスに「..」は指定できません。コピー先：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9003">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー先ディレクトリが存在しません。ディレクトリ：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9004">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー先ファイルが存在し、上書きが許可されていません。ファイル：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9005">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー元オブジェクトが存在しません。コピー元：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9006">
-    <errLevel>warn</errLevel>
-    <errMsg>処理中に別プロセスがコピー先ファイルを作成しました。ファイル：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9007">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー元パスに「..」は指定できません。コピー元：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9008">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー元にディレクトリは指定できません。コピー元：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9009">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー元ファイルが存在しません。ファイル：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9010">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー元ディレクトリが存在しません。ディレクトリ：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9011">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー先S3 URIが不正です。コピー先：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9012">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー先オブジェクトが存在し、上書きが許可されていません。コピー先：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9013">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー先バケットが存在しません。バケット：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9014">
-    <errLevel>warn</errLevel>
-    <errMsg>引数は2個または3個指定してください。指定された引数の数：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9015">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー元またはコピー先が空です。</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9016">
-    <errLevel>warn</errLevel>
-    <errMsg>パスにはS3 URIまたは絶対パスを指定してください。パス：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9017">
-    <errLevel>warn</errLevel>
-    <errMsg>ワイルドカードは指定できません。コピー元：{0} コピー先：{1}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9018">
-    <errLevel>warn</errLevel>
-    <errMsg>上書きオプションにはtrueまたはfalseを指定してください。指定値：{0}</errMsg>
-  </errInfo>
-  <errInfo id="w.p.9019">
-    <errLevel>warn</errLevel>
-    <errMsg>コピー元またはコピー先の一方だけにS3 URIを指定してください。コピー元：{0} コピー先：{1}</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9002">
-    <errLevel>info</errLevel>
-    <errMsg>EFSからS3へのコピーが完了しました。コピー元：{0} コピー先：{1}</errMsg>
-  </errInfo>
-  <errInfo id="i.p.9003">
-    <errLevel>info</errLevel>
-    <errMsg>S3からEFSへのコピーが完了しました。コピー元：{0} コピー先：{1}</errMsg>
-  </errInfo>
-</confValue>
+（例）
+・複数の入力要素のそれぞれで確認が必要なすべてのデータの組合せを網羅する。
+・すべての2つの入力要素の組合せにおいて、確認が必要なすべてのデータの組合せを網羅する。
+・1つの入力要素で確認が必要なすべてのデータと、残りの入力要素の最も標準的なデータとの組合せを網羅する。
+・すべての入力要素で確認が必要なデータが少なくとも一度は確認されるように組み合わせる。
+"	test18	コピー元にS3ファイル、コピー先にEFSファイルを指定、コピー先が新規の場合		新規のファイルにコピーできること	"S3に test/sample.csv が存在する。
+efs_test/out が空。"	s3://test-bucket/test/sample.csv efs_test/out/new.csv	"戻り値は0で返却される
+efs_test/out/new.csv が作成され、内容がS3と一致する"								
+		test19	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプション省略、コピー先に同名ファイルがある場合		省略時（true）に上書きされること	"S3に test/sample.csv が存在する。
+efs_test/out/old.csv が存在する。"	s3://test-bucket/test/sample.csv efs_test/out/old.csv	"戻り値は0で返却される
+efs_test/out/old.csv がS3の内容に上書きされる"								
+		test20	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションtrue、コピー先に同名ファイルがある場合		trueで上書きされること	"""S3に test/sample.csv が存在する。
+efs_test/out/old.csv が存在する。"	s3://test-bucket/test/sample.csv efs_test/out/old.csv true	戻り値は0で返却されるefs_test/out/old.csv がS3の内容に上書きされる								
+		test21	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションfalse、コピー先が新規の場合		falseでも新規ならコピーできること	"S3に test/sample.csv が存在する。
+efs_test/out が空。"	s3://test-bucket/test/sample.csv efs_test/out/new.csv false	"戻り値は0で返却される
+efs_test/out/new.csv が作成され、内容がS3と一致する"								
+		test22	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseで上書きされないこと	"S3に test/sample.csv が存在する。
+efs_test/out/old.csv が存在する"	s3://test-bucket/test/sample.csv efs_test/out/old.csv false	"戻り値は1で返却される
+efs_test/out/old.csv の内容が変わらない"""								
+		test23	コピー先にEFSディレクトリを指定、同名ファイルがない場合		ディレクトリ指定でコピー元のファイル名でコピーされること	"S3に test/sample.csv が存在する。
+efs_test/out が空。"	s3://test-bucket/test/sample.csv efs_test/out	"戻り値は0で返却される
+efs_test/out/sample.csv が作成され、内容がS3と一致する"								
+		test24	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションtrueの場合		ディレクトリ指定で同名ファイルが上書きされること	"S3に test/sample.csv が存在する。
+efs_test/out/sample.csv が存在する。"	s3://test-bucket/test/sample.csv efs_test/out true	"戻り値は0で返却される
+efs_test/out/sample.csv がS3の内容に上書きされる"								
+		test25	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションfalseの場合		ディレクトリ指定で同名ファイルが上書きされないこと	"S3に test/sample.csv が存在する。
+efs_test/out/sample.csv が存在する"	"s3://test-bucket/test/sample.csv efs_test/out false	"	"戻り値は1で返却される
+efs_test/out/sample.csv の内容が変わらない"								
+		test34	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプション省略、コピー先に同名ファイルがある場合		省略時（true）にS3が上書きされること	"efs_test/out/src.csv が存在する。（内容：EFS）
+S3に test/up.csv が存在する。"	efs_test/out/src.csv s3://test-bucket/test/up.csv true	"戻り値は0で返却される
+efs_test/out/sample.csv がEFSの内容に上書きされる"								
+		test35	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseでS3が上書きされないこと	"EFS/out/src.csv が存在する。
+S3に test/up.csv が存在する。"	EFS/out/src.csv s3://test-bucket/test/up.csv false	"戻り値は１で返却される
+efs_test/out/sample.csv の内容が変わらない"								
