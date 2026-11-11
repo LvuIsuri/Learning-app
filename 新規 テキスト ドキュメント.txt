@@ -442,3 +442,252 @@ class AppBaseClass:
         """
         frame = inspect.currentframe().f_back
         return frame.f_lineno
+#!/usr/bin/python3 -B
+# -*- coding: utf-8 -*-
+
+
+"""
+ * 開発システム ： レセプト電算処理システム 等
+ * ファイル名   ： logUtils.py
+ * 著作権       ： Copyright (C) 2019, 社会保険診療報酬支払基金
+ * 会社名       ： NTT DATA Corporation
+ * 更新日       ： $Date: 2019年8月13日 11:08:24 $
+"""
+
+import logging.handlers
+import os
+import time
+from stat import ST_MTIME
+if os.name != "nt":
+    import fcntl
+from ..common import confUtils
+from ..common.filePath import FilePath
+
+
+# 排他処理ハンドラー
+class ExclusiveFileHandler(logging.handlers.TimedRotatingFileHandler):
+    def __init__(self, file_name, key_info=None):
+        """
+        初期化
+        ExclusiveFileHandlerクラスの初期化を実行する。
+        :param file_name:ファイル名
+        """
+        # ログファイルのローテートを1日単位に設定
+        super(ExclusiveFileHandler, self).__init__(filename=file_name, when='midnight', delay=True)
+        if key_info:
+            self.lock_file_path = FilePath.get_sqs_temp_dir() + "lockFile-" + key_info
+        else:
+            self.lock_file_path = FilePath.get_lock_file_path()
+
+    def shouldRollover(self, record):
+        """
+        ログローテート判定
+        ログローテート可否をファイルのタイプスタンプを用いて判定する。
+        :param record:書き込みの際に用いられるパラメタ
+        """
+        filename = self.baseFilename
+        if os.path.exists(filename):
+            t = os.stat(filename)[ST_MTIME]
+        else:
+            t = int(time.time())
+        self.rolloverAt = self.computeRollover(t)
+        return super().shouldRollover(record)
+
+    def emit(self, record):
+        """
+        マルチプロセス排他ログ（排他処理ハンドラー）
+        マルチプロセスでログを書き込む際に排他制御を行いながら1ファイルにログを書き込む。
+        :param record:書き込みの際に用いられるパラメタ
+        """
+
+        # ファイルロック処理
+        #  設定ファイル（FL_005/排他ロックファイル）に対してファイルロックされているかを確認する。
+        with open(self.lock_file_path, 'w') as oLockFile:
+            oLockFile.write('')
+            #  ファイルロックされていない場合
+            #  flock関数で設定ファイル（FL_005/排他ロックファイル）をロック状態に更新する。
+            #  ファイルロックされている場合
+            #  ファイルロックが解除されるまで待機する。
+            # ファイルロックが解除されると自動的に1.1-aの処理を行う。
+            fcntl.flock(oLockFile.fileno(), fcntl.LOCK_EX)
+
+            try:
+                #  ログ出力処理
+                #  ログファイルを開く。
+                #  ログファイルにログ出力する。
+                super().emit(record)
+
+            finally:
+                #  ログファイルを閉じる。
+                super().close()
+
+                #  ロック解除処理
+                #  ファイルロックを解除する。
+                fcntl.flock(oLockFile.fileno(), fcntl.LOCK_UN)
+
+
+class LogUtils:
+
+    # エラーレベル変換メソッド
+    CRITICAL = 50
+    FATAL = CRITICAL
+    ERROR = 40
+    WARNING = 30
+    WARN = WARNING
+    INFO = 20
+    DEBUG = 10
+    NOTSET = 0
+
+    _nameToLevel = {
+        'CRITICAL': CRITICAL,
+        'FATAL': FATAL,
+        'ERROR': ERROR,
+        'WARN': WARNING,
+        'WARNING': WARNING,
+        'INFO': INFO,
+        'DEBUG': DEBUG,
+        'NOTSET': NOTSET,
+    }
+
+    __log_format = 'date:%(asctime)s.%(msecs)03d\tlevel:%(levelname)s logger:{0}'\
+                   + '\terrorPoint:%(line_number)d' + '\terrorData:{1}'\
+                   + '\terrorCode:%(error_code)s\tmessage:[%(message_id)s]%(message)s'
+    __log_date = '%Y-%m-%d %H:%M:%S'
+
+    @classmethod
+    def _check_level(cls, level):
+        """
+        エラーレベル変換
+        INFO、WARNING、ERRORを数値に書き換えて返却する。
+        :param level:エラーレベル（文字列）
+        :return:エラーレベル（数値）
+        """
+
+        if isinstance(level, int):
+            rv = level
+        elif str(level) == level:
+            if level not in cls._nameToLevel:
+                raise ValueError("Unknown level: %r" % level)
+            rv = cls._nameToLevel[level]
+        else:
+            raise TypeError("Level not an integer or a valid string: %r" % level)
+        return rv
+
+    @classmethod
+    def get_logger(cls, name, key_info):
+        """
+        ロガー生成
+        ログのフォーマットを設定し、ロガーを作成する。
+        :param name: ロガーの名前
+        :param key_info: ログ書き出し元が判別できるような情報
+        :return logger: ロガー
+        """
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.INFO)
+
+        #  ログフォーマットを設定する。
+        formatter = logging.Formatter(
+            fmt=cls.__log_format.format(name, key_info),
+            datefmt=cls.__log_date)
+
+        #  排他処理ハンドラーインスタンスをコンストラクタ引数にログファイル名を渡して生成する。
+        # ログファイル名についてはログ設計書（監視ログ_Python）を参照のこと。
+        # ログファイルのパス
+        file_path = FilePath.get_log_file_path()
+        exclusive_handler = ExclusiveFileHandler(file_path)
+        exclusive_handler.setFormatter(formatter)
+        logger.addHandler(exclusive_handler)
+
+        return logger
+
+    @classmethod
+    def get_biz_logger(cls, name, key_info):
+        """
+        ロガー生成
+        ログのフォーマットを設定し、ロガーを作成する。
+        :param name: ロガーの名前
+        :param key_info: ログ書き出し元が判別できるような情報
+        :return logger: ロガー
+        """
+        logger = logging.getLogger(name + "_" + key_info)
+        logger.setLevel(logging.INFO)
+
+        #  ログフォーマットを設定する。
+        formatter = logging.Formatter(
+            fmt=cls.__log_format.format(name, key_info),
+            datefmt=cls.__log_date)
+
+        #  排他処理ハンドラーインスタンスをコンストラクタ引数にログファイル名を渡して生成する。
+        # ログファイル名についてはログ設計書（監視ログ_Python）を参照のこと。
+        # ログファイルのパス
+        file_path = FilePath.get_log_path() + "kikin-application-ctrlqueuercv-" + key_info + "-apbase-pymodule.log"
+        exclusive_handler = ExclusiveFileHandler(file_path, key_info)
+        exclusive_handler.setFormatter(formatter)
+        logger.addHandler(exclusive_handler)
+
+        return logger
+
+    @classmethod
+    def get_event_logger(cls, name, key_info):
+        """
+        ロガー生成
+        ログのフォーマットを設定し、ロガーを作成する。
+        :param name: ロガーの名前
+        :param key_info: ログ書き出し元が判別できるような情報
+        :return logger: ロガー
+        """
+        logger = logging.getLogger(name + "_" + key_info)
+        logger.setLevel(logging.INFO)
+
+        #  ログフォーマットを設定する。
+        formatter = logging.Formatter(
+            fmt=cls.__log_format.format(name, key_info),
+            datefmt=cls.__log_date)
+
+        #  Windowsイベントログハンドラをコンストラクタ引数にサービス名を渡して生成する。
+        ntl = logging.handlers.NTEventLogHandler(name)
+        ntl.setFormatter(formatter)
+        logger.addHandler(ntl)
+
+        return logger
+
+    @classmethod
+    def output_log(cls, logger, line_number, error_code, message_id, inner_message=''):
+        """
+        ログ書き出し実行
+        ログ書き出しを実行する。
+        :param logger:ロガー
+        :param line_number: 呼び出し元の行数
+        :param error_code:ログに書き出すエラーコード
+        :param message_id:ログに書き出すメッセージのID
+        :param inner_message:ログへの埋め込み文字
+        """
+        #  ログ出力
+        #  ログメッセージ取得
+        #  設定ファイル（FL_004/エラーメッセージ設定ファイル）からエラーメッセージIDをキーにエラーレベル、エラーメッセージを取得する。
+        # 共通部品設計書（PY_001/設定ファイル取得）を参照のこと。
+
+        # ログファイル書き出し用のエラー情報を設定ファイルから取得する。
+        try:
+            err_level = confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.ERR, message_id, 'errLevel')
+            err_message = confUtils.ConfUtils.get_conf_file(confUtils.XmlFiles.ERR, message_id, 'errMsg')
+
+        except:
+            log_dict = {'line_number': line_number, 'error_code': error_code,
+                        'message_id': 'e.p.9001'}
+            logger.log(cls._check_level('ERROR'), 'システムエラーが発生しました。'
+                                                  'ログメッセージ設定ファイルの読み込みに失敗しました。'
+                       , extra=log_dict)
+            return
+
+        # inner_messageを配列で受け取って埋め込み
+        for index in range(len(inner_message)):
+            err_message = err_message.replace('{' + str(index) + '}', str(inner_message[index]))
+
+        #  ログ出力
+        #  初期化処理で生成したロガーを取得する。
+
+        log_dict = {'line_number': line_number, 'error_code': error_code,
+                    'message_id': message_id}
+
+        logger.log(cls._check_level(str(err_level).upper()), err_message, extra=log_dict)
