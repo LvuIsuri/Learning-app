@@ -90,4 +90,25 @@ S3の存在確認でAccessDeniedを発生させる。"	/efs_test/out/src.csv s3:
 /efs_test/out/new.csv が作成され、内容がS3と一致する"
 	test43	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseで上書きされないこと	"S3に test/sample.csv が存在する。
 /efs_test/out/old.csv が存在する。"	s3://test-bucket/test/sample.csv /efs_test/out/old.csv false	"戻り値は1で返却される
-/
+/efs_test/out/old.csv の内容が変わらない"
+	test44	コピー先にEFSディレクトリを指定、同名ファイルがない場合		ディレクトリ指定でコピー元のファイル名でコピーされること	"S3に test/sample.csv が存在する。
+/efs_test/out が空。"	s3://test-bucket/test/sample.csv /efs_test/out	"戻り値は0で返却される
+/efs_test/out/sample.csv が作成され、内容がS3と一致する"
+	test45	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションtrueの場合		ディレクトリ指定で同名ファイルが上書きされること	"S3に test/sample.csv が存在する。
+/efs_test/out/sample.csv が存在する。"	s3://test-bucket/test/sample.csv /efs_test/out true	"戻り値は0で返却される
+/efs_test/out/sample.csv がS3の内容に上書きされる"
+	test46	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションfalseの場合		ディレクトリ指定で同名ファイルが上書きされないこと	"S3に test/sample.csv が存在する。
+/efs_test/out/sample.csv が存在する。"	s3://test-bucket/test/sample.csv /efs_test/out false	"戻り値は1で返却される
+/efs_test/out/sample.csv の内容が変わらない"
+	test47	コピー元にS3ファイル、コピー先にEFSファイルを指定、コピー先が新規の場合（権限）		コピー先ファイルの権限が0664になること	"S3に test/sample.csv が存在する。
+/efs_test/out が空。"	s3://test-bucket/test/sample.csv /efs_test/out/new.csv	"戻り値は0で返却される
+/efs_test/out/new.csv の権限が0664である"
+	test48	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプションfalse、コピー先が新規の場合		falseでも新規ならアップロードできること	"/efs_test/out/src.csv が存在する。
+S3に test/up.csv が存在しない。"	/efs_test/out/src.csv s3://test-bucket/test/up.csv false	"戻り値は0で返却される
+S3に test/up.csv が作成され、内容がEFSと一致する"
+	test49	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプション省略、コピー先に同名ファイルがある場合		省略時（true）にS3が上書きされること	"/efs_test/out/src.csv が存在する。（内容：EFS）
+S3に test/up.csv が存在する。"	/efs_test/out/src.csv s3://test-bucket/test/up.csv	"戻り値は0で返却される
+S3の test/up.csv がEFSの内容に上書きされる"
+	test50	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseでS3が上書きされないこと	"/efs_test/out/src.csv が存在する。
+S3に test/up.csv が存在する。"	/efs_test/out/src.csv s3://test-bucket/test/up.csv false	"戻り値は1で返却される
+S3の test/up.csv の内容が変わらない"
