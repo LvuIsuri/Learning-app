@@ -1,33 +1,167 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<confValue>
-	<retry id="all">
-		<retryCount>2</retryCount>
-		<retryWaitTime>1</retryWaitTime>
-	</retry>
-	<retry id="single">
-		<retryCount>5</retryCount>
-		<retryWaitTime>20</retryWaitTime>
-	</retry>
-	<timeout>60</timeout>
-	<healthCheck>
-		<mesurements>1</mesurements>
-		<cpuIdlePercentage>-1</cpuIdlePercentage>
-		<healthCheckRetryCount>30</healthCheckRetryCount>
-		<healthCheckRetryWaitTime>30</healthCheckRetryWaitTime>
-	</healthCheck>
-	<sysStop>
-		<sysStopRetryCount>3</sysStopRetryCount>
-		<sysStopRetryWaitTime>30</sysStopRetryWaitTime>
-	</sysStop>
-	<unhealthyPrograms>
-		<programPath>/RC/RCrese.sh</programPath>
-		<programPath>/RC/RCrese</programPath>
-		<programPath>/RC/RCmeld</programPath>
-		<programPath>/SC/SCmeld</programPath>
-		<programPath>/RC/RCmeldReinAsp</programPath>
-		<programPath>/RC/RClogtMgr</programPath>
-		<programPath>/SC/SClogtMgr</programPath>
-		<programPath>/RC/RCprgw</programPath>
-		<programPath>/RC/RCchngex</programPath>
-	</unhealthyPrograms>
-</confValue>
+入力チェックについて、チェック条件のパターンを網羅的に確認する。	test1	引数が指定されていない場合		引数が足りない場合の動作が確認できること		引数なし	"戻り値は1で返却される
+ログ（e.p.9013）が出力される"
+	test2	引数が1個（コピー先パスが未指定）の場合		コピー先パスがない場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv	"戻り値は1で返却される
+ログ（e.p.9013）が出力される"
+	test3	引数が4個の場合		引数が多い場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv /efs_test/out/new.csv true extra	"戻り値は1で返却される
+ログ（e.p.9013）が出力される"
+	test4	コピー元ファイルが空文字の場合		コピー元が空文字の場合の動作が確認できること		(空文字) /efs_test/out/new.csv	"戻り値は1で返却される
+ログ（e.p.9013）が出力される"
+	test5	コピー先パスが空文字の場合		コピー先が空文字の場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv (空文字)	"戻り値は1で返却される
+ログ（e.p.9013）が出力される"
+	test6	コピー元が「S3://」「/」のどちらでも始まらない場合		S3パスでもEFSパスでもない指定が異常になること		abc.txt s3://test-bucket/test/up.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログ（e.p.9013）が出力される"
+	test7	コピー先が「S3://」「/」のどちらでも始まらない場合（EFS相対パス）		相対パスの指定が異常になること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv efs_test/out/new.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test8	コピー元（S3）にワイルドカードを指定した場合		ワイルドカード指定が異常になること	S3に test/ 配下のcsvファイルが存在する。	s3://test-bucket/test/*.csv /efs_test/out/new.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test9	コピー先（EFS）にワイルドカードを指定した場合		ワイルドカード指定が異常になること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv /efs_test/out/*.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test10	コピー元（EFS）にワイルドカードを指定した場合		EFSのワイルドカード指定が異常になること	/efs_test/out に csv ファイルが存在する。	/efs_test/out/*.csv s3://test-bucket/test/up.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログ（e.p.9013）が出力される"
+	test11	コピー先（S3）にワイルドカードを指定した場合		S3のワイルドカード指定が異常になること	/efs_test/out/src.csv が存在する。	/efs_test/out/src.csv s3://test-bucket/test/*.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログ（e.p.9013）が出力される"
+	test12	上書きオプションが空文字の場合		上書きオプションが空文字の場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv /efs_test/out/new.csv (空文字)	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test13	上書きオプションにtrue/false以外を指定した場合		無効な値の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv /efs_test/out/new.csv abc	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test14	コピー元、コピー先がともにS3の場合		S3からS3のコピーができないこと	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv s3://test-bucket/test/copy.csv	"戻り値は1で返却される
+ログ（e.p.9013）が出力される"
+	test15	コピー元、コピー先がともにEFSの場合		EFSからEFSのコピーができないこと	/efs_test/out/src.csv が存在する。	/efs_test/out/src.csv /efs_test/out/copy.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+ロジックについて、処理フローのパターンを網羅的に確認する。	test16	コピー元（S3）がバケット名のみの場合		オブジェクトキーがない指定が異常になること	S3に test-bucket が存在する。	s3://test-bucket /efs_test/out/new.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test17	コピー元（S3）のキー末尾が「/」の場合		ディレクトリ指定が異常になること	S3に test/ 配下のファイルが存在する。	s3://test-bucket/test/ /efs_test/out/new.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test18	コピー先パスに「..」が含まれる場合		ディレクトリトラバーサルが異常になること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv /efs_test/out/../new.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test19	コピー先ディレクトリが存在しない場合		コピー先ディレクトリがない場合の動作が確認できること	"S3に test/sample.csv が存在する。
+/efs_test/nodir が存在しない。"	s3://test-bucket/test/sample.csv /efs_test/nodir/new.csv false	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test20	コピー先ディレクトリに書込権限がない場合		書込不可時の動作が確認できること	"S3に test/sample.csv が存在する。
+/efs_test/ro が書込不可（chmod 555）。"	s3://test-bucket/test/sample.csv /efs_test/ro/new.csv false	"戻り値は-1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test21	コピー先の既存ファイルが読み取り専用で上書きできない場合		既存ファイルが上書きできない場合の動作が確認できること	"S3に test/sample.csv が存在する。
+/efs_test/out/old.csv が存在する（chmod 444）。"	s3://test-bucket/test/sample.csv /efs_test/out/old.csv true	"戻り値は-1で返却される
+/efs_test/out/old.csv の内容が変わらない
+ログ（e.p.9013）が出力される"
+	test22	コピー元ファイルがS3に存在しない場合		S3にファイルがない場合の動作が確認できること	S3に test/none.csv が存在しない。	s3://test-bucket/test/none.csv /efs_test/out/new.csv false	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test23	S3バケットが存在しない場合		バケットがない場合の動作が確認できること	バケット no-bucket が存在しない。	s3://no-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9013）が出力される"
+	test24	S3に接続できない場合		S3通信異常時の動作が確認できること	S3（Floci）が起動していない。	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は-1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9001）が出力される"
+	test25	S3へのアクセス権限がない場合		AccessDenied時の動作が確認できること	S3アクセスでAccessDeniedを発生させる。	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は-1で返却される
+コピー先にファイルが作成されない
+ログ（e.p.9001）が出力される"
+	test26	ダウンロード途中で例外が発生した場合		途中で失敗してもファイルが残らないこと	"S3に test/sample.csv が存在する。
+ダウンロード処理で例外を発生させる。"	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は-1で返却される
+コピー先ファイル、一時ファイルが残らない
+ログ（e.p.9001）が出力される"
+	test27	上書きコピー中にダウンロードが失敗した場合		既存ファイルが壊れないこと	"S3に test/sample.csv が存在する。
+/efs_test/out/old.csv が存在する。
+ダウンロード処理で例外を発生させる。"	s3://test-bucket/test/sample.csv /efs_test/out/old.csv true	"戻り値は-1で返却される
+/efs_test/out/old.csv の内容が変わらない
+ログ（e.p.9001）が出力される"
+	test28	処理中に別プロセスがコピー先ファイルを作成した場合（上書きなし）		競合時に上書きされないこと	"S3に test/sample.csv が存在する。
+コピー先ファイルの反映時にFileExistsErrorを発生させる。"	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は1で返却される
+一時ファイルが残らない
+ログ（e.p.9013）が出力される"
+	test29	コピー元（EFS）のパスに「..」が含まれる場合		ディレクトリトラバーサルが異常になること	/efs_test/src.csv が存在する。	/efs_test/out/../src.csv s3://test-bucket/test/up.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログ（e.p.9013）が出力される"
+	test30	コピー元（EFS）にディレクトリを指定した場合		ディレクトリ指定が異常になること	/efs_test/out がディレクトリとして存在する。	/efs_test/out s3://test-bucket/test/up.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログ（e.p.9013）が出力される"
+	test31	コピー元（EFS）のファイルが存在しない場合		ファイルがない場合の動作が確認できること	"/efs_test/out が存在する。
+/efs_test/out/none.csv が存在しない。"	/efs_test/out/none.csv s3://test-bucket/test/up.csv	"戻り値は1で返却される
+親ディレクトリのリフレッシュ（os.scandir）が1回だけ実行される
+ログ（e.p.9013）が出力される"
+	test32	コピー元（EFS）の親ディレクトリが存在しない場合		親ディレクトリがない場合の動作が確認できること	/efs_test/nodir が存在しない。	/efs_test/nodir/src.csv s3://test-bucket/test/up.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログ（e.p.9013）が出力される"
+	test33	コピー先（S3）のバケット名が取得できない場合		バケット名がない指定が異常になること	/efs_test/out/src.csv が存在する。	/efs_test/out/src.csv s3:///test/up.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログ（e.p.9013）が出力される"
+	test34	コピー先（S3）がバケット名のみの場合		EFSのファイル名がオブジェクトキーになること	"/efs_test/out/src.csv が存在する。
+S3に test-bucket が存在する。"	/efs_test/out/src.csv s3://test-bucket	"戻り値は0で返却される
+S3の test-bucket/src.csv が作成され、内容がEFSと一致する
+エラーログは出力されない"
+	test35	コピー先（S3）がバケット名と「/」のみの場合		EFSのファイル名がオブジェクトキーになること	"/efs_test/out/src.csv が存在する。
+S3に test-bucket が存在する。"	/efs_test/out/src.csv s3://test-bucket/	"戻り値は0で返却される
+S3の test-bucket/src.csv が作成され、内容がEFSと一致する
+エラーログは出力されない"
+	test36	コピー先（S3）のバケットが存在しない場合		コピー先バケットがない場合の動作が確認できること	"/efs_test/out/src.csv が存在する。
+バケット no-bucket が存在しない。"	/efs_test/out/src.csv s3://no-bucket/test/up.csv	"戻り値は1で返却される
+ログ（e.p.9013）が出力される"
+	test37	コピー先（S3）の存在確認でアクセス権限がない場合		AccessDenied時の動作が確認できること	"/efs_test/out/src.csv が存在する。
+S3の存在確認でAccessDeniedを発生させる。"	/efs_test/out/src.csv s3://test-bucket/test/up.csv false	"戻り値は-1で返却される
+ログ（e.p.9001）が出力される"
+	test38	S3へのアップロード中に例外が発生した場合		アップロード失敗時の動作が確認できること	"/efs_test/out/src.csv が存在する。
+アップロード処理で例外を発生させる。"	/efs_test/out/src.csv s3://test-bucket/test/up.csv	"戻り値は-1で返却される
+S3にオブジェクトが作成されない
+ログ（e.p.9001）が出力される"
+複数の入力要素のそれぞれで確認が必要なデータについて、組合せのパターンを網羅的に確認する。	test39	コピー元にS3ファイル、コピー先にEFSファイルを指定、コピー先が新規の場合		新規のファイルにコピーできること	"S3に test/sample.csv が存在する。
+/efs_test/out が空。"	s3://test-bucket/test/sample.csv /efs_test/out/new.csv	"戻り値は0で返却される
+/efs_test/out/new.csv が作成され、内容がS3と一致する
+エラーログは出力されない"
+	test40	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプション省略、コピー先に同名ファイルがある場合		省略時（true）に上書きされること	"S3に test/sample.csv が存在する。
+/efs_test/out/old.csv が存在する。"	s3://test-bucket/test/sample.csv /efs_test/out/old.csv	"戻り値は0で返却される
+/efs_test/out/old.csv がS3の内容に上書きされる
+エラーログは出力されない"
+	test41	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションtrue、コピー先に同名ファイルがある場合		trueで上書きされること	"S3に test/sample.csv が存在する。
+/efs_test/out/old.csv が存在する。"	s3://test-bucket/test/sample.csv /efs_test/out/old.csv true	"戻り値は0で返却される
+/efs_test/out/old.csv がS3の内容に上書きされる
+エラーログは出力されない"
+	test42	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションfalse、コピー先が新規の場合		falseでも新規ならコピーできること	"S3に test/sample.csv が存在する。
+/efs_test/out が空。"	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は0で返却される
+/efs_test/out/new.csv が作成され、内容がS3と一致する
+エラーログは出力されない"
+	test43	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseで上書きされないこと	"S3に test/sample.csv が存在する。
+/efs_test/out/old.csv が存在する。"	s3://test-bucket/test/sample.csv /efs_test/out/old.csv false	"戻り値は1で返却される
+/efs_test/out/old.csv の内容が変わらない
+ログ（e.p.9013）が出力される"
+	test44	コピー先にEFSディレクトリを指定、同名ファイルがない場合		ディレクトリ指定でコピー元のファイル名でコピーされること	"S3に test/sample.csv が存在する。
+/efs_test/out が空。"	s3://test-bucket/test/sample.csv /efs_test/out	"戻り値は0で返却される
+/efs_test/out/sample.csv が作成され、内容がS3と一致する
+エラーログは出力されない"
+	test45	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションtrueの場合		ディレクトリ指定で同名ファイルが上書きされること	"S3に test/sample.csv が存在する。
+/efs_test/out/sample.csv が存在する。"	s3://test-bucket/test/sample.csv /efs_test/out true	"戻り値は0で返却される
+/efs_test/out/sample.csv がS3の内容に上書きされる
+エラーログは出力されない"
+	test46	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションfalseの場合		ディレクトリ指定で同名ファイルが上書きされないこと	"S3に test/sample.csv が存在する。
+/efs_test/out/sample.csv が存在する。"	s3://test-bucket/test/sample.csv /efs_test/out false	"戻り値は1で返却される
+/efs_test/out/sample.csv の内容が変わらない
+ログ（e.p.9013）が出力される"
+	test47	コピー元にS3ファイル、コピー先にEFSファイルを指定、コピー先が新規の場合（権限）		コピー先ファイルの権限が0664になること	"S3に test/sample.csv が存在する。
+/efs_test/out が空。"	s3://test-bucket/test/sample.csv /efs_test/out/new.csv	"戻り値は0で返却される
+/efs_test/out/new.csv の権限が0664である
+エラーログは出力されない"
+	test48	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプションfalse、コピー先が新規の場合		falseでも新規ならアップロードできること	"/efs_test/out/src.csv が存在する。
+S3に test/up.csv が存在しない。"	/efs_test/out/src.csv s3://test-bucket/test/up.csv false	"戻り値は0で返却される
+S3に test/up.csv が作成され、内容がEFSと一致する
+エラーログは出力されない"
+	test49	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプション省略、コピー先に同名ファイルがある場合		省略時（true）にS3が上書きされること	"/efs_test/out/src.csv が存在する。（内容：EFS）
+S3に test/up.csv が存在する。"	/efs_test/out/src.csv s3://test-bucket/test/up.csv	"戻り値は0で返却される
+S3の test/up.csv がEFSの内容に上書きされる
+エラーログは出力されない"
+	test50	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseでS3が上書きされないこと	"/efs_test/out/src.csv が存在する。
+S3に test/up.csv が存在する。"	/efs_test/out/src.csv s3://test-bucket/test/up.csv false	"戻り値は1で返却される
+S3の test/up.csv の内容が変わらない
+ログ（e.p.9013）が出力される"
