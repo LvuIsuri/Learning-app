@@ -1,86 +1,33 @@
-Traceback (most recent call last):
-  File "/home/bttranvu/copyfile/py/fileCopyS3Efs.py", line 9, in <module>
-    from kikin.fw.infra.external import fileCopyS3EfsService
-  File "/home/bttranvu/copyfile/py/kikin/fw/infra/external/fileCopyS3EfsService.py", line 10, in <module>
-    from ..common import appBase
-  File "/home/bttranvu/copyfile/py/kikin/fw/infra/common/appBase.py", line 13, in <module>
-    from ..common import logUtils
-  File "/home/bttranvu/copyfile/py/kikin/fw/infra/common/logUtils.py", line 19, in <module>
-    from ..common import confUtils
-  File "/home/bttranvu/copyfile/py/kikin/fw/infra/common/confUtils.py", line 10, in <module>
-    from ..common.filePath import FilePath
-  File "/home/bttranvu/copyfile/py/kikin/fw/infra/common/filePath.py", line 4, in <module>
-    class FilePath:
-    ...<60 lines>...
-            return cls.__temp_apinfra + '/sqs/'
-  File "/home/bttranvu/copyfile/py/kikin/fw/infra/common/filePath.py", line 10, in FilePath
-    __ap_home_path = os.environ['AP_HOME']
-                     ~~~~~~~~~~^^^^^^^^^^^
-  File "<frozen os>", line 716, in __getitem__
-KeyError: 'AP_HOME'
-
-import os
-
-
-class FilePath:
-    """
-    ファイルパス取得クラス
-    設定ファイル等のファイルパスを取得する。
-    """
-
-    __ap_home_path = os.environ['AP_HOME']
-    __etc_apinfra = __ap_home_path + '/etc/apInfra/'
-    __temp_apinfra = __ap_home_path + '/temp/apInfra/'
-    __catalina_home_path = os.environ.get('CATALINA_HOME')
-
-    @classmethod
-    def get_comn_conf_path(cls):
-        return cls.__etc_apinfra + 'comnConf.xml'
-
-    @classmethod
-    def get_svr_conf_path(cls):
-        return cls.__etc_apinfra + 'svrConf.xml'
-
-    @classmethod
-    def get_err_msg_path(cls):
-        return cls.__etc_apinfra + 'errMsg.xml'
-
-    @classmethod
-    def get_queue_conf_path(cls):
-        return cls.__etc_apinfra + 'queueConf.xml'
-
-    @classmethod
-    def get_lock_file_path(cls):
-        return cls.__temp_apinfra + 'lockFile'
-
-    @classmethod
-    def get_sys_stat_path(cls):
-        return cls.__temp_apinfra + 'SysStat'
-
-    @classmethod
-    def get_log_file_path(cls):
-        return cls.__ap_home_path + '/log/kikin-monitoring-apbase-pymodule.log'
-
-    @classmethod
-    def get_bin_path(cls):
-        return cls.__ap_home_path + '/bin'
-
-    @classmethod
-    def get_tomcat_path(cls):
-        return cls.__catalina_home_path + '/bin'
-
-    @classmethod
-    def get_log_path(cls):
-        return cls.__ap_home_path + '/log/'
-
-    @classmethod
-    def get_backup_dir(cls):
-        return cls.__ap_home_path + '/log/backup/'
-
-    @classmethod
-    def get_temp_dir(cls):
-        return cls.__temp_apinfra + '/apsv/'
-
-    @classmethod
-    def get_sqs_temp_dir(cls):
-        return cls.__temp_apinfra + '/sqs/'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<confValue>
+	<retry id="all">
+		<retryCount>2</retryCount>
+		<retryWaitTime>1</retryWaitTime>
+	</retry>
+	<retry id="single">
+		<retryCount>5</retryCount>
+		<retryWaitTime>20</retryWaitTime>
+	</retry>
+	<timeout>60</timeout>
+	<healthCheck>
+		<mesurements>1</mesurements>
+		<cpuIdlePercentage>-1</cpuIdlePercentage>
+		<healthCheckRetryCount>30</healthCheckRetryCount>
+		<healthCheckRetryWaitTime>30</healthCheckRetryWaitTime>
+	</healthCheck>
+	<sysStop>
+		<sysStopRetryCount>3</sysStopRetryCount>
+		<sysStopRetryWaitTime>30</sysStopRetryWaitTime>
+	</sysStop>
+	<unhealthyPrograms>
+		<programPath>/RC/RCrese.sh</programPath>
+		<programPath>/RC/RCrese</programPath>
+		<programPath>/RC/RCmeld</programPath>
+		<programPath>/SC/SCmeld</programPath>
+		<programPath>/RC/RCmeldReinAsp</programPath>
+		<programPath>/RC/RClogtMgr</programPath>
+		<programPath>/SC/SClogtMgr</programPath>
+		<programPath>/RC/RCprgw</programPath>
+		<programPath>/RC/RCchngex</programPath>
+	</unhealthyPrograms>
+</confValue>
