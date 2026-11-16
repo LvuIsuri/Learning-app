@@ -1,93 +1,71 @@
 import shutil
-import uuid
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
-from botocore.exceptions import ClientError
 
 from kikin.fw.infra.external import fileCopyS3EfsService as service
 
-
-TEST_ROOT = Path("/home/bttranvu/efs_test/pytest_fileCopyS3EfsService")
-S3_BUCKET = "test-bucket"
-S3_SOURCE_URI = f"s3://{S3_BUCKET}/test/sample.csv"
-S3_DESTINATION_URI = f"s3://{S3_BUCKET}/test/up.csv"
-S3_BUCKET_URI = f"s3://{S3_BUCKET}"
-TEST_CONTENT = b"pytest S3-EFS test content\n"
-ORIGINAL_CONTENT = b"original content\n"
+# テスト用ディレクトリ
+TEST_DIR = Path("/home/bttranvu/efs_test/pytest_test")
+# テスト用出力ディレクトリ
+OUT_DIR = TEST_DIR / "out"
 
 
-@pytest.fixture
-def efs_paths(request):
-    """Create isolated absolute EFS paths and remove only this test's files."""
-    root = TEST_ROOT / f"{request.node.name}-{uuid.uuid4().hex}"
-    paths = {
-        "root": root,
-        "out": root / "out",
-        "readonly": root / "ro",
-        "missing": root / "nodir",
-    }
-    paths["out"].mkdir(parents=True)
-    paths["readonly"].mkdir()
-    try:
-        yield paths
-    finally:
-        shutil.rmtree(root)
+@pytest.fixture(autouse=True)
+def setup():
+    """各テストの実行前に行う処理。(@BeforeEach相当)"""
+    # テスト用ディレクトリが存在していた場合は削除してから作成する
+    if TEST_DIR.exists():
+        shutil.rmtree(TEST_DIR)
+    OUT_DIR.mkdir(parents=True)
+    # 実行後は削除しない。(結果を確認できるように残す。Javaと同じ)
 
 
-@pytest.fixture
-def copier_factory(monkeypatch):
-    """Create the current service API with logging intercepted for assertions."""
-    def create(argv):
-        copier = service.ApCopyFileS3EfsService.__new__(
-            service.ApCopyFileS3EfsService
-        )
-        copier.argv = argv
-        copier.request = " ".join(argv)
-        output_log = Mock()
-        monkeypatch.setattr(copier, "output_log", output_log)
-        return copier, output_log
-
-    return create
+def run(*args):
+    """処理を実行し、(戻り値, ログ出力のMock)を返す。"""
+    copier = service.ApCopyFileS3EfsService.__new__(service.ApCopyFileS3EfsService)
+    copier.argv = list(args)
+    copier.request = " ".join(args)
+    copier.output_log = Mock()
+    return copier.do_copy(), copier.output_log
 
 
-@pytest.fixture
-def s3_client(monkeypatch):
-    """Provide an offline S3 mock for tests that exercise copy branches."""
-    client = Mock()
-    monkeypatch.setattr(service, "create_s3_client", lambda: client)
-    return client
+def test1():
+    """
+    test1：引数が指定されていない場合
+    ・引数なし
+    """
+    # 実行
+    result, log = run()
+
+    # 戻り値判定
+    assert result == 1
+
+    # ログ判定
+    log.assert_called_once()
+    assert log.call_args.args[1:] == (
+        1, "e.p.9013", ["引数は2個または3個指定してください。", ""])
 
 
-def make_client_error(code: str, operation: str = "HeadObject") -> ClientError:
-    return ClientError(
-        {"Error": {"Code": code, "Message": "test error"}},
-        operation,
-    )
+def test2():
+    """
+    test2：コピー元ファイルが空文字の場合
+    ・コピー元が空文字
+    """
+    # 入力情報定義
+    file_path = str(OUT_DIR / "new.csv")
 
+    # 実行
+    result, log = run("", file_path)
 
-def write_file(path: Path, content: bytes = TEST_CONTENT) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(content)
-    return path
+    # 戻り値判定
+    assert result == 1
 
+    # コピー先にファイルが作成されていないか
+    assert not (OUT_DIR / "new.csv").exists(), "コピー先にファイルが作成されない想定"
 
-def configure_s3_download(client, content: bytes = TEST_CONTENT) -> None:
-    client.head_object.return_value = {}
-    client.download_file.side_effect = (
-        lambda bucket, key, destination: Path(destination).write_bytes(content)
-    )
-
-
-def test1(copier_factory):
-    """引数なし：戻り値1とe.p.9013のログ出力を確認する。"""
-    copier, output_log = copier_factory([])
-
-    assert copier.do_copy() == 1
-    output_log.assert_called_once()
-    assert output_log.call_args.args[1:] == (
-        1,
-        "e.p.9013",
-        ["引数は2個または3個指定してください。", ""],
-    )
+    # ログ判定
+    log.assert_called_once()
+    assert log.call_args.args[1:3] == (1, "e.p.9013")
+    assert "コピー元またはコピー先が空です。" in log.call_args.args[3][0]
