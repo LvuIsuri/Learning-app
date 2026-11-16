@@ -1,47 +1,70 @@
-20261112時点										
-										
-	S3toEFS(No.5までは共通)									
-	No.		1-1	1-2	1-3	1-4	1-5			
-	1	引数の数	2	3	2.3以外					
-	2	上書きフラグ	なし	TRUE	FALSE	異常				
-	3	引数(コピー元ファイル)	あり	空白	S3	/	異常	？含	*含	
-	4	引数(コピー先パス)	あり	空白	S3	/	異常	？含	*含	
-	5	コピー対象→組み合わせA								
-	6	引数(S3コピー元ファイル)	バケット・キーあり	バケットなし	キーなし					
-	7	引数(S3コピー元ファイルキー末尾)	/以外	/						
-	8	引数(コピー先パス)	..なし	..あり						
-	9	引数(コピー先パス)	ファイル	フォルダ						
-	10	コピー先フォルダ	あり	なし						
-	11	コピー先フォルダ書き込み権限	あり	なし						
-	12	コピー先ファイル書き込み権限→組み合わせB								
-	13	コピー元ファイル存在確認	あり	404	NoSuchekey	NotFound	NosuchBucket	異常		
-	14	ファイルコピー→組み合わせC								
-										
-	EFStoS3									
-	6	引数(コピー元ファイル)	..なし	..あり						
-	7	コピー元フォルダ	あり	なし						
-	8	コピー元ファイル	あり	なし1	なし2					
-	9	引数(S3コピー先パス)	バケット・キーあり	バケットなし	キーなし					
-	10	S3コピー先ファイル確認→組み合わせD								
-	11	S3アップロード	正常	NoSuchBucket	異常					
-										
-										
-										
-										
-	組み合わせA									
-	No.									
-	1	引数(コピー元ファイル)	S3	EFS	S3	EFS				
-	2	引数(コピー先パス)	EFS	S3	S3	EFS				
-										
-	組み合わせB									
-	1	コピー先ファイル	あり							
-	2	上書きフラグ		あり	なし					
-	3	書き込み権限				あり	なし			
-										
-	組み合わせC									
-	1	コピー先ファイル	あり	なし						
-	2	上書きフラグ			あり	なし				
-										
-	組み合わせD									
-	1	上書きフラグ	あり	なし						
-	2	S3コピー先ファイル			あり	404	NoSuchekey	NotFound	NosuchBucket	異常
+test36	引数が4個の場合		引数の数が多い場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false extra	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：引数は2個または3個指定してください。指定された引数の数：4
+リクエスト：入力値と同じ"
+test37	コピー先が「S3://」「/」のどちらでも始まらない場合		S3パスでもEFSパスでもない指定が異常になること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv abc.txt	"戻り値は1で返却される
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：パスにはS3 URIまたは絶対パスを指定してください。パス：abc.txt
+リクエスト：入力値と同じ"
+test38	コピー元に「?」を指定した場合		ワイルドカード（?）指定が異常になること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample?.csv /efs_test/out/new.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：ワイルドカードは指定できません。コピー元：s3://test-bucket/test/sample?.csv コピー先：/efs_test/out/new.csv
+リクエスト：入力値と同じ"
+test39	コピー先に「?」を指定した場合		ワイルドカード（?）指定が異常になること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv /efs_test/out/new?.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：ワイルドカードは指定できません。コピー元：s3://test-bucket/test/sample.csv コピー先：/efs_test/out/new?.csv
+リクエスト：入力値と同じ"
+test40	コピー先（S3）に「*」を指定した場合		S3側のワイルドカード指定が異常になること	/efs_test/out/src.csv が存在する。	/efs_test/out/src.csv s3://test-bucket/test/*.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：ワイルドカードは指定できません。コピー元：/efs_test/out/src.csv コピー先：s3://test-bucket/test/*.csv
+リクエスト：入力値と同じ"
+test41	コピー元、コピー先がともにS3の場合		S3からS3のコピーができないこと	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv s3://test-bucket/test/copy.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：コピー元またはコピー先の一方だけにS3 URIを指定してください。コピー元：s3://test-bucket/test/sample.csv コピー先：s3://test-bucket/test/copy.csv
+リクエスト：入力値と同じ"
+test42	コピー元（S3）にバケット名がない場合		バケット名なしの指定が異常になること		s3:///test/sample.csv /efs_test/out/new.csv	"戻り値は1で返却される
+コピー先にファイルが作成されない
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：コピー元S3 URIが不正です。コピー元：s3:///test/sample.csv
+リクエスト：入力値と同じ"
+test43	コピー元（EFS）の親ディレクトリはあるがファイルが存在しない場合		EFSにファイルがない場合の動作が確認できること	/efs_test/out が存在し、none.csv は存在しない。	/efs_test/out/none.csv s3://test-bucket/test/up.csv	"戻り値は1で返却される
+S3にオブジェクトが作成されない
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：コピー元ファイルが存在しません。ファイル：/efs_test/out/none.csv
+リクエスト：入力値と同じ"
+test44	コピー先（S3）が存在しない場合、上書きオプション省略		新規オブジェクトとして作成されること	"/efs_test/out/src.csv が存在する。
+S3に test/new_up.csv が存在しない。"	/efs_test/out/src.csv s3://test-bucket/test/new_up.csv	"戻り値は0で返却される
+S3の test/new_up.csv が作成され、内容がEFSと一致する
+エラーログ（e.p.9013、e.p.9001）が出力されない"
+test45	コピー先（S3）が存在しない場合、上書きオプションfalse		falseでも新規ならアップロードできること	"/efs_test/out/src.csv が存在する。
+S3に test/new_up.csv が存在しない。"	/efs_test/out/src.csv s3://test-bucket/test/new_up.csv false	"戻り値は0で返却される
+S3の test/new_up.csv が作成され、内容がEFSと一致する
+エラーログ（e.p.9013、e.p.9001）が出力されない"
+test46	コピー先（S3）がバケット名のみ（末尾「/」なし）の場合		EFSのファイル名がオブジェクトキーになること	"/efs_test/out/src.csv が存在する。
+S3に test-bucket が存在する。"	/efs_test/out/src.csv s3://test-bucket	"戻り値は0で返却される
+S3の test-bucket/src.csv が作成され、内容がEFSと一致する
+エラーログ（e.p.9013、e.p.9001）が出力されない"
+test47	コピー先（S3）にバケット名がない場合		バケット名なしの指定が異常になること	/efs_test/out/src.csv が存在する。	/efs_test/out/src.csv s3:///test/up.csv	"戻り値は1で返却される
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：コピー先S3 URIが不正です。コピー先：s3:///test/up.csv
+リクエスト：入力値と同じ"
+test48	コピー先（S3）のバケットが存在しない場合、上書きオプションfalse		falseでもバケットなしが異常になること	"/efs_test/out/src.csv が存在する。
+バケット no-bucket が存在しない。"	/efs_test/out/src.csv s3://no-bucket/test/up.csv false	"戻り値は1で返却される
+ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
+エラー内容：コピー先バケットが存在しません。バケット：no-bucket
+リクエスト：入力値と同じ"
+test49	S3のコピー元確認で権限エラー（403）が発生した場合		想定外のS3エラー時の動作が確認できること	"S3に test/sample.csv が存在する。
+アクセス拒否（403）となる設定。"	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は-1で返却される
+コピー先にファイルが作成されない
+ログに[e.p.9001]がlevel:ERROR、errorCode:-1で出力される
+エラー内容：システムエラーが発生しました。（例外のスタックトレースが出力される）"
+test50	S3アップロードで想定外のエラーが発生した場合		アップロード異常時の動作が確認できること	"/efs_test/out/src.csv が存在する。
+アップロード処理で例外を発生させる。"	/efs_test/out/src.csv s3://test-bucket/test/up.csv	"戻り値は-1で返却される
+S3にオブジェクトが作成されない
+ログに[e.p.9001]がlevel:ERROR、errorCode:-1で出力される
+エラー内容：システムエラーが発生しました。（例外のスタックトレースが出力される）"
