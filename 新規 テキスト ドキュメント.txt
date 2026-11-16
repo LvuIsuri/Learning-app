@@ -1,180 +1,1339 @@
+package jp.or.kikin.file.service;
 
-テスト項目		テストケース				
-項番	テスト項目	項番	テストケース概要	事前条件	入力値	期待結果
-test1	引数が指定されていない場合		引数が足りない場合の動作が確認できること		引数なし	"戻り値は1で返却される
-ログに[e.p.9013]がで出力される
-エラー内容：引数は2個または3個指定してください。指定された引数の数：0"
-test2	コピー元ファイルが空文字の場合		コピー元が空文字の場合の動作が確認できること		/efs_test/out/new.csv	"戻り値は1で返却される
-ログに[e.p.9013]がで出力される
-エラー内容：コピー元またはコピー先が空です。"
-test3	コピー先パスが未指定の場合		コピー先パスがない場合の動作が確認できること	"S3に test/sample.csv が存在する。	"	s3://test-bucket/test/sample.csv	"戻り値は1で返却される
-ログに[e.p.9013]が出力される
-エラー内容：引数は2個または3個指定してください。指定された引数の数：1"
-test4	コピー先パスが空文字の場合		コピー先が空文字の場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv ""	"戻り値は1で返却される
-ログに[e.p.9013]が出力される
-エラー内容：コピー元またはコピー先が空です"
-test5	コピー元が「S3://」「/」のどちらでも始まらない場合		上書きオプションが空文字の場合の動作が確認できること	S3パスでもEFSパスでもない指定が異常になること 	test-bucket/test/sample.csv /efs_test/out/new.csv	"戻り値は1で返却される
-S3にオブジェクトが作成されない
-ログに[e.p.9013]が出力される
-エラー内容：パスにはS3 URIまたは絶対パスを指定してください"
-test6	コピー先が「S3://」「/」のどちらでも始まらない場合（EFS相対パス）		相対パスの指定が異常になること	S3に test/sample.csv が存在する。	"s3://test-bucket/test/sample.csv efs_test/out/new.csv	"	"戻り値は1で返却される
-S3にオブジェクトが作成されない
-ログに[e.p.9013]が出力される
-エラー内容：パスにはEFS URIまたは絶対パスを指定してください"
-test7	コピー元に「*」を指定した場合		ワイルドカード指定が異常になること	S3に test/ 配下のcsvファイルが存在する。	s3://test-bucket/test/*.csv efs_test/out/new.csv	"戻り値は1で返却される
-S3にオブジェクトが作成されない
-ログに[e.p.9013]が出力される
-エラー内容：ワイルドカードは指定できません。"
-test8	コピー元に「?」を指定した場合		ワイルドカード（?）指定が異常になること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample?.csv /efs_test/out/new.csv	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：ワイルドカードは指定できません。"
-test9	コピー元に「?」を指定した場合		ワイルドカード（?）指定が異常になること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample?.csv /efs_test/out/new.csv	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：ワイルドカードは指定できません。"
-test10	EFSにワイルドカードを指定した場合		ワイルドカード指定が異常になること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv /efs_test/out/*.csv	"""戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]がl出力される
-エラー内容：ワイルドカードは指定できません。"
-test11	上書きオプションが空文字の場合		上書きオプションが空文字の場合の動作が確認できること	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv /efs_test/out/new.csv (空文字)	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]が出力される
-エラー内容：上書きオプションにはtrueまたはfalseを指定してください"
-test12	コピー元、コピー先がともにS3の場合		S3からS3のコピーができないこと	S3に test/sample.csv が存在する。	s3://test-bucket/test/sample.csv s3://test-bucket/test/copy.csv	"戻り値は1で返却される
-S3にオブジェクトが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー元またはコピー先の一方だけにS3 URIを指定してください。"
-test13	コピー元、コピー先がともにEFSの場合		EFSからEFSのコピーができないこと	/efs_test/out/src.csv が存在する	/efs_test/out/src.csv /efs_test/out/copy.csv	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]が出力される
-エラー内容：コピー元またはコピー先の一方だけにS3 URIを指定してください"
-test14	コピー元（S3）にバケット名がない場合		バケット名なしの指定が異常になること		s3:///test/sample.csv /efs_test/out/new.csv	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー元S3 URIが不正です。"
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.io.FileUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import jp.or.kikin.file.utils.ShareNameMapper;
+
+class FileSystemServiceImplTest {
+	
+	// テスト用ディレクトリ
+	private static final String testDir = "testDir";
+	// テスト用入力ディレクトリ
+	private static final String testInDir = "testDir/in";
+	// テスト用出力ディレクトリ
+	private static final String testOutDir = "testDir/out";
+	
+//	private static Logger logger = LoggerFactory.getLogger(FileSystemServiceImpl.class);
+	private AutoCloseable closable;
+	
+	@Mock
+	private ShareNameMapper shareNameMapper;
+	
+	@InjectMocks
+	private FileSystemServiceImpl fileSystemService;
+
+    /**
+     * 各テストの実行前に行う処理について記述する。
+     */
+    @BeforeEach
+    void setup() throws Throwable {
+    	// Mock準備
+    	closable= MockitoAnnotations.openMocks(this);
+    	
+		// テスト用ディレクトリ作成
+		File fTestDir = new File(testDir);
+		if (fTestDir.exists()) {
+			// テスト用ディレクトリが存在していた場合は削除してから作成する
+			FileUtils.deleteDirectory(fTestDir);
+		}
+		// 入力ディレクトリ作成
+		Path pTestInDir = Paths.get(testInDir);
+		Files.createDirectories(pTestInDir);
+    }
+    
+    /**
+     * uploadテスト01：上書き禁止時の出力先同名ファイル存在エラー
+     * ・出力パスの末尾がワイルドカード（*）でない
+     * ・出力パスをファイル名まで指定
+     * ・上書きオプションがFalse
+     * ・アップロード先パスに同名のファイルが存在する
+     */
+	@Test
+	void testUpload_01() throws Throwable {
+		int result = 0;
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		boolean overWritteFlg = false;
+		long timeStamp = 0;
+		
+		// 入力ファイル作成
+		String inFilePath = testInDir + "/" + targetFile;
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
+		
+		// 出力ディレクトリ作成
+		Path pTestOutDir = Paths.get(testOutDir);
+		Files.createDirectories(pTestOutDir);
+		
+		// 出力ファイル作成
+		String outFilePath = testOutDir + "/" + targetFile;
+		File outFile = new File(outFilePath);
+		outFile.createNewFile();
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(outFilePath);
+		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
+		
+		try (InputStream is = new FileInputStream(inFile)) {
+			// upload実行
+			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
+		}
+		
+		// 結果判定
+		assertEquals(1,result);
+	}
+	
+    /**
+     * uploadテスト02：単独ファイルアップロード正常終了（出力先ディレクトリ既存/上書きなし）
+     * ・出力パスの末尾がワイルドカード（*）でない
+     * ・出力パスをファイル名まで指定
+     * ・上書きオプションがFalse
+     * ・アップロード先パスに同名のファイルが存在しない
+     * ・アップロード先パスがディレクトリではない
+     * ・書き込み先のディレクトリが存在する
+     */
+	@Test
+	void testUpload_02() throws Throwable {
+		int result = 0;
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		boolean overWritteFlg = false;
+		
+		// タイムスタンプ設定
+		String strTimeStamp = "2025-09-10T15:49:23";
+		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
+		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
+		FileTime ft = FileTime.from(instant);
+		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
+		
+		// 入力ファイル作成
+		String inFilePath = testInDir + "/" + targetFile;
+		File inFile = new File(inFilePath);
+		//inFile.createNewFile();
+		
+		// 入力ファイルに書き込み
+		try(FileWriter fw = new FileWriter(inFilePath)){
+			fw.write("testUpload_02");
+		}
+		
+		// 入力ファイルにタイムスタンプ設定
+		//Path pInFile = Paths.get(inFilePath);
+		//Files.setLastModifiedTime(pInFile,ft);
+		
+		// 出力ディレクトリ作成
+		Path pTestOutDir = Paths.get(testOutDir);
+		Files.createDirectories(pTestOutDir);
+		
+		// 出力ファイルパス設定
+		String outFilePath = testOutDir + "/" + targetFile;;
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(outFilePath);
+		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
+		
+		try (InputStream is = new FileInputStream(inFile)) {
+			// upload実行
+			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
+		}
+		
+		// 戻り値判定
+		assertEquals(0,result);
+		
+		// 出力先にファイルが出力されているか
+		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
+		
+		// 出力ファイルのタイムスタンプが想定通りか
+		FileTime ftOut = Files.getLastModifiedTime(path);
+		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
+		
+		// ファイルの内容が一致しているか
+		assertTrue(Arrays.equals(Files.readAllBytes(Paths.get(inFilePath)), 
+				Files.readAllBytes(path)),"ファイル内容が不一致");
+	}
+	
+    /**
+     * uploadテスト03：単独ファイルアップロード正常終了（出力先ディレクトリ既存/上書きあり）
+     * ・出力パスの末尾がワイルドカード（*）でない
+     * ・出力パスをファイル名まで指定
+     * ・上書きオプションがtrue
+     * ・アップロード先パスに同名のファイルが存在する
+     * ・アップロード先パスがディレクトリではない
+     * ・書き込み先のディレクトリが存在する
+     */
+	@Test
+	void testUpload_03() throws Throwable {
+		int result = 0;
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		boolean overWritteFlg = true;
+		
+		// タイムスタンプ設定
+		String strTimeStamp = "2025-09-10T15:49:23";
+		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
+		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
+		FileTime ft = FileTime.from(instant);
+		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
+		
+		// 入力ファイル作成
+		String inFilePath = testInDir + "/" + targetFile;
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
+		
+		// 出力ディレクトリ作成
+		Path pTestOutDir = Paths.get(testOutDir);
+		Files.createDirectories(pTestOutDir);
+		
+		// 出力ファイル作成
+		String outFilePath = testOutDir + "/" + targetFile;
+		File outFile = new File(outFilePath);
+		outFile.createNewFile();
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(outFilePath);
+		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
+		
+		try (InputStream is = new FileInputStream(inFile)) {
+			// upload実行
+			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
+		}
+		
+		// 結果判定
+		assertEquals(0,result);
+		
+		// 出力先にファイルが出力されているか
+		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
+		
+		// 出力ファイルのタイムスタンプが想定通りか
+		FileTime ftOut = Files.getLastModifiedTime(path);
+		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
+	}
+
+    /**
+     * uploadテスト04：単独ファイルアップロード正常終了（出力先ディレクトリなし/ファイル名指定）
+     * ・出力パスの末尾がワイルドカード（*）でない
+     * ・出力パスをファイル名まで指定
+     * ・上書きオプションがtrue
+     * ・アップロード先パスに同名のファイルが存在しない
+     * ・アップロード先パスがディレクトリ
+     * ・書き込み先のディレクトリが存在しない
+     */
+	@Test
+	void testUpload_04() throws Throwable {
+		int result = 0;
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		boolean overWritteFlg = true;
+		
+		// タイムスタンプ設定
+		String strTimeStamp = "2025-09-10T15:49:23";
+		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
+		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
+		FileTime ft = FileTime.from(instant);
+		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
+		
+		// 入力ファイル作成
+		String inFilePath = testInDir + "/" + targetFile;
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
+		
+		// 出力ディレクトリパス設定
+		String outFilePath = testOutDir + "/" + targetFile;
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(outFilePath);
+		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
+		
+		try (InputStream is = new FileInputStream(inFile)) {
+			// upload実行
+			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
+		}
+		
+		// 結果判定
+		assertEquals(0,result);
+		
+		// 出力ファイルパス設定
+		//outFilePath = testOutDir + "/" + targetFile;
+		//path  = Paths.get(outFilePath);
+		
+		// 出力先にファイルが出力されているか
+		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
+		
+		// 出力ファイルのタイムスタンプが想定通りか
+		FileTime ftOut = Files.getLastModifiedTime(path);
+		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
+	}
+	
+    /**
+     * uploadテスト05：単独ファイルアップロード正常終了（出力先ディレクトリなし/ディレクトリ指定）
+     * ・出力パスの末尾がワイルドカード（*）でない
+     * ・出力パスをディレクトリで指定（末尾"/")
+     * ・上書きオプションがtrue
+     * ・アップロード先パスに同名のファイルが存在しない
+     * ・アップロード先パスがディレクトリ
+     * ・書き込み先のディレクトリが存在しない
+     */
+	@Test
+	void testUpload_05() throws Throwable {
+		int result = 0;
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		boolean overWritteFlg = true;
+		
+		// タイムスタンプ設定
+		String strTimeStamp = "2025-09-10T15:49:23";
+		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
+		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
+		FileTime ft = FileTime.from(instant);
+		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
+		
+		// 入力ファイル作成
+		String inFilePath = testInDir + "/" + targetFile;
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
+		
+		// 出力ディレクトリパス設定
+		String outFilePath = testOutDir + "/";
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(outFilePath);
+		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
+		
+		try (InputStream is = new FileInputStream(inFile)) {
+			// upload実行
+			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
+		}
+		
+		// 結果判定
+		assertEquals(0,result);
+		
+		// 出力ファイルパス設定
+		outFilePath = testOutDir + "/" + targetFile;
+		path  = Paths.get(outFilePath);
+		
+		// 出力先にファイルが出力されているか
+		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
+		
+		// 出力ファイルのタイムスタンプが想定通りか
+		FileTime ftOut = Files.getLastModifiedTime(path);
+		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
+	}
+
+
+    /**
+     * uploadテスト06：単独ファイルアップロード正常終了（出力先ディレクトリあり/ワイルドカード指定）
+     * ・出力パスの末尾がワイルドカード（*）
+     * ・上書きオプションがtrue
+     * ・アップロード先パスに同名のファイルが存在しない
+     * ・アップロード先パスがディレクトリ
+     * ・書き込み先のディレクトリが存在する
+     */
+	@Test
+	void testUpload_06() throws Throwable {
+		int result = 0;
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		boolean overWritteFlg = true;
+		
+		// タイムスタンプ設定
+		String strTimeStamp = "2025-09-10T15:49:23";
+		LocalDateTime ldt = LocalDateTime.parse(strTimeStamp);
+		Instant instant = ldt.atZone(ZoneId.systemDefault()).toInstant();
+		FileTime ft = FileTime.from(instant);
+		long timeStamp = ft.to(TimeUnit.NANOSECONDS);
+		
+		// 入力ファイル作成
+		String inFilePath = testInDir + "/" + targetFile;
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
+		
+		// 出力ディレクトリ作成
+		Path pTestOutDir = Paths.get(testOutDir);
+		Files.createDirectories(pTestOutDir);
+		
+		// 出力ファイルパス設定
+		String outFilePath = testOutDir + "/";
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(outFilePath);
+		when(shareNameMapper.getRealPath(outFilePath)).thenReturn(path);
+		
+		// 出力ファイルパス設定
+		outFilePath = outFilePath + "*";
+		
+		try (InputStream is = new FileInputStream(inFile)) {
+			// upload実行
+			result = fileSystemService.upload(inFile.getName(), outFilePath, overWritteFlg, is, timeStamp);
+		}
+		
+		// 結果判定
+		assertEquals(0,result);
+		
+		// 出力ファイルパス設定
+		outFilePath = testOutDir + "/" + targetFile;
+		path  = Paths.get(outFilePath);
+		
+		// 出力先にファイルが出力されているか
+		assertTrue(Files.exists(path), "出力先にファイルが出力される想定");
+		
+		// 出力ファイルのタイムスタンプが想定通りか
+		FileTime ftOut = Files.getLastModifiedTime(path);
+		assertTrue(ftOut.compareTo(ft) == 0, "出力したファイルのタイムスタンプが不一致");
+	}
+	
+    /**
+     * getDownloadFilePathテスト01：正常終了
+     * ・対象パスが存在
+     * ・対象パスがファイル
+     */
+	@Test
+	void testGetDownloadFilePath_01() throws Throwable {
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		
+		// 対象ディレクトリ作成
+		Path pTestInDir = Paths.get(testInDir);
+		Files.createDirectories(pTestInDir);
+		
+		// 対象ファイル作成
+		String inFilePath = testInDir + "/" + targetFile;
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(inFilePath);
+		when(shareNameMapper.getRealPath(inFilePath)).thenReturn(path);
+		
+		// ダウンロードパス取得実行
+		Path pathDL = fileSystemService.getDownloadFilePath(inFilePath);
+		
+		// 取得パスが想定通りか
+		assertTrue(pathDL.compareTo(path) == 0, "取得パスの不一致");
+	}
+
+    /**
+     * getDownloadFilePathテスト02：例外終了
+     * ・対象パスが存在
+     * ・対象パスがディレクトリ
+     */
+	@Test
+	void testGetDownloadFilePath_02() throws Throwable {
+		
+		// 対象ディレクトリ作成
+		Path pTestInDir = Paths.get(testInDir);
+		Files.createDirectories(pTestInDir);
+		
+		// 対象ディレクトリ設定
+		String inFilePath = testInDir + "/";
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(inFilePath);
+		when(shareNameMapper.getRealPath(inFilePath)).thenReturn(path);
+		
+		// ダウンロードパス取得実行
+		IllegalArgumentException ex = 
+				assertThrows(IllegalArgumentException.class, 
+						() -> fileSystemService.getDownloadFilePath(inFilePath));
+		
+		// 想定通りの例外が発生しているかp；l。k、」；：￥・ｌｋｊｈｇ*//85　
+		assertEquals("ファイルが存在しません:" + path.toString(),
+				ex.getMessage());
+
+	}
+
+    /**
+     * getDownloadFilePathテスト03：例外終了
+     * ・対象パスが存在しない
+     * ・対象パスがファイル
+     */
+	@Test
+	void testGetDownloadFilePath_03() throws Throwable {
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		
+		// 対象ディレクトリ作成
+		Path pTestInDir = Paths.get(testInDir);
+		Files.createDirectories(pTestInDir);
+		
+		// 対象パス設定
+		String inFilePath = testInDir + "/" + targetFile;;
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(inFilePath);
+		when(shareNameMapper.getRealPath(inFilePath)).thenReturn(path);
+		
+		
+		// ダウンロードパス取得実行
+		IllegalArgumentException ex = 
+				assertThrows(IllegalArgumentException.class, 
+						() -> fileSystemService.getDownloadFilePath(inFilePath));
+		
+		// 想定通りの例外が発生しているか
+		assertEquals("変更前ファイルパスが存在するファイルではありません:" + path.toString(),
+				ex.getMessage());
+
+	}
+
+    /**
+     * createDirectoriesテスト01：正常終了
+     * ・
+     */
+	@Test
+	void testCreateDirectories_01 () throws Throwable {
+		
+		// 入力情報定義
+		String targetDir = "test001/";
+		
+		// 対象ディレクトリ作成
+		Path pTestOutDir = Paths.get(testOutDir);
+		Files.createDirectories(pTestOutDir);
+		
+		// 対象パス設定
+		String outDirPath = testOutDir + "/" + targetDir;
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(outDirPath);
+		when(shareNameMapper.getRealPath(outDirPath)).thenReturn(path);
+		
+		// ディレクトリ作成実行
+		fileSystemService.createDirectories(outDirPath);
+
+		// 対象ディレクトリが作成されているか
+		assertTrue(Files.exists(path), "ディレクトリが作成されていない");
+	}
+	
+	/**
+	 * isDirectoryテスト01:正常終了
+	 */
+	@Test
+	void testIsDirectory_01() throws Throwable {
+		
+		//入力情報設定
+		String targetDirPath =testDir + "/testDir001";
+					
+		// 対象ディレクトリ作成
+		Path pTestTargetDir = Paths.get(targetDirPath);
+		Files.createDirectories(pTestTargetDir);	
+		
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetDirPath);
+		when(shareNameMapper.getRealPath(targetDirPath)).thenReturn(path);
+		
+		// ディレクトリ判定実行
+		boolean ret = fileSystemService.isDirectory(targetDirPath);
+		
+		// 結果判定
+		assertTrue(ret, "対象パスがディレクトリであると判定され、trueが返却されること");
+	}
+	
+	/**
+	 * isDirectoryテスト02:正常終了
+	 */
+	@Test
+	void testIsDirectory_02() throws Throwable {
+			
+		//入力情報設定
+		String targetFile = "test001.txt";
+		
+		// 対象ファイル作成
+		String inFilePath = testInDir + "/" + targetFile;;
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
 						
+		// 共有名変換のMock設定
+		Path path  = Paths.get(inFilePath);
+		when(shareNameMapper.getRealPath(inFilePath)).thenReturn(path);
+		
+		// ディレクトリ判定実行
+		boolean ret = fileSystemService.isDirectory(inFilePath);
+		
+		// 結果判定
+		assertFalse(ret, "対象パスがファイルであるため、falseが返却されること");
+	}
+	
+	
+	/**
+	 * isDirectoryテスト03:正常終了
+	 */
+	@Test
+	void testIsDirectory_03() throws Throwable {
+		
+		//入力情報設定
+		String targetDir = "/test001";
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetDir);
+		when(shareNameMapper.getRealPath(targetDir)).thenReturn(path);
+
+		// ディレクトリ判定実行
+		boolean ret = fileSystemService.isDirectory(targetDir);
+		
+		// 結果判定
+		assertFalse(ret, "対象パスが存在しないため、falseが返却されること");
+	}
+	
+	
+	
+    /**
+     * existsテスト01：正常終了
+     * ・パスにワイルドカードを含まない
+     * ・対象パスが存在する
+     */
+	@Test
+	void testEexists_01() throws Throwable {
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		
+		// 対象ディレクトリ作成
+		Path pTestInDir = Paths.get(testInDir);
+		Files.createDirectories(pTestInDir);
+		
+		// 対象ファイル作成
+		String inFilePath = testInDir + "/" + targetFile;;
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(testInDir);
+		when(shareNameMapper.getRealPath(testInDir)).thenReturn(path);
+		
+		// パス存在チェック実行
+		boolean ret = fileSystemService.exists(inFilePath);
+
+		// 対象パスが存在するか
+		assertTrue(ret, "対象パスが存在しない");
+	}
+	
+    /**
+     * existsテスト02：正常終了
+     * ・パスにワイルドカードを含まない
+     * ・対象パスが存在しない
+     * ・パスにディレクトリの区切り記号が含まれない
+     */
+	@Test
+	void testEexists_02() throws Throwable {
+		
+		// 入力情報定義
+		String targetFile = "test001.txt";
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetFile);
+		when(shareNameMapper.getRealPath(targetFile)).thenReturn(path);
+		
+		// パス存在チェック実行
+		boolean ret = fileSystemService.exists(targetFile);
+
+		// 対象パスが存在するか
+		assertFalse(ret, "対象パスが存在する");
+	}
+
+    /**
+     * existsテスト03：異常終了
+     * ・パスにワイルドカードを含む
+     * ・共有名変換がnullを返却する
+     */
+	@Test
+	void testEexists_03() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = "/test001/test*";
+		
+		// 対象パス設定
+		String inFilePath = testInDir + targetPath;
+		
+		// 共有名変換のMock設定
+		when(shareNameMapper.getRealPath(testInDir)).thenReturn(null);
+		
+		// パス存在チェック実行
+		boolean ret = fileSystemService.exists(inFilePath);
+
+		// 対象パスが存在するか
+		assertFalse(ret, "false終了する想定");
+	}
+
+    /**
+     * existsテスト04：異常終了
+     * ・パスにワイルドカードを含む
+     * ・共有名変換が存在しないパスを返却する
+     */
+	@Test
+	void testEexists_04() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = "/test001/test*";
+		String mockIn = "testDir/in/test001";
+		
+		// 対象パス設定
+		String inFilePath = testInDir + targetPath;
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(testOutDir);
+		when(shareNameMapper.getRealPath(mockIn)).thenReturn(path);
+		
+		// パス存在チェック実行
+		boolean ret = fileSystemService.exists(inFilePath);
+
+		// 対象パスが存在するか
+		assertFalse(ret, "false終了する想定");
+	}
+
+    /**
+     * existsテスト05：異常終了
+     * ・パスにワイルドカードを含む
+     * ・共有名変換が存在するファイルのパスを返却する
+     */
+	@Test
+	void testEexists_05() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = testInDir + "/test001/test*";
+		String mockIn = "testDir/in/test001";
+		
+		// 共有名変換結果として渡すパスでファイルを作成
+		String inFilePath = testInDir + "/test001.txt";
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(inFilePath);
+		when(shareNameMapper.getRealPath(mockIn)).thenReturn(path);
+		
+		// パス存在チェック実行
+		boolean ret = fileSystemService.exists(targetPath);
+
+		// 対象パスが存在するか
+		assertFalse(ret, "false終了する想定");
+	}
+
+    /**
+     * existsテスト06：正常終了
+     * ・パスにワイルドカードを含む
+     * ・共有名変換がディレクトリパスを返却する
+     * ・指定したパスにマッチするファイルが存在する
+     */
+	@Test
+	void testEexists_06() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = testInDir + "/test*";
+		String mockIn = "testDir/in";
+		
+		// 条件にマッチするファイルを作成
+		String inFilePath = testInDir + "/test001.txt";
+		File inFile = new File(inFilePath);
+		inFile.createNewFile();
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(testInDir);
+		when(shareNameMapper.getRealPath(mockIn)).thenReturn(path);
+		
+		// パス存在チェック実行
+		boolean ret = fileSystemService.exists(targetPath);
+
+		// 対象パスが存在するか
+		assertTrue(ret, "true終了する想定");
+	}
+
+    /**
+     * existsテスト07：異常終了
+     * ・パスにワイルドカードを含む
+     * ・共有名変換がディレクトリパスを返却する
+     * ・指定したパスにマッチするファイルが存在しない
+     */
+	@Test
+	void testEexists_07() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = "/test001/test*";
+		String mockIn = "testDir/in/test001";
+		
+		// 対象パス設定
+		String inFilePath = testInDir + targetPath;
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(testInDir);
+		when(shareNameMapper.getRealPath(mockIn)).thenReturn(path);
+		
+		// パス存在チェック実行
+		boolean ret = fileSystemService.exists(inFilePath);
+
+		// 対象パスが存在するか
+		assertFalse(ret, "false終了する想定");
+	}
+
+    /**
+     * deleteFileテスト01：正常終了
+     * ・
+     */
+	@Test
+	void testDeleteFile_01() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = testInDir + "/test001.txt";
+		
+		// 対象ファイル作成
+		File inFile = new File(targetPath);
+		inFile.createNewFile();
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetPath);
+		when(shareNameMapper.getRealPath(targetPath)).thenReturn(path);
+		
+		// 削除実行前ファイル存在確認
+		assertTrue(Files.exists(path), "削除対象のファイルが作られていない");
+		
+		// ファイル削除実行
+		fileSystemService.deleteFile(targetPath);
+
+		// 削除実行後ファイル存在確認
+		assertFalse(Files.exists(path), "削除対象のファイルが残っている");
+	}
+	
+	
+	
+    /**
+     * sizeテスト01：正常終了
+     * ・対象パスが存在するファイル
+     */
+	@Test
+	void testSize_01() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = testInDir + "/test001.txt";
+		
+		// 対象ファイルに書き込み
+		try(FileWriter fw = new FileWriter(targetPath)){
+			fw.write("testSize_01");
+		}
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetPath);
+		when(shareNameMapper.getRealPath(targetPath)).thenReturn(path);
+		
+		// 入力ファイルサイズ取得
+		long inputSize = Files.size(path);
+		
+		// ファイルサイズ取得実行
+		long getSize = fileSystemService.size(targetPath);
+
+		// ファイルサイズが想定通りか
+		assertEquals(inputSize, getSize);
+	}
+
+    /**
+     * sizeテスト02：例外終了
+     * ・対象パスが存在しない
+     */
+	@Test
+	void testSize_02() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = testInDir + "/test001.txt";
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetPath);
+		when(shareNameMapper.getRealPath(targetPath)).thenReturn(path);
+		
+		// ダウンロードパス取得実行
+		IllegalArgumentException ex = 
+				assertThrows(IllegalArgumentException.class, 
+						() -> fileSystemService.size(targetPath));
+		
+		// 想定通りの例外が発生しているか
+		assertEquals("ファイルが存在しない、またはディレクトリです：" + path.toString(),
+				ex.getMessage());
+	}
+
+    /**
+     * sizeテスト03：例外終了
+     * ・対象パスがディレクトリ
+     */
+	@Test
+	void testSize_03() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = testInDir + "/test001";
+		
+		// 入力ディレクトリ作成
+		Path pTargetDir = Paths.get(targetPath);
+		Files.createDirectories(pTargetDir);
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetPath);
+		when(shareNameMapper.getRealPath(targetPath)).thenReturn(path);
+		
+		// ダウンロードパス取得実行
+		IllegalArgumentException ex = 
+				assertThrows(IllegalArgumentException.class, 
+						() -> fileSystemService.size(targetPath));
+		
+		// 想定通りの例外が発生しているか
+		assertEquals("ファイルが存在しない、またはディレクトリです：" + path.toString(),
+				ex.getMessage());
+	}
+
+    /**
+     * getFileLastModifiedTimeテスト01：正常終了
+     * ・対象パスが存在するファイル
+     */
+	@Test
+	void testGetFileLastModifiedTime_01() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = testInDir + "/test001.txt";
+		
+		// 対象ファイルに書き込み
+		try(FileWriter fw = new FileWriter(targetPath)){
+			fw.write("testSize_01");
+		}
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetPath);
+		when(shareNameMapper.getRealPath(targetPath)).thenReturn(path);
+		
+		// 入力ファイル更新日時取得
+		long inputTime = Files.getLastModifiedTime(path).to(TimeUnit.NANOSECONDS);
+		
+		// 更新日時取得実行
+		long getTime = fileSystemService.getFileLastModifiedTime(targetPath);
+
+		// ファイルサイズが想定通りか
+		assertEquals(inputTime, getTime);
+	}
+
+    /**
+     * getFileLastModifiedTimeテスト02：例外終了
+     * ・対象パスが存在しない
+     */
+	@Test
+	void testGetFileLastModifiedTime_02() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = testInDir + "/test001.txt";
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetPath);
+		when(shareNameMapper.getRealPath(targetPath)).thenReturn(path);
+		
+		// ダウンロードパス取得実行
+		IllegalArgumentException ex = 
+				assertThrows(IllegalArgumentException.class, 
+						() -> fileSystemService.getFileLastModifiedTime(targetPath));
+		
+		// 想定通りの例外が発生しているか
+		assertEquals("ファイルが存在しない、またはディレクトリです：" + path.toString(),
+				ex.getMessage());
+	}
+
+    /**
+     * getFileLastModifiedTimeテスト03：例外終了
+     * ・対象パスがディレクトリ
+     */
+	@Test
+	void testGetFileLastModifiedTime_03() throws Throwable {
+		
+		// 入力情報定義
+		String targetPath = testInDir + "/test001";
+		
+		// 入力ディレクトリ作成
+		Path pTargetDir = Paths.get(targetPath);
+		Files.createDirectories(pTargetDir);
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetPath);
+		when(shareNameMapper.getRealPath(targetPath)).thenReturn(path);
+		
+		// ダウンロードパス取得実行
+		IllegalArgumentException ex = 
+				assertThrows(IllegalArgumentException.class, 
+						() -> fileSystemService.getFileLastModifiedTime(targetPath));
+		
+		// 想定通りの例外が発生しているか
+		assertEquals("ファイルが存在しない、またはディレクトリです：" + path.toString(),
+				ex.getMessage());
+	}
+	
+    /**
+     * listFileNamesテスト01：正常終了
+     * ・対象パスにワイルドカードが含まれない
+     * ・対象パスが階層になっている
+     * ・対象パスが存在する
+     * ・対象パス配下にファイルが存在する
+     * ・対象パス配下にディレクトリが存在するが一覧には含まれない
+     */
+	@Test
+	void testListFileNames_01() throws Throwable {
+		
+		// 対象ディレクトリ作成
+		String targetDirPath = testInDir + "/test001";
+		Path pTestTargetDir = Paths.get(targetDirPath);
+		Files.createDirectories(pTestTargetDir);
+		
+		// 対象ファイル作成
+		List<String> targetFileList = new ArrayList<String>();
+		targetFileList.add("test001.txt");
+		targetFileList.add("test002.txt");
+		targetFileList.add("test003.txt");
+		
+		for(String targetFileName : targetFileList) {
+			String targetFilePath = targetDirPath + "/" + targetFileName;
+			
+			File targetFile = new File(targetFilePath);
+			targetFile.createNewFile();
+		}
+		
+		// 対象外ディレクトリ作成
+		String notTaregtDir = targetDirPath + "/testDir001";
+		pTestTargetDir = Paths.get(notTaregtDir);
+		Files.createDirectories(pTestTargetDir);
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(testInDir);
+		when(shareNameMapper.getRealPath(testInDir)).thenReturn(path);
+		
+		// ファイル一覧取得実行
+		List<String> listResult = fileSystemService.listFileNames(targetDirPath);
+		
+		// 要素数が想定通りか
+		assertEquals(targetFileList.size(),listResult.size());
+
+		// 取得したファイル一覧が想定通りか
+		for(String targetFileName : targetFileList) {
+			assertTrue(listResult.contains(targetFileName), "一覧に出力される想定のファイルが出力されていない");
+		}
+		
+		
+		// 取得したファイル一覧にディレクトリは含まれていないか
+		assertTrue(!listResult.contains(notTaregtDir), "一覧に出力されない想定のディレクトリが出力されている");
+		
+		
+	}
+
+    /**
+     * listFileNamesテスト02：例外終了
+     * ・対象パスにワイルドカードが含まれない
+     * ・対象パスが階層になっていない
+     * ・対象パスが存在しない
+     */
+	@Test
+	void testListFileNames_02() throws Throwable {
+		
+		// 対象ディレクトリ設定
+		String targetDirPath = "test001.txt";
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetDirPath);
+		when(shareNameMapper.getRealPath(targetDirPath)).thenReturn(path);
+		
+		// ファイル一覧取得実行
+		NoSuchFileException ex = 
+				assertThrows(NoSuchFileException.class, 
+						() -> fileSystemService.listFileNames(targetDirPath));
+		
+		// 想定通りの例外が発生しているか
+		assertEquals("ディレクトリが存在しません：" + path.toString(),
+				ex.getMessage());
+	}
+
+    /**
+     * listFileNamesテスト03：正常終了
+     * ・対象パスにワイルドカードが含まれない
+     * ・対象パスが階層になっている
+     * ・対象パスが存在する
+     * ・対象パス配下にファイルが存在しない
+     */
+	@Test
+	void testListFileNames_03() throws Throwable {
+		
+		// 対象ディレクトリ作成
+		String targetDirPath = testInDir + "/test001";
+		Path pTestTargetDir = Paths.get(targetDirPath);
+		Files.createDirectories(pTestTargetDir);
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(testInDir);
+		when(shareNameMapper.getRealPath(testInDir)).thenReturn(path);
+		
+		// ファイル一覧取得実行
+		List<String> listResult = fileSystemService.listFileNames(targetDirPath);
+		
+		// 要素数が想定通りか
+		assertEquals(0,listResult.size());
+	}
+
+    /**
+     * listFileNamesテスト04：正常終了
+     * ・対象パスにワイルドカードが含まれる
+     * ・対象パスが階層になっている
+     * ・対象パスが存在する
+     * ・対象パス配下に対象のファイルが存在する
+     * ・対象パス配下に対象外のファイルが存在する
+     */
+	@Test
+	void testListFileNames_04() throws Throwable {
+		
+		// 対象ディレクトリ作成
+		String targetDirPath = testInDir + "/test001";
+		Path pTestTargetDir = Paths.get(targetDirPath);
+		Files.createDirectories(pTestTargetDir);
+		
+		// 対象ファイル作成
+		List<String> targetFileList00 = new ArrayList<String>();
+		targetFileList00.add("test001.txt");
+		targetFileList00.add("test002.txt");
+		targetFileList00.add("test003.txt");
+		
+		for(String targetFileName : targetFileList00) {
+			String targetFilePath = targetDirPath + "/" + targetFileName;
+			
+			File targetFile = new File(targetFilePath);
+			targetFile.createNewFile();
+		}
+		
+		// 対象外ファイル作成
+		List<String> targetFileList10 = new ArrayList<String>();
+		targetFileList10.add("test101.txt");
+		targetFileList10.add("test102.txt");
+		
+		for(String targetFileName : targetFileList10) {
+			String targetFilePath = targetDirPath + "/" + targetFileName;
+			
+			File targetFile = new File(targetFilePath);
+			targetFile.createNewFile();
+		}
+		
+		// 対象外ディレクトリ作成
+		String notTaregtDir = targetDirPath + "/testDir001";
+		pTestTargetDir = Paths.get(notTaregtDir);
+		Files.createDirectories(pTestTargetDir);
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetDirPath);
+		when(shareNameMapper.getRealPath(targetDirPath)).thenReturn(path);
+		
+		// ファイル一覧取得実行
+		List<String> listResult = fileSystemService.listFileNames(targetDirPath + "/test00*");
+		
+		// 要素数が想定通りか
+		assertEquals(targetFileList00.size(),listResult.size());
+
+		// 取得したファイル一覧が想定通りか
+		for(String targetFileName : targetFileList00) {
+			assertTrue(listResult.contains(targetFileName), "取得される想定のファイルが取得できてない");
+		}
+		
+		for(String targetFileName : targetFileList10) {
+			assertFalse(listResult.contains(targetFileName), "取得されない想定のファイルが取得されている");
+		}
+		
+		assertTrue(!listResult.contains(notTaregtDir), "一覧に出力されない想定のディレクトリが出力されている");
+		//
+	}
+
+	/**
+	 *  listDirectoryNamesテスト01：正常終了
+     * ・対象パスが階層になっている
+     * ・対象パスが存在する
+     * ・対象パス配下にファイルが存在する
+     * ・対象パス配下にディレクトリが存在するが一覧には含まれない
+	 */
+	@Test
+	void testlistDirectoryNames_01() throws Throwable {
+		
+		// 対象ディレクトリ作成
+		String targetDirPath =testDir + "/testDir001";
+		Path pTestTargetDir = Paths.get(targetDirPath);
+		Files.createDirectories(pTestTargetDir);
+		
+		// 対象ディレクトリ作成
+		List<String> targetDirList = new ArrayList<String>();
+		targetDirList.add("testDir001");
+		targetDirList.add("testDir002");
+		
+		for(String dirName : targetDirList) {
+			String dirPath = targetDirPath + "/" + dirName;
+			Files.createDirectories(Paths.get(dirPath));
+			
+		}
+		// 対象ファイル作成
+		List<String> targetFileList = new ArrayList<String>();
+		targetFileList.add("testDir001.txt");
+		targetFileList.add("testDir002.txt");
+		targetFileList.add("testDir003.txt");
+				
+		for(String targetFileName : targetFileList) {
+			String targetFilePath = targetDirPath + "/" + targetFileName;					
+			File targetFile = new File(targetFilePath);
+			targetFile.createNewFile();
+		}
+
+		
+		// 対象外ディレクトリ作成
+		String notTaregtDir = targetDirPath +"/notDesDir001";
+		pTestTargetDir = Paths.get(notTaregtDir);
+		Files.createDirectories(pTestTargetDir);
+		
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetDirPath);
+		when(shareNameMapper.getRealPath(targetDirPath)).thenReturn(path);
+		// ディレクトリ一覧取得実行
+		List<String> listResult = fileSystemService.listDirectoryNames(targetDirPath + "/testDir00*");
+				
+		// 要素数が想定通りか
+		assertEquals(targetDirList.size(),listResult.size());
+
+		// 取得したディレクトリ一覧が想定通りか
+		for(String dirName : targetDirList) {
+			assertTrue(listResult.contains(dirName), "一覧に出力される想定のディレクトリが出力されていない");
+		}
+		for(String fileName : targetFileList) {
+			assertFalse(listResult.contains(fileName), "一覧に出力されない想定のファイルが出力されている");
+		}
+				
+		// 取得したディレクトリ一覧に検索条件と一致しないディレクトリが含まれていないか
+		assertFalse(listResult.contains(notTaregtDir), "一覧に出力されない想定のディレクトリが出力されている");			
+	
+	}
+	
+	
+	/**
+	 * listDirectoryNamesテスト02:例外終了
+     * ・対象パスにワイルドカードが含まれない
+     * ・対象パスが階層になっていない
+     * ・対象パスが存在しない 
+	 */
+	@Test
+	void testlistDirectoryNames_02() throws Throwable{
+		
+		//対象directory設定
+		String targetDirPath = "testDir001";
+		
+		//Mock設定
+		Path path  = Paths.get(targetDirPath);
+		when(shareNameMapper.getRealPath(targetDirPath)).thenReturn(path);
+		
+		// ディレクトリ一覧取得実行
+		NoSuchFileException ex = 
+				assertThrows(NoSuchFileException.class, 
+						() -> fileSystemService.listDirectoryNames(targetDirPath));
+		
+		// 想定通りの例外が発生しているか
+		assertEquals("ディレクトリが存在しません：" + path.toString(),
+				ex.getMessage());
+				
+	}
+	
+	/**
+	 * listDirectoryNamesテスト03：正常終了
+	 *・対象パスにワイルドカードが含まれる
+	 *・対象パスの親となるディレクトリが存在する
+	 *・ディレクトリ一覧として取得されるディレクトリが存在しない
+	 */
+	
+	@Test
+	void testlistDirectoryNames_03() throws Throwable{
+		
+		// 対象ディレクトリ作成
+		String targetDirPath =testDir + "/testDir001";
+		Path pTestTargetDir = Paths.get(targetDirPath);
+		Files.createDirectories(pTestTargetDir);
+		
+		// 対象ファイル作成
+		List<String> targetFileList = new ArrayList<String>();
+		targetFileList.add("test001.txt");
+		targetFileList.add("test002.txt");
+		targetFileList.add("test003.txt");
+				
+		// 共有名変換のMock設定
+		Path path  = Paths.get(targetDirPath);
+		when(shareNameMapper.getRealPath(targetDirPath)).thenReturn(path);
+		// ディレクトリ一覧取得実行
+		List<String> listResult = fileSystemService.listDirectoryNames(targetDirPath + "/*");
 						
-						
-test15	コピー元（S3）がバケット名のみの場合		ブジェクトキーがない指定が異常になること	S3に test-bucket が存在する。	s3://test-bucket /efs_test/out/new.csv	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]が出力される
-エラー内容：コピー元S3 URIが不正です。"
-test16	コピー先（S3）にバケット名がない場合		バケット名なしの指定が異常になること	/efs_test/out/src.csv が存在する。	/efs_test/out/src.csv s3:///test/up.csv	"""戻り値は1で返却される
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー先S3 URIが不正です。"
-test17	コピー元（S3）のキー末尾が「/」の場合		ディレクトリ指定が異常になること	S3に test/ 配下のファイルが存在する	s3://test-bucket/test/ /efs_test/out/new.csv	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]が出力される
-エラー内容：コピー元S3 URIが不正です。コピー元：s3://test-bucket/test/"
-test18	コピー先（S3）がバケット名のみ（末尾「/」なし）の場合		EFSのファイル名がオブジェクトキーになること	/efs_test/out/src.csv が存在する。	/efs_test/out/src.csv s3://test-bucket	"戻り値は0で返却される
-S3の test-bucket/src.csv が作成され、内容がEFSと一致する"
-test19	コピー先パスに「..」が含まれる場合		ディレクトリトラバーサルが異常になること	S3に test/sample.csv が存在する	s3://test-bucket/test/sample.csv /efs_test/out/../new.csv	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]が出力される
-エラー内容：コピー先パスに「..」は指定できません。"
-test20	コピー先ディレクトリが存在しない場合		コピー先ディレクトリがない場合の動作が確認できること	"S3に test/sample.csv が存在する。
-/efs_test/nodir が存在しない"	s3://test-bucket/test/sample.csv /efs_test/nodir/new.csv false	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー先ディレクトリが存在しません"
-test21	コピー先ディレクトリに書込権限がない場合		書込不可時の動作が確認できること	"S3に test/sample.csv が存在する。
-/efs_test/ro が書込不可（chmod 555）"	s3://test-bucket/test/sample.csv /efs_test/ro/new.csv false	"戻り値は-1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:-1で出力される
-エラー内容：コピー先ディレクトリに書き込めません。"
-test22	コピー先の既存ファイルが読み取り専用で上書きできない場合		既存ファイルが上書きできない場合の動作が確認できること	"S3に test/sample.csv が存在する。
-/efs_test/out/old.csv が存在する（chmod 444）"	s3://test-bucket/test/sample.csv /efs_test/out/old.csv true	"戻り値は-1で返却される
-/efs_test/out/old.csv の内容が変わらない
-ログに[e.p.9013]がlevel:ERROR、errorCode:-1で出力される
-エラー内容：コピー先ファイルに書き込めません。"
-test23	コピー元ファイルがS3に存在しない場合		S3にファイルがない場合の動作が確認できること	S3に test/none.csv が存在しない	s3://test-bucket/test/none.csv /efs_test/out/new.csv false	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー元オブジェクトが存在しません。"
-test24	S3バケットが存在しない場合		バケットがない場合の動作が確認できること	バケット no-bucket が存在しない	s3://no-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー元オブジェクトが存在しません。"
-test25	S3に接続できない場合		S3通信異常時の動作が確認できること	S3（Floci）が起動していない	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は-1で返却される
-コピー先にファイルが作成されない
-ログに[e.p.9001]がlevel:ERROR、errorCode:-1で出力される
-エラー内容：システムエラーが発生しました。"
-test26	ダウンロード途中で例外が発生した場合		途中で失敗してもファイルが残らないこと	"S3に test/sample.csv が存在する。
-ダウンロード処理で例外を発生させる。"	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は-1で返却される
-コピー先ファイル、一時ファイルが残らない
-ログに[e.p.9001]がlevel:ERROR、errorCode:-1で出力される
-エラー内容：システムエラーが発生しました。"
-test27	S3へのアクセス権限がない場合		AccessDenied時の動作が確認できること	S3アクセスでAccessDeniedを発生させる。	s3://test-bucket/test/sample.csv /efs_test/out/new.csv false	"戻り値は-1で返却される
-コピー先にファイルが作成されない
-ログ（e.p.9001）が出力される
-エラー内容：システムエラーが発生しました。"
-test28	コピー元（EFS）のパスに「..」が含まれる場合		ディレクトリトラバーサルが異常になること	/efs_test/src.csv が存在する。	/efs_test/out/../src.csv s3://test-bucket/test/up.csv	"""戻り値は1で返却される
-S3にオブジェクトが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー元パスに「..」は指定できません。"
-test29	コピー元（EFS）にディレクトリを指定した場合		ディレクトリ指定が異常になること	/efs_test/out がディレクトリとして存在する。	/efs_test/out s3://test-bucket/test/up.csv	"戻り値は1で返却される
-S3にオブジェクトが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー元にディレクトリは指定できません。"
-test30	コピー元（EFS）の親ディレクトリが存在しない場合		親ディレクトリがない場合の動作が確認できること	/efs_test/nodir が存在しない	/efs_test/nodir/src.csv s3://test-bucket/test/up.csv	"戻り値は1で返却される
-S3にオブジェクトが作成されない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー元ファイルが存在しません。"
-test31	コピー先（S3）がバケット名と「/」のみの場合		EFSのファイル名がオブジェクトキーになること	"efs_test/out/src.csv が存在する。
-S3に test-bucket が存在する。"	/efs_test/out/src.csv s3://test-bucket/	"戻り値は0で返却される
-S3の test-bucket/src.csv が作成され、内容がEFSと一致する"
-test32	コピー先（S3）のバケットが存在しない場合		コピー先バケットがない場合の動作が確認できること	"/efs_test/out/src.csv が存在する。
-バケット no-bucket が存在しない。"	"
-バケット no-bucket が存在しない。""	/efs_test/out/src.csv s3://no-bucket/test/up.csv"	"戻り値は1で返却される
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー先バケットが存在しません。"
-						
-						
-						
-						
-						
-						
-test33	コピー元にS3ファイル、コピー先にEFSファイルを指定、コピー先が新規の場合		新規のファイルにコピーできること	"S3に test/sample.csv が存在する。
-/efs_test/out が空。"	s3://test-bucket/test/sample.csv efs_test/out/s3://test-bucket/test/sample.csv /efs_test/out/new.csvnew.csv	"戻り値は0で返却される
-/efs_test/out/new.csv が作成され、内容がS3と一致する"
-test34	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプション省略、コピー先に同名ファイルがある場合		省略時（true）に上書きされること	"S3に test/sample.csv が存在する。
-/efs_test/out/old.csv が存在する。"	s3://test-bucket/test/sample.csv /efs_test/out/old.csv	"""戻り値は0で返却される
-/efs_test/out/old.csv がS3の内容に上書きされる"
-test35	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションtrue、コピー先に同名ファイルがある場合		trueで上書きされること	"""S3に test/sample.csv が存在する。
-efs_test/out/old.csv が存在する。"	s3://test-bucket/test/sample.csv efs_test/out/old.csv true	戻り値は0で返却されるefs_test/out/old.csv がS3の内容に上書きされる
-test36	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションfalse、コピー先が新規の場合		falseでも新規ならコピーできること	"S3に test/sample.csv が存在する。
-efs_test/out が空。"	s3://test-bucket/test/sample.csv efs_test/out/new.csv false	"戻り値は0で返却される
-efs_test/out/new.csv が作成され、内容がS3と一致する"
-test37	コピー元にS3ファイル、コピー先にEFSファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseで上書きされないこと	"S3に test/sample.csv が存在する。
-efs_test/out/old.csv が存在する"	s3://test-bucket/test/sample.csv efs_test/out/old.csv false	"戻り値は1で返却される
-/efs_test/out/old.csv の内容が変わらない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー先ファイルが存在し、上書きが許可されていません。"
-test38	コピー先にEFSディレクトリを指定、同名ファイルがない場合		ディレクトリ指定でコピー元のファイル名でコピーされること	"S3に test/sample.csv が存在する。
-efs_test/out が空。"	s3://test-bucket/test/sample.csv efs_test/out	"戻り値は0で返却される
-efs_test/out/sample.csv が作成され、内容がS3と一致する"
-test39	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションtrueの場合		ディレクトリ指定で同名ファイルが上書きされること	"S3に test/sample.csv が存在する。
-efs_test/out/sample.csv が存在する。"	s3://test-bucket/test/sample.csv efs_test/out true	"戻り値は0で返却される
-efs_test/out/sample.csv がS3の内容に上書きされる"
-test40	コピー先にEFSディレクトリを指定、同名ファイルがあり上書きオプションfalseの場合		ディレクトリ指定で同名ファイルが上書きされないこと	"S3に test/sample.csv が存在する。
-efs_test/out/sample.csv が存在する"	"s3://test-bucket/test/sample.csv efs_test/out false	"	"""戻り値は1で返却される
-/efs_test/out/sample.csv の内容が変わらない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー先ファイルが存在し、上書きが許可されていません。"
-test41	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプション省略、コピー先に同名ファイルがある場合		省略時（true）にS3が上書きされること	"efs_test/out/src.csv が存在する。（内容：EFS）
-S3に test/up.csv が存在する。"	efs_test/out/src.csv s3://test-bucket/test/up.csv true	"戻り値は0で返却される
-efs_test/out/sample.csv がEFSの内容に上書きされる"
-test42	コピー元にEFSファイル、コピー先にS3ファイルを指定、上書きオプションfalse、コピー先に同名ファイルがある場合		falseでS3が上書きされないこと	"EFS/out/src.csv が存在する。
-S3に test/up.csv が存在する。"	EFS/out/src.csv s3://test-bucket/test/up.csv false	"戻り値は1で返却される
-S3の test/up.csv の内容が変わらない
-ログに[e.p.9013]がlevel:ERROR、errorCode:1で出力される
-エラー内容：コピー先オブジェクトが存在し、上書きが許可されていません。"
-						
-						
-						
-						
-						
-						
-						
-						
+		// 要素数が想定通りか
+		assertEquals(0,listResult.size());		
+	}
+	
+
+	/**
+	 * listDirectoryNames04
+	 * 対象パスにワイルドカードが含まれない
+	 *・合致するデイレクトリが存在する
+	 */
+	@Test
+	void testlistDirectoryNames_04() throws Throwable{
+		
+		String targetDirPath = "/testDir001";
+		Path pTestTargetDir = Paths.get(targetDirPath);
+		Files.createDirectories(pTestTargetDir);
+		
+		List<String> targetDirList = new ArrayList<String>();
+		targetDirList.add("testDir100");
+		targetDirList.add("testDir200");
+		
+		for( String dirName : targetDirList ) {
+			String dirPath = targetDirPath + "/" + dirName;
+			Files.createDirectories(Paths.get(dirPath));
+		}
+		 
+		Path path = Paths.get(targetDirPath);
+		when(shareNameMapper.getRealPath(targetDirPath)).thenReturn(path);
+		
+		List<String> listResult = fileSystemService.listDirectoryNames(targetDirPath);
+		
+		assertEquals(listResult.size(),targetDirList.size());
+		
+		for (String dirName : targetDirList) {
+			assertTrue(listResult.contains(dirName),"一覧に出力される想定のディレクトリが出力されていない");
+		}
+		
+	}
+	
+    /**
+     * 各テスト実行後処理
+     */
+    @AfterEach
+    void tearDown() throws Exception {
+    	// Mock解放
+    	closable.close();
+    	
+		// テストディレクトリ削除
+//		File fTestDir = new File(testDir);
+//		FileUtils.deleteDirectory(fTestDir);
+    }
+}
