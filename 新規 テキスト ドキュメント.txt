@@ -1,17 +1,88 @@
+import shutil
+import uuid
+from pathlib import Path
 from unittest.mock import Mock
+
+import pytest
+from botocore.exceptions import ClientError
 
 from kikin.fw.infra.external import fileCopyS3EfsService as service
 
 
-def test1(monkeypatch):
-    """引数なし：戻り値1とe.p.9013のログ出力を確認する。"""
-    copier = service.ApCopyFileS3EfsService.__new__(
-        service.ApCopyFileS3EfsService
+TEST_ROOT = Path("/home/bttranvu/efs_test/pytest_fileCopyS3EfsService")
+S3_BUCKET = "test-bucket"
+S3_SOURCE_URI = f"s3://{S3_BUCKET}/test/sample.csv"
+S3_DESTINATION_URI = f"s3://{S3_BUCKET}/test/up.csv"
+S3_BUCKET_URI = f"s3://{S3_BUCKET}"
+TEST_CONTENT = b"pytest S3-EFS test content\n"
+ORIGINAL_CONTENT = b"original content\n"
+
+
+@pytest.fixture
+def efs_paths(request):
+    """Create isolated absolute EFS paths and remove only this test's files."""
+    root = TEST_ROOT / f"{request.node.name}-{uuid.uuid4().hex}"
+    paths = {
+        "root": root,
+        "out": root / "out",
+        "readonly": root / "ro",
+        "missing": root / "nodir",
+    }
+    paths["out"].mkdir(parents=True)
+    paths["readonly"].mkdir()
+    try:
+        yield paths
+    finally:
+        shutil.rmtree(root)
+
+
+@pytest.fixture
+def copier_factory(monkeypatch):
+    """Create the current service API with logging intercepted for assertions."""
+    def create(argv):
+        copier = service.ApCopyFileS3EfsService.__new__(
+            service.ApCopyFileS3EfsService
+        )
+        copier.argv = argv
+        copier.request = " ".join(argv)
+        output_log = Mock()
+        monkeypatch.setattr(copier, "output_log", output_log)
+        return copier, output_log
+
+    return create
+
+
+@pytest.fixture
+def s3_client(monkeypatch):
+    """Provide an offline S3 mock for tests that exercise copy branches."""
+    client = Mock()
+    monkeypatch.setattr(service, "create_s3_client", lambda: client)
+    return client
+
+
+def make_client_error(code: str, operation: str = "HeadObject") -> ClientError:
+    return ClientError(
+        {"Error": {"Code": code, "Message": "test error"}},
+        operation,
     )
-    copier.argv = []
-    copier.request = ""
-    output_log = Mock()
-    monkeypatch.setattr(copier, "output_log", output_log)
+
+
+def write_file(path: Path, content: bytes = TEST_CONTENT) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    return path
+
+
+def configure_s3_download(client, content: bytes = TEST_CONTENT) -> None:
+    client.head_object.return_value = {}
+    client.download_file.side_effect = (
+        lambda bucket, key, destination: Path(destination).write_bytes(content)
+    )
+
+
+def test1(copier_factory):
+    """引数なし：戻り値1とe.p.9013のログ出力を確認する。"""
+    copier, output_log = copier_factory([])
 
     assert copier.do_copy() == 1
     output_log.assert_called_once()
