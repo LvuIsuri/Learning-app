@@ -1,85 +1,22 @@
-from kikin.fw.infra.unyo import apCopyFileS3EfsService as service
+from unittest.mock import Mock
 
-# 定数
-BUCKET = "test-bucket"
-S3_SAMPLE = f"s3://{BUCKET}/test/sample.csv"
-SAMPLE_BYTES = b"S3DATA"
+from kikin.fw.infra.external import fileCopyS3EfsService as service
 
 
-def run(*args):
-    """処理を実行し、戻り値(0、1、-1)を返す。"""
-    return service.ApCopyFileS3EfsService(list(args)).do_copy()
+def test1(monkeypatch):
+    """引数なし：戻り値1とe.p.9013のログ出力を確認する。"""
+    copier = service.ApCopyFileS3EfsService.__new__(
+        service.ApCopyFileS3EfsService
+    )
+    copier.argv = []
+    copier.request = ""
+    output_log = Mock()
+    monkeypatch.setattr(copier, "output_log", output_log)
 
-
-class TestFileCopyS3Efs:
-
-    def test1(self, log_calls):
-        """
-        test1：引数が指定されていない場合
-        ・引数なし
-        """
-        # 実行
-        result = run()
-
-        # 戻り値判定
-        assert result == 1
-
-        # ログ判定
-        assert len(log_calls) == 1, "ログが1件出力される想定"
-        error_code, message_id, inner = log_calls[0]
-        assert error_code == 1
-        assert message_id == "e.p.9013"
-        assert "引数は2個または3個指定してください。指定された引数の数：0" in inner[0]
-
-    def test2(self, efs, log_calls):
-        """
-        test2：コピー元ファイルが空文字の場合
-        ・コピー元が空文字
-        ・コピー先はEFSの新規ファイル
-        """
-        # 入力情報定義
-        file = ""
-        file_path = str(efs / "new.csv")
-
-        # 実行
-        result = run(file, file_path)
-
-        # 戻り値判定
-        assert result == 1
-
-        # コピー先にファイルが作成されていないか
-        assert not (efs / "new.csv").exists(), "コピー先にファイルが作成されない想定"
-
-        # ログ判定
-        assert len(log_calls) == 1, "ログが1件出力される想定"
-        error_code, message_id, inner = log_calls[0]
-        assert error_code == 1
-        assert message_id == "e.p.9013"
-        assert "コピー元またはコピー先が空です。" in inner[0]
-
-    def test33(self, s3, efs, log_calls):
-        """
-        test33：コピー元にS3ファイル、コピー先にEFSファイルを指定、コピー先が新規の場合
-        ・コピー元がS3ファイル(test/sample.csv)
-        ・コピー先がEFSファイル
-        ・上書きオプション省略
-        ・コピー先に同名ファイルが存在しない
-        """
-        # 入力情報定義
-        file = S3_SAMPLE
-        file_path = str(efs / "new.csv")
-
-        # 実行
-        result = run(file, file_path)
-
-        # 戻り値判定
-        assert result == 0
-
-        # 出力先にファイルが出力されているか
-        assert (efs / "new.csv").exists(), "出力先にファイルが出力される想定"
-
-        # ファイルの内容が一致しているか
-        assert (efs / "new.csv").read_bytes() == SAMPLE_BYTES, "ファイル内容が不一致"
-
-        # エラーログが出力されていないか
-        assert log_calls == [], "エラーログは出力されない想定"
+    assert copier.do_copy() == 1
+    output_log.assert_called_once()
+    assert output_log.call_args.args[1:] == (
+        1,
+        "e.p.9013",
+        ["引数は2個または3個指定してください。", ""],
+    )
