@@ -1,105 +1,212 @@
+"""
+単体試験(pytest)。試験項目の test 番号を関数名に対応させる。
+
+試験の前に、次の環境変数を手動で設定しておく。(コードには固定値を書かない)
+  AP_HOME / AP_SVR_ID          システムのログ機構が使用する
+  S3_ENDPOINT_URL              S3(Floci)の接続先
+  AWS_DEFAULT_REGION           リージョン
+  AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY   (Floci用のダミー値でよい)
+  EFS_TEST_DIR                 EFS代用ディレクトリ(この下の out を、試験ごとに初期化する)
+"""
+import os
 import shutil
 from pathlib import Path
 from unittest.mock import Mock
 
+import boto3
 import pytest
 from botocore.exceptions import ClientError
 
 from kikin.fw.infra.external import fileCopyS3EfsService as service
 
-# ---- 入力値に使う値(Excelの表記と同じ) ----
-S3_SAMPLE = "s3://test-bucket/test/sample.csv"     # S3のコピー元ファイル
-S3_UP = "s3://test-bucket/test/up.csv"             # S3のコピー先ファイル
-S3_BUCKET_ONLY = "s3://test-bucket"                # バケット名のみ
-EFS_OUT = Path("/home/bttranvu/efs_test/out")      # Excelの「/efs_test/out」に相当
-S3_DATA = b"S3DATA"                                # S3側のファイル内容
+
+# ------------------------------------------------------------------ 環境設定
+def _env(name):
+    value = os.environ.get(name)
+    if not value:
+        pytest.exit(f"環境変数 {name} が未設定です。試験の前に設定してください。", returncode=2)
+    return value
 
 
-@pytest.fixture(autouse=True)
-def setup(monkeypatch):
-    """各テストの事前条件。(@BeforeEach相当)
-    EFS：/efs_test/out を空の状態にする。
-    S3 ：test/sample.csv が存在する状態のMockにする。(状態を変えたい試験は、各試験内で上書きする)
+S3_ENDPOINT_URL = _env("S3_ENDPOINT_URL")
+AWS_REGION = _env("AWS_DEFAULT_REGION")
+EFS_OUT = Path(_env("EFS_TEST_DIR")) / "out"     # Excelの「/efs_test/out」に相当
+
+# S3(Excelの表記と同じ)
+S3_BUCKET = "test-bucket"
+S3_DATA = b"S3DATA"
+EFS_DATA = b"EFSDATA"
+
+# 試験用バケット以外には実行しない(バケット内を初期化するため)
+assert S3_BUCKET == "test-bucket", "試験用バケット以外には実行しません"
+
+
+# ------------------------------------------------------------------ S3のパス
+class S3Path:
+    """S3のパス。efs(Path)と同じ書き方で使えるようにする。
+    s3 / "sample.csv"  →  s3://test-bucket/test/sample.csv
     """
-    # EFS
+
+    def __init__(self, client, bucket, prefix=""):
+        self.client = client
+        self.bucket = bucket
+        self.prefix = prefix.strip("/")
+
+    def __truediv__(self, name):
+        key = f"{self.prefix}/{name}" if self.prefix else name
+        return S3Path(self.client, self.bucket, key)
+
+    def __str__(self):
+        return f"s3://{self.bucket}/{self.prefix}" if self.prefix else f"s3://{self.bucket}"
+
+    @property
+    def root(self):
+        """バケット直下(s3://test-bucket)"""
+        return S3Path(self.client, self.bucket)
+
+    def with_bucket(self, bucket):
+        """別のバケット名(存在しないバケットの試験用)"""
+        return S3Path(self.client, bucket, self.prefix)
+
+    def put(self, data):
+        self.client.put_object(Bucket=self.bucket, Key=self.prefix, Body=data)
+
+    def read(self):
+        return self.client.get_object(Bucket=self.bucket, Key=self.prefix)["Body"].read()
+
+    def exists(self):
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=self.prefix)
+            return True
+        except ClientError:
+            return False
+
+
+# ------------------------------------------------------------------ 事前条件(@BeforeEach相当)
+@pytest.fixture
+def efs():
+    """EFS：/efs_test/out を空の状態にして返す。(out だけを削除し、EFS_TEST_DIR自体は削除しない)"""
     if EFS_OUT.exists():
         shutil.rmtree(EFS_OUT)
     EFS_OUT.mkdir(parents=True)
-
-    # S3(Mock)
-    client = Mock()
-    client.head_object.return_value = {}                         # オブジェクトが存在する
-    client.download_file.side_effect = (                         # ダウンロード＝EFSへS3の内容を書く
-        lambda bucket, key, dest: Path(dest).write_bytes(S3_DATA))
-    monkeypatch.setattr(service, "create_s3_client", lambda: client)
-    return client
+    return EFS_OUT
 
 
+@pytest.fixture
+def s3():
+    """S3(Floci)：test-bucket を空にし、test/sample.csv のみ存在する状態にして返す。
+    返り値は s3://test-bucket/test を指すパス。(s3 / "sample.csv" で s3://test-bucket/test/sample.csv)
+    """
+    client = boto3.client("s3", endpoint_url=S3_ENDPOINT_URL, region_name=AWS_REGION)
+    try:
+        client.create_bucket(Bucket=S3_BUCKET,
+                             CreateBucketConfiguration={"LocationConstraint": AWS_REGION})
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] not in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
+            raise
+    for obj in client.list_objects_v2(Bucket=S3_BUCKET).get("Contents", []):
+        client.delete_object(Bucket=S3_BUCKET, Key=obj["Key"])
+
+    path = S3Path(client, S3_BUCKET, "test")
+    (path / "sample.csv").put(S3_DATA)            # S3に test/sample.csv が存在する
+    return path
+
+
+# ------------------------------------------------------------------ helpers
 def run(*args):
-    """処理を実行し、(戻り値, ログ出力のMock)を返す。"""
-    copier = service.ApCopyFileS3EfsService.__new__(service.ApCopyFileS3EfsService)
-    copier.argv = list(args)
-    copier.request = " ".join(args)
-    copier.output_log = Mock()
+    """処理を実行し、(戻り値, output_logの呼び出し記録)を返す。"""
+    copier = service.ApCopyFileS3EfsService(list(args))          # 実際のクラスを生成する
+    copier.output_log = Mock(wraps=copier.output_log)            # 本物のoutput_logを呼びつつ、呼び出しを記録する
     return copier.do_copy(), copier.output_log
-def test1():
-    """
-    test1：引数が指定されていない場合
-    入力値：引数なし
-    """
-    result, log = run()
-    assert result == 1
-    check_log(log, 1, "e.p.9013", "引数は2個または3個指定してください。")
 
-
-def test2():
-    """
-    test2：コピー元ファイルが空文字の場合
-    入力値：(空文字) /efs_test/out/new.csv
-    """
-    result, log = run("", str(EFS_OUT / "new.csv"))
-    assert result == 1
-    check_log(log, 1, "e.p.9013", "コピー元またはコピー先が空です。")
-
-
-def test19():
-    """
-    test19：コピー先パスに「..」が含まれる場合
-    入力値：s3://test-bucket/test/sample.csv /efs_test/out/../new.csv
-    """
-    result, log = run(S3_SAMPLE, str(EFS_OUT) + "/../new.csv")
-    assert result == 1
-    assert not (EFS_OUT.parent / "new.csv").exists(), "コピー先にファイルが作成されない想定"
-    check_log(log, 1, "e.p.9013", "コピー先パスに「..」は指定できません。")
-
-
-def test23(setup):
-    """
-    test23：コピー元ファイルがS3に存在しない場合
-    入力値：s3://test-bucket/test/none.csv /efs_test/out/new.csv false
-    """
-    # 事前条件の変更：S3にファイルが存在しない(404)
-    setup.head_object.side_effect = ClientError(
-        {"Error": {"Code": "404", "Message": "not found"}}, "HeadObject")
-
-    result, log = run("s3://test-bucket/test/none.csv", str(EFS_OUT / "new.csv"), "false")
-    assert result == 1
-    assert not (EFS_OUT / "new.csv").exists(), "コピー先にファイルが作成されない想定"
-    check_log(log, 1, "e.p.9013", "コピー元オブジェクトが存在しません。")
-
-
-def test33():
-    """
-    test33：コピー元にS3ファイル、コピー先にEFSファイルを指定、コピー先が新規の場合
-    入力値：s3://test-bucket/test/sample.csv /efs_test/out/new.csv
-    """
-    result, log = run(S3_SAMPLE, str(EFS_OUT / "new.csv"))
-    assert result == 0
-    assert (EFS_OUT / "new.csv").read_bytes() == S3_DATA, "ファイル内容がS3と一致する想定"
-    log.assert_not_called()
 
 def check_log(log, error_code, message_id, text):
     """ログが1件出力され、エラーコード・ID・エラー内容が期待どおりであることを確認する。"""
     log.assert_called_once()
     assert log.call_args.args[1:3] == (error_code, message_id)
     assert text in log.call_args.args[3][0]
+
+
+# ------------------------------------------------------------------ 入力チェック
+def test1():
+    """
+    test1：引数が指定されていない場合
+    入力値：引数なし
+    """
+    # 実行
+    result, log = run()
+
+    # 戻り値判定
+    assert result == 1
+
+    # ログ判定
+    check_log(log, 1, "e.p.9013", "引数は2個または3個指定してください。")
+
+
+def test2(s3, efs):
+    """
+    test2：コピー元ファイルが空文字の場合
+    入力値：(空文字) /efs_test/out/new.csv
+    """
+    # 実行
+    result, log = run("", str(efs / "new.csv"))
+
+    # 戻り値判定
+    assert result == 1
+
+    # コピー先にファイルが作成されていないか
+    assert not (efs / "new.csv").exists(), "コピー先にファイルが作成されない想定"
+
+    # ログ判定
+    check_log(log, 1, "e.p.9013", "コピー元またはコピー先が空です。")
+
+
+def test3(s3, efs):
+    """
+    test3：コピー先パスが未指定の場合
+    入力値：s3://test-bucket/test/sample.csv
+    """
+    # 実行
+    result, log = run(str(s3 / "sample.csv"))
+
+    # 戻り値判定
+    assert result == 1
+
+    # ログ判定
+    check_log(log, 1, "e.p.9013", "引数は2個または3個指定してください。")
+
+
+def test4(s3, efs):
+    """
+    test4：コピー先パスが空文字の場合
+    入力値：s3://test-bucket/test/sample.csv (空文字)
+    """
+    # 実行
+    result, log = run(str(s3 / "sample.csv"), "")
+
+    # 戻り値判定
+    assert result == 1
+
+    # ログ判定
+    check_log(log, 1, "e.p.9013", "コピー元またはコピー先が空です。")
+
+
+def test5(s3, efs):
+    """
+    test5：コピー元が「S3://」「/」のどちらでも始まらない場合
+    入力値：test-bucket/test/sample.csv /efs_test/out/new.csv
+    """
+    # 入力情報定義：「s3://」を除いた、S3パスでもEFSパスでもない指定
+    file = str(s3 / "sample.csv").replace("s3://", "")
+
+    # 実行
+    result, log = run(file, str(efs / "new.csv"))
+
+    # 戻り値判定
+    assert result == 1
+
+    # コピー先にファイルが作成されていないか
+    assert not (efs / "new.csv").exists(), "コピー先にファイルが作成されない想定"
+
+    # ログ判定
+    check_log(log, 1, "e.p.9013", "パスにはS3 URIまたは絶対パスを指定してください。")
