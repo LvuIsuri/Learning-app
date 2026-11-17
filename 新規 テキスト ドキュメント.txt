@@ -1,3 +1,4 @@
+date:2026-11-17 16:55:14.782	level:ERROR logger:kikin.fw.infra.external.fileCopyS3EfsService	errorPoint:224	errorData: "/home/bttranvu/efs_test/out/out/../src.csv s3://test-bucket/test/new.csv" 	errorCode:1	message:[e.p.9001]システムエラーが発生しました。ログメッセージ設定ファイルの読み込みに失敗しました。
 """
 単体試験(pytest)。試験項目の test 番号を関数名に対応させる。
 
