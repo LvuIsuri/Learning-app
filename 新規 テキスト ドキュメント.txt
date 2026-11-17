@@ -3,23 +3,36 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+from botocore.exceptions import ClientError
 
 from kikin.fw.infra.external import fileCopyS3EfsService as service
 
-# テスト用ディレクトリ
-TEST_DIR = Path("/home/bttranvu/efs_test/pytest_test")
-# テスト用出力ディレクトリ
-OUT_DIR = TEST_DIR / "out"
+# ---- 入力値に使う値(Excelの表記と同じ) ----
+S3_SAMPLE = "s3://test-bucket/test/sample.csv"     # S3のコピー元ファイル
+S3_UP = "s3://test-bucket/test/up.csv"             # S3のコピー先ファイル
+S3_BUCKET_ONLY = "s3://test-bucket"                # バケット名のみ
+EFS_OUT = Path("/home/bttranvu/efs_test/out")      # Excelの「/efs_test/out」に相当
+S3_DATA = b"S3DATA"                                # S3側のファイル内容
 
 
 @pytest.fixture(autouse=True)
-def setup():
-    """各テストの実行前に行う処理。(@BeforeEach相当)"""
-    # テスト用ディレクトリが存在していた場合は削除してから作成する
-    if TEST_DIR.exists():
-        shutil.rmtree(TEST_DIR)
-    OUT_DIR.mkdir(parents=True)
-    # 実行後は削除しない。(結果を確認できるように残す。Javaと同じ)
+def setup(monkeypatch):
+    """各テストの事前条件。(@BeforeEach相当)
+    EFS：/efs_test/out を空の状態にする。
+    S3 ：test/sample.csv が存在する状態のMockにする。(状態を変えたい試験は、各試験内で上書きする)
+    """
+    # EFS
+    if EFS_OUT.exists():
+        shutil.rmtree(EFS_OUT)
+    EFS_OUT.mkdir(parents=True)
+
+    # S3(Mock)
+    client = Mock()
+    client.head_object.return_value = {}                         # オブジェクトが存在する
+    client.download_file.side_effect = (                         # ダウンロード＝EFSへS3の内容を書く
+        lambda bucket, key, dest: Path(dest).write_bytes(S3_DATA))
+    monkeypatch.setattr(service, "create_s3_client", lambda: client)
+    return client
 
 
 def run(*args):
@@ -31,30 +44,8 @@ def run(*args):
     return copier.do_copy(), copier.output_log
 
 
-def test1():
-    """
-    test1：引数が指定されていない場合
-    ・引数なし
-    """
-    # 実行
-    result, log = run()
-
-    # 戻り値判定
-    assert result == 1
-
-    # ログ判定
+def check_log(log, error_code, message_id, text):
+    """ログが1件出力され、エラーコード・ID・エラー内容が期待どおりであることを確認する。"""
     log.assert_called_once()
-    assert log.call_args.args[1:] == (
-        1, "e.p.9013", ["引数は2個または3個指定してください。", ""])
-
-
-def test2():
-    """
-    test2：コピー元ファイルが空文字の場合
-    """
-    result, log = run("", str(OUT_DIR / "new.csv"))
-
-    assert result == 1   # 戻り値(任意。不要なら削除)
-    log.assert_called_once()
-    assert log.call_args.args[1:3] == (1, "e.p.9013")
-    assert "コピー元またはコピー先が空です。" in log.call_args.args[3][0]
+    assert log.call_args.args[1:3] == (error_code, message_id)
+    assert text in log.call_args.args[3][0]
