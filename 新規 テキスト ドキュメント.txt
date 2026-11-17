@@ -42,7 +42,61 @@ def run(*args):
     copier.request = " ".join(args)
     copier.output_log = Mock()
     return copier.do_copy(), copier.output_log
+def test1():
+    """
+    test1：引数が指定されていない場合
+    入力値：引数なし
+    """
+    result, log = run()
+    assert result == 1
+    check_log(log, 1, "e.p.9013", "引数は2個または3個指定してください。")
 
+
+def test2():
+    """
+    test2：コピー元ファイルが空文字の場合
+    入力値：(空文字) /efs_test/out/new.csv
+    """
+    result, log = run("", str(EFS_OUT / "new.csv"))
+    assert result == 1
+    check_log(log, 1, "e.p.9013", "コピー元またはコピー先が空です。")
+
+
+def test19():
+    """
+    test19：コピー先パスに「..」が含まれる場合
+    入力値：s3://test-bucket/test/sample.csv /efs_test/out/../new.csv
+    """
+    result, log = run(S3_SAMPLE, str(EFS_OUT) + "/../new.csv")
+    assert result == 1
+    assert not (EFS_OUT.parent / "new.csv").exists(), "コピー先にファイルが作成されない想定"
+    check_log(log, 1, "e.p.9013", "コピー先パスに「..」は指定できません。")
+
+
+def test23(setup):
+    """
+    test23：コピー元ファイルがS3に存在しない場合
+    入力値：s3://test-bucket/test/none.csv /efs_test/out/new.csv false
+    """
+    # 事前条件の変更：S3にファイルが存在しない(404)
+    setup.head_object.side_effect = ClientError(
+        {"Error": {"Code": "404", "Message": "not found"}}, "HeadObject")
+
+    result, log = run("s3://test-bucket/test/none.csv", str(EFS_OUT / "new.csv"), "false")
+    assert result == 1
+    assert not (EFS_OUT / "new.csv").exists(), "コピー先にファイルが作成されない想定"
+    check_log(log, 1, "e.p.9013", "コピー元オブジェクトが存在しません。")
+
+
+def test33():
+    """
+    test33：コピー元にS3ファイル、コピー先にEFSファイルを指定、コピー先が新規の場合
+    入力値：s3://test-bucket/test/sample.csv /efs_test/out/new.csv
+    """
+    result, log = run(S3_SAMPLE, str(EFS_OUT / "new.csv"))
+    assert result == 0
+    assert (EFS_OUT / "new.csv").read_bytes() == S3_DATA, "ファイル内容がS3と一致する想定"
+    log.assert_not_called()
 
 def check_log(log, error_code, message_id, text):
     """ログが1件出力され、エラーコード・ID・エラー内容が期待どおりであることを確認する。"""
