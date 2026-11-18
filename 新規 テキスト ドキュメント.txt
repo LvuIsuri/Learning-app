@@ -1,3 +1,21 @@
+date:2026-11-18 13:12:43.627	level:ERROR logger:kikin.fw.infra.external.fileCopyS3EfsService	errorPoint:342	errorData: "s3://test-bucket/test/sample.csv /home/bttranvu/efs_test/out/new.csv" 	errorCode:-1	message:[e.p.9001]システムエラーが発生しました。Traceback (most recent call last):
+  File "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py", line 337, in do_copy
+    return self.copy_s3_to_efs(file, file_path, over_write)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py", line 176, in copy_s3_to_efs
+    if not s3_exists(s3, bucket, key):
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py", line 88, in s3_exists
+    s3.head_object(Bucket=bucket, Key=key)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bttranvu/.venv/lib/python3.13/site-packages/botocore/client.py", line 606, in _api_call
+    return self._make_api_call(operation_name, kwargs)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bttranvu/.venv/lib/python3.13/site-packages/botocore/context.py", line 123, in wrapper
+    return func(*args, **kwargs)
+  File "/home/bttranvu/.venv/lib/python3.13/site-packages/botocore/client.py", line 1094, in _make_api_call
+    raise error_class(parsed_response, operation_name)
+botocore.exceptions.ClientError: An error occurred (502) when calling the HeadObject operation (reached max retries: 4): Bad Gateway
 def test26(s3, efs):
 
     #test26:S3に接続できない場合
