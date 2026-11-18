@@ -1,3 +1,22 @@
+def test26(s3, efs):
+
+    #test26:S3に接続できない場合
+
+    # S3のエンドポイントを無効なものに変更
+    invalid_s3 = S3Path(boto3.client("s3", endpoint_url="http://invalid-endpoint", region_name=REGION), S3_BUCKET, "test")
+
+    # 実行
+    result, log = run(str(invalid_s3 / "sample.csv"), str(efs / "new.csv")) 
+
+    # 戻り値判定
+    assert result == -1
+
+    # コピー先にファイルが作成されていないか
+    assert not (efs / "new.csv").exists(), "コピー先にファイルが作成されない想定"
+
+    # ログ判定
+    check_log(log, -1, "e.p.9013", "コピー元S3 URIにアクセスできません。")  
+
 import boto3
 import pytest
 from botocore.exceptions import ClientError
