@@ -1,32 +1,13 @@
-試験項目
-"・引数が指定されていない。
-・コピー元/コピー先が「S3://」「/」のどちらでも始まらない
-・コピー元ファイルが空文字。
-・コピー先パスが未指定／空文字。
-・上書きオプションが空文字。"
-"・コピー元/コピー先がワイルドカード指定（禁止）。
-・コピー元がディレクトリ指定（禁止）。
-・コピー元/コピー先のパスに[..]を含む（禁止）。
-・コピー方向不正（S３⇒S3、EFS⇒EFS）。
-・上書きオプションがtrue/false以外。
-・S3 URIが不正（バケット名なし、キーなし、キーが「/」で終わる）"
-"・コピー元ファイルがS3に存在しない。
-・S3バケットが存在しない。
-・S3に接続できない。
-・S3へのアクセス権限がない。
-・コピー先ディレクトリが存在しない。
-・コピー先ディレクトリに書込権限がない。
-・既存ファイルが読み取り専用で上書きできない。
-・ダウンロード途中で例外が発生（新規／上書き）。
-・コピー元ファイルがS3に存在しない
- （HeadObjectが404／NoSuchKey／NotFound／NoSuchBucketを返す）。
-・S3へのアクセス権限がない（403）／S3エラー（500等）→ 例外として戻り値-1。"
-"・コピー元ファイルがEFSに存在しない（ディレクトリは存在する）。
-・コピー元ディレクトリがEFSに存在しない。
-・コピー先S3バケットが存在しない。
-・コピー先ファイルの存在確認で例外が発生（403／500等）→ 戻り値-1。
-・アップロード途中で例外が発生 → 戻り値-1。"
-"・コピー先S3/EFSがファイルパス／ディレクトリパス
-・上書きオプションが省略／true／false
-・コピー先S3/EFSに同名ファイルが存在する／しない
-（falseで同名ありは上書きされず、戻り値1）"
+ổng hợp yêu cầu cho chức năng copy folder:
+
+Không đổi cách copy file hiện tại. Nếu nguồn là file thì xử lý như bây giờ.
+Folder EFS: chỉ copy các file nằm trực tiếp bên trong; không đi vào thư mục con.
+Folder S3:
+s3://bucket và s3://bucket/ đều chỉ bucket root.
+Nếu có prefix, prefix bắt buộc kết thúc bằng /, ví dụ s3://bucket/data/.
+Chỉ copy các object trực tiếp trong prefix; bỏ qua thư mục con và object marker kết thúc bằng /.
+Không có file phù hợp thì báo lỗi, trả 1.
+Đích: phải là thư mục. Kiểm tra thư mục đích tồn tại và có quyền ghi/thực thi; nếu không có quyền thì log lỗi và trả -1, như đoạn bạn đang chọn.
+Xung đột file: nếu overwrite=false và có ít nhất một file đích đã tồn tại, dừng trước khi copy và trả 1. Nếu overwrite=true, cho phép ghi đè.
+Mã lỗi: lỗi tham số, nguồn không tồn tại hoặc file đích đã có trả 1; lỗi quyền, kết nối hoặc truyền tải trả -1.
+Ví dụ s3://bucket/data/ chỉ lấy data/a.csv, không lấy data/sub/b.csv.
