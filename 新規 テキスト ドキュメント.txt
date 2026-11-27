@@ -1,3 +1,204 @@
+Mình sẽ rà lại luồng staging, snapshot và rollback theo từng nhánh, rồi chỉ ra lỗi ảnh hưởng kết quả; không sửa code.
+
+Read , lines 55 to 180
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    55,
+    180
+  ]
+}
+
+Read , lines 250 to 390
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    250,
+    390
+  ]
+}
+
+Read , lines 430 to 570
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    430,
+    570
+  ]
+}
+
+Read , lines 570 to 689
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    570,
+    689
+  ]
+}
+
+Search for `rollback|staged|snapshot|temporary|completed|created_dirs`
+
+Read , lines 1 to 55
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    1,
+    55
+  ]
+}
+
+Read , lines 183 to 215
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    183,
+    215
+  ]
+}
+
+Read , lines 372 to 430
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    372,
+    430
+  ]
+}
+
+Read , lines 540 to 610
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    540,
+    610
+  ]
+}
+
+Search for `test.*folder|folder|rollback|race|part|rollback`
+
+Đây là review cấp lỗi; mình tập trung vào rollback có thể làm sai dữ liệu, không chỉ lỗi cú pháp.
+
+Read , lines 980 to 1075
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/test_fileCopyS3EfsService.py",
+  "view_range": [
+    980,
+    1075
+  ]
+}
+
+Read , lines 210 to 280
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    210,
+    280
+  ]
+}
+
+Read , lines 430 to 470
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    430,
+    470
+  ]
+}
+
+Read , lines 520 to 610
+Completed with input: {
+  "path": "/home/bttranvu/copyfile/kikin_on/home1/RE/RE71/bin/apInfra/py/kikin/fw/infra/external/fileCopyS3EfsService.py",
+  "view_range": [
+    520,
+    610
+  ]
+}
+
+## Nhận xét tổng quan
+
+Code đã rõ cấu trúc hơn: chia copy file/folder và gom temporary file, snapshot, rollback. Tuy nhiên rollback của EFS → S3 vẫn chưa đạt “đúng nghĩa”; đồng thời hiện tại còn một số lỗi logic.
+
+## Lỗi quan trọng
+
+1. **EFS → S3 chưa rollback object đã được ghi đè**
+
+Tại `rollback_s3_uploads`, object nằm trong `overwritten_keys` chỉ được ghi nhận và không khôi phục. Với `over_write=true`, dữ liệu cũ đã mất sau upload.
+
+Đây không phải rollback hoàn chỉnh. Cần snapshot từng object bằng `get_object()` hoặc dùng S3 versioning trước upload.
+
+2. **TOCTOU còn tồn tại khi `over_write=false`**
+
+Trong `copy_efs_folder_to_s3`, code kiểm tra object tồn tại rồi mới upload từng file:
+
+- Process khác có thể tạo key sau bước `list_objects_v2()`.
+- `upload_file()` sau đó vẫn ghi đè.
+- Không có conditional write hoặc `If-None-Match`.
+
+3. **Rollback S3 không thể phục hồi khi không lấy được danh sách object**
+
+Khi `existing_keys is None`, code chỉ log rằng chưa rollback và không thử snapshot hay khôi phục. Đây là trạng thái thất bại không rõ ràng, chưa được xử lý transaction.
+
+4. **Rollback EFS có thể không khôi phục được symlink**
+
+Trong `snapshot_efs_targets`, `shutil.copy2()` theo symlink và tạo backup là file thường.
+
+Nếu target là symlink trỏ ra file khác:
+
+- Nội dung có thể được backup.
+- Rollback dùng `os.replace()` thay thế symlink bằng file thường.
+- Symlink ban đầu không được khôi phục nguyên trạng.
+
+## Vấn đề logic
+
+5. **Race giữa staging và snapshot**
+
+S3 → EFS staging tải toàn bộ `.part`, sau đó mới snapshot và replace.
+
+Trong khoảng staging/snapshot:
+
+- File đích có thể bị process khác thay đổi.
+- Với `over_write=true`, snapshot ghi lại trạng thái gần hiện tại rồi replace.
+- Khi rollback, dữ liệu của process khác có thể bị ghi lại thay thế.
+
+Race chưa được khóa.
+
+6. **Stage tất cả rồi mới snapshot không tránh hết rollback**
+
+`stage_s3_files()` đã tạo thư mục trước khi staging hoàn tất. Rollback cuối có thể xóa thư mục mới, nhưng không ghi nhận thư mục cha bị thay đổi, không cần rollback nếu thư mục rỗng.
+
+Hiện tại `remove_empty_efs_dirs` tự `rmdir()` từng thư mục theo thứ tự ngược; logic này tương đối an toàn vì chỉ xóa khi thư mục rỗng.
+
+7. **Test chưa bọc folder rollback**
+
+Test hiện tại chủ yếu kiểm tra file đơn, download và race. Chưa thấy test cho:
+
+- Download folder một file thành công rồi file sau thất bại.
+- Rollback file EFS đã overwrite.
+- Rollback thư mục vừa tạo.
+- Upload folder một object thành công rồi object sau lỗi.
+- Rollback object mới và object bị overwrite.
+- Concurrent tạo object S3.
+
+## Về độ phức tạp
+
+`689` dòng và nhiều phương thức rollback/log đang làm class khó duy trì.
+
+Các helper hiện đã khá rõ:
+
+- `snapshot_efs_targets`
+- `rollback_efs_targets`
+- `install_efs_files`
+- `rollback_s3_uploads`
+
+Nhưng rollback S3 nên đổi trước: snapshot từng object cùng metadata hoặc dùng version ID. Hiện nay code đang tuyên bố rollback nhưng thực tế chỉ có thể xóa object mới.
+
+## Kết luận
+
+- Rollback EFS folder: đạt mức cơ bản.
+- Cleanup temporary file: tốt.
+- Rollback S3 folder: chưa hoàn chỉnh khi overwrite.
+- TOCTOU cho `over_write=false`: chưa được giải quyết.
+- Khối lượng code và test rollback folder cần giảm/đơn giản hóa tiếp.
 import os
 import shutil
 import tempfile
