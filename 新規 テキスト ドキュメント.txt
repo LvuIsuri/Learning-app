@@ -1,21 +1,12 @@
-import errno
 import os
-import random
 import tempfile
-import time
 import traceback
 from pathlib import Path, PurePosixPath
 
 import boto3
 from boto3.exceptions import S3UploadFailedError
-from botocore.exceptions import (
-    ClientError,
-    ConnectionClosedError,
-    ConnectTimeoutError,
-    EndpointConnectionError,
-    HTTPClientError,
-    ReadTimeoutError,
-)
+from botocore.config import Config
+from botocore.exceptions import ClientError
 
 from ..common import appBase
 
@@ -24,22 +15,12 @@ WILDCARD_CHARS = ("*", "?")
 # HeadObjectで「オブジェクトまたはバケットなし」と判定するエラーコード。
 NOT_FOUND_CODES = ("404", "NoSuchKey", "NotFound", "NoSuchBucket")
 REGION = "ap-northeast-1"
-TRANSFER_MAX_ATTEMPTS = 3
-TRANSFER_RETRY_BASE_DELAY = 0.5
-RETRYABLE_S3_ERROR_CODES = {
-    "InternalError",
-    "RequestLimitExceeded",
-    "RequestTimeout",
-    "RequestTimeoutException",
-    "ServiceUnavailable",
-    "SlowDown",
-    "Throttling",
-    "ThrottlingException",
-    "500",
-    "502",
-    "503",
-    "504",
-}
+S3_RETRY_CONFIG = Config(
+    retries={
+        "mode": "standard",
+        "total_max_attempts": 3,
+    }
+)
 
 
 def split_s3_uri(
@@ -76,15 +57,17 @@ def has_parent_reference(path: str) -> bool:
 
 
 def create_s3_client():
-
     # 環境変数の接続先・リージョンを使ってS3クライアントを作成する。
     # S3_ENDPOINT_URLが設定されていればFlociなどの指定先を使い、
     # 未設定の場合はboto3の標準AWS認証情報チェーンを利用する。
-
     enpoint_url = os.environ.get("S3_ENDPOINT_URL")
     if enpoint_url:
-        return boto3.Session(region_name=REGION).client("s3", endpoint_url=enpoint_url)
-    return boto3.Session(region_name=REGION).client("s3")
+        return boto3.Session(region_name=REGION).client(
+            "s3", endpoint_url=enpoint_url, config=S3_RETRY_CONFIG
+        )
+    return boto3.Session(region_name=REGION).client(
+        "s3", config=S3_RETRY_CONFIG
+    )
     
 def s3_exists(s3, bucket: str, key: str) -> bool:
     
@@ -99,62 +82,6 @@ def s3_exists(s3, bucket: str, key: str) -> bool:
             return False
         raise
     return True
-
-
-def is_retryable_transfer_error(exc) -> bool:
-    seen = set()
-    current = exc
-    while current is not None and id(current) not in seen:
-        seen.add(id(current))
-        if isinstance(current, ClientError):
-            response = current.response
-            code = str(response.get("Error", {}).get("Code", ""))
-            status = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-            return code in RETRYABLE_S3_ERROR_CODES or status == 429 or (
-                isinstance(status, int) and status >= 500
-            )
-        if isinstance(
-            current,
-            (
-                ConnectionClosedError,
-                ConnectTimeoutError,
-                EndpointConnectionError,
-                HTTPClientError,
-                ReadTimeoutError,
-                TimeoutError,
-                ConnectionError,
-            ),
-        ):
-            return True
-        if isinstance(current, OSError) and current.errno in {
-            errno.ECONNRESET,
-            errno.EHOSTUNREACH,
-            errno.EIO,
-            errno.ENETUNREACH,
-            errno.EPIPE,
-            errno.ESTALE,
-            errno.ETIMEDOUT,
-        }:
-            return True
-        current = current.__cause__ or current.__context__
-    return False
-
-
-def run_transfer_with_retry(transfer, before_retry=None):
-    for attempt in range(TRANSFER_MAX_ATTEMPTS):
-        try:
-            return transfer()
-        except Exception as exc:
-            if (
-                attempt + 1 >= TRANSFER_MAX_ATTEMPTS
-                or not is_retryable_transfer_error(exc)
-            ):
-                raise
-            if before_retry is not None:
-                before_retry()
-            time.sleep(
-                random.uniform(0, TRANSFER_RETRY_BASE_DELAY * (2 ** attempt))
-            )
 
 
 class ApCopyFileS3EfsService(appBase.AppBaseClass):
@@ -291,14 +218,7 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
                     temporary_path = Path(temporary_name)
                     try:
                         try:
-                            run_transfer_with_retry(
-                                lambda: s3.download_file(
-                                    bucket, object_key, str(temporary_path)
-                                ),
-                                before_retry=lambda: temporary_path.unlink(
-                                    missing_ok=True
-                                ),
-                            )
+                            s3.download_file(bucket, object_key, str(temporary_path))
                         except Exception as exc:
                             failed_downloads.append((object_key, exc))
                             continue
@@ -374,10 +294,7 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
 
             try:
                 # まず一時ファイルへダウンロードし、完了後にコピー先へ反映する。
-                run_transfer_with_retry(
-                    lambda: s3.download_file(bucket, key, str(temporary_path)),
-                    before_retry=lambda: temporary_path.unlink(missing_ok=True),
-                )
+                s3.download_file(bucket, key, str(temporary_path))
 
                 # 一時ファイルは権限0600で作成されるため、コピー先の権限を0664にする。
                 # (新規・上書きともに0664。上書きの場合も既存ファイルの権限は引き継がない)
@@ -484,11 +401,7 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
                         f"{key}{source_file.relative_to(source_path).as_posix()}"
                     )
                     try:
-                        run_transfer_with_retry(
-                            lambda: s3.upload_file(
-                                str(source_file), bucket, destination_key
-                            )
-                        )
+                        s3.upload_file(str(source_file), bucket, destination_key)
                     except S3UploadFailedError as exc:
                         cause = exc.__context__
                         if isinstance(cause, ClientError):
@@ -519,9 +432,7 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
 
             # NoSuchBucketだけを処理エラーとして扱い、それ以外の転送失敗は呼び出し元へ送出する。
             try:
-                run_transfer_with_retry(
-                    lambda: s3.upload_file(str(source_path), bucket, key)
-                )
+                s3.upload_file(str(source_path), bucket, key)
             except S3UploadFailedError as exc:
                 cause = exc.__context__
                 if isinstance(cause, ClientError):
