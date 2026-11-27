@@ -16,6 +16,8 @@ WILDCARD_CHARS = ("*", "?")
 # HeadObjectで「オブジェクトまたはバケットなし」と判定するエラーコード。
 NOT_FOUND_CODES = ("404", "NoSuchKey", "NotFound", "NoSuchBucket")
 REGION = "ap-northeast-1"
+# ロールバック失敗時などにログへ出すキー/パスの最大件数。
+LOG_DETAIL_LIMIT = 10
 
 
 def split_s3_uri(
@@ -52,40 +54,56 @@ def has_parent_reference(path: str) -> bool:
 
 
 def create_s3_client():
-
     # 環境変数の接続先・リージョンを使ってS3クライアントを作成する。
     # S3_ENDPOINT_URLが設定されていればFlociなどの指定先を使い、
     # 未設定の場合はboto3の標準AWS認証情報チェーンを利用する。
-
-    enpoint_url = os.environ.get("S3_ENDPOINT_URL")
-    if enpoint_url:
-        return boto3.Session(region_name=REGION).client("s3", endpoint_url=enpoint_url)
+    endpoint_url = os.environ.get("S3_ENDPOINT_URL")
+    if endpoint_url:
+        return boto3.Session(region_name=REGION).client("s3", endpoint_url=endpoint_url)
     return boto3.Session(region_name=REGION).client("s3")
-    
+
+
+def get_s3_error_code(exc) -> str:
+    # ClientErrorからエラーコードを取り出す。ClientError以外は空文字を返す。
+    if isinstance(exc, ClientError):
+        return str(exc.response.get("Error", {}).get("Code", ""))
+    return ""
+
+
+def is_no_such_bucket_upload_error(exc) -> bool:
+    # upload_fileが送出するS3UploadFailedErrorの原因が「バケットなし」か判定する。
+    return get_s3_error_code(exc.__context__) == "NoSuchBucket"
+
+
 def s3_exists(s3, bucket: str, key: str) -> bool:
-    
     # HeadObjectでS3オブジェクトの存在を確認する。
     # オブジェクトまたはバケットがない場合はFalseを返す。
     # AccessDeniedや接続エラーなど、存在確認以外の失敗は呼び出し元へ送出する。
     try:
         s3.head_object(Bucket=bucket, Key=key)
     except ClientError as exc:
-        code = str(exc.response.get("Error", {}).get("Code", ""))
-        if code in NOT_FOUND_CODES:
+        if get_s3_error_code(exc) in NOT_FOUND_CODES:
             return False
         raise
     return True
 
 
-def get_s3_error_code(exc):
-    if isinstance(exc, ClientError):
-        return str(exc.response.get("Error", {}).get("Code", ""))
-    return ""
+def list_s3_keys(s3, bucket: str, prefix: str):
+    # prefix配下のキーを全件取得する。ClientErrorは呼び出し元へ送出する。
+    keys = []
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        keys.extend(obj["Key"] for obj in page.get("Contents", []))
+    return keys
 
 
-def get_upload_cause(exc):
-    cause = exc.__context__
-    return cause if isinstance(cause, ClientError) else exc
+def summarize_items(items) -> str:
+    # ログ用に先頭LOG_DETAIL_LIMIT件だけ列挙し、残りは件数で表す。
+    items = [str(item) for item in items]
+    text = ", ".join(items[:LOG_DETAIL_LIMIT])
+    if len(items) > LOG_DETAIL_LIMIT:
+        text += f" ... (他{len(items) - LOG_DETAIL_LIMIT}件)"
+    return text
 
 
 @contextmanager
@@ -104,7 +122,7 @@ def temporary_efs_file(destination: Path):
 
 
 class ApCopyFileS3EfsService(appBase.AppBaseClass):
-    # S3とEFSの間で単一ファイルをコピーする。
+    # S3とEFSの間で単一ファイルまたはフォルダをコピーする。
 
     # ApCtrlReqServletから呼び出され、コピー元、コピー先、上書きオプションを引数として、
     # コピー処理を行う。
@@ -124,59 +142,71 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
         # :param message: エラー内容
         self.output_log(line_number, error_code, 'e.p.9013', [message, self.request])
 
+    # ------------------------------------------------------------------
+    # EFS側のスナップショット / ロールバック
+    # ------------------------------------------------------------------
     def snapshot_efs_targets(self, targets):
+        # 上書き前のコピー先ファイルを退避する。存在しないファイルはNoneを記録する。
+        # 途中で失敗した場合は、作成済みの退避ファイルを削除してから例外を送出する。
         snapshots = {}
-        for target in targets:
-            if not (target.exists() or target.is_symlink()):
-                snapshots[target] = None
-                continue
+        try:
+            for target in targets:
+                if not (target.exists() or target.is_symlink()):
+                    snapshots[target] = None
+                    continue
 
-            fd, backup_name = tempfile.mkstemp(
-                dir=target.parent,
-                prefix=f".{target.name}.",
-                suffix=".rollback",
-            )
-            os.close(fd)
-            backup = Path(backup_name)
-            shutil.copy2(target, backup)
-            snapshots[target] = backup
+                fd, backup_name = tempfile.mkstemp(
+                    dir=target.parent,
+                    prefix=f".{target.name}.",
+                    suffix=".rollback",
+                )
+                os.close(fd)
+                backup = Path(backup_name)
+                # コピー失敗時も後始末できるよう、コピー前に登録する。
+                snapshots[target] = backup
+                shutil.copy2(target, backup)
+        except BaseException:
+            self.discard_efs_snapshots(snapshots)
+            raise
         return snapshots
 
-    def rollback_efs_targets(self, snapshots):
-        rollback_errors = []
-        for target, backup in reversed(list(snapshots.items())):
+    def discard_efs_snapshots(self, snapshots, keep=()):
+        # 退避ファイルを削除する。keepに含まれるコピー先の退避ファイルは残す。
+        for target, backup in snapshots.items():
+            if backup is None or target in keep:
+                continue
+            try:
+                backup.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def rollback_efs_targets(self, installed, snapshots):
+        # 配置済みファイルを元に戻す。
+        #   退避なし(新規作成) -> 削除 / 退避あり(上書き) -> 退避ファイルを戻す
+        # 元に戻せなかったファイルの退避ファイルは、唯一の旧データなので削除せず残し、
+        # ログにパスを出力する。
+        failed = []
+        for target in reversed(installed):
+            backup = snapshots[target]
             try:
                 if backup is None:
                     target.unlink(missing_ok=True)
                 else:
                     os.replace(backup, target)
             except Exception as exc:
-                rollback_errors.append(exc)
-            else:
-                if backup is not None:
-                    backup.unlink(missing_ok=True)
-        return rollback_errors
+                failed.append((target, backup, exc))
 
-    def snapshot_s3_object(self, s3, bucket, key):
-        if not s3_exists(s3, bucket, key):
-            return None
-        response = s3.get_object(Bucket=bucket, Key=key)
-        body = response["Body"].read()
-        if not isinstance(body, (bytes, bytearray)):
-            raise RuntimeError(f"S3オブジェクトのスナップショットを取得できません: {key}")
-        return bytes(body)
+        self.discard_efs_snapshots(snapshots, keep={item[0] for item in failed})
 
-    def rollback_s3_objects(self, s3, bucket, snapshots):
-        rollback_errors = []
-        for key, data in reversed(list(snapshots.items())):
-            try:
-                if data is None:
-                    s3.delete_object(Bucket=bucket, Key=key)
-                else:
-                    s3.put_object(Bucket=bucket, Key=key, Body=data)
-            except Exception as exc:
-                rollback_errors.append(exc)
-        return rollback_errors
+        if failed:
+            details = summarize_items(
+                f"{target} (退避ファイル: {backup}, 原因: {exc!r})"
+                for target, backup, exc in failed
+            )
+            self.error_log(
+                self.location(), -1,
+                f"ロールバックに失敗しました。退避ファイルを残しています: {details}",
+            )
 
     def remove_empty_efs_dirs(self, directories):
         for directory in reversed(directories):
@@ -185,6 +215,9 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
             except OSError:
                 pass
 
+    # ------------------------------------------------------------------
+    # S3 -> EFS
+    # ------------------------------------------------------------------
     def copy_s3_to_efs(self, file: str, file_path: str, over_write: bool) -> int:
         # S3からEFSへファイルまたはフォルダをコピーする。
         # 戻り値:
@@ -203,164 +236,179 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
         if has_parent_reference(file_path):
             self.error_log(self.location(), 1, "コピー先パスに「..」は指定できません。" )
             return 1
-                                
+
         if not key or key.endswith("/"):
-            destination_root = Path(file_path)
-            if not destination_root.is_dir():
-                self.error_log(self.location(), 1, "コピー先ディレクトリが存在しません。" )
+            return self.copy_s3_folder_to_efs(bucket, key, file_path, over_write)
+        return self.copy_s3_file_to_efs(bucket, key, file_path, over_write)
+
+    def copy_s3_folder_to_efs(self, bucket: str, prefix: str, file_path: str, over_write: bool) -> int:
+        destination_root = Path(file_path)
+        if not destination_root.is_dir():
+            self.error_log(self.location(), 1, "コピー先ディレクトリが存在しません。" )
+            return 1
+        if not os.access(destination_root, os.W_OK | os.X_OK):
+            self.error_log(self.location(), -1, "コピー先ディレクトリに書き込めません。" )
+            return -1
+
+        s3 = create_s3_client()
+        try:
+            try:
+                keys = [
+                    key for key in list_s3_keys(s3, bucket, prefix)
+                    if not key.endswith("/")
+                ]
+            except ClientError as exc:
+                if get_s3_error_code(exc) in NOT_FOUND_CODES:
+                    self.error_log(self.location(), 1, "コピー元S3フォルダが存在しません。")
+                    return 1
+                raise
+
+            if not keys:
+                self.error_log(self.location(), 1, "コピー元S3フォルダにファイルがありません。")
                 return 1
-            if not os.access(destination_root, os.W_OK | os.X_OK):
-                self.error_log(self.location(), -1, "コピー先ディレクトリに書き込めません。" )
+
+            root = destination_root.resolve()
+            result, copies = self.plan_s3_folder_copies(keys, prefix, root, over_write)
+            if result != 0:
+                return result
+
+            staged = []        # (コピー先, 一時ファイル)
+            created_dirs = []  # 今回新規作成したディレクトリ
+            completed = False
+            try:
+                # 1) 全件を一時ファイルへ取得する(この段階ではコピー先ファイルを変更しない)。
+                result = self.stage_s3_files(s3, bucket, copies, root, staged, created_dirs)
+                # 2) 全件取得できたら、コピー先へ配置する(失敗時はロールバック)。
+                if result == 0:
+                    result = self.install_efs_files(staged, over_write)
+                completed = result == 0
+                return result
+            finally:
+                for _, temporary_path in staged:
+                    temporary_path.unlink(missing_ok=True)
+                if not completed:
+                    self.remove_empty_efs_dirs(created_dirs)
+        finally:
+            s3.close()
+
+    def plan_s3_folder_copies(self, keys, prefix, root, over_write):
+        # コピー対象のS3キーとコピー先パスを検証する。
+        # 戻り値: (結果コード, [(S3キー, コピー先Path), ...])
+        copies = []
+        for object_key in keys:
+            relative_key = object_key[len(prefix):]
+            relative_path = PurePosixPath(relative_key)
+            if (
+                not relative_key
+                or relative_path.is_absolute()
+                or has_parent_reference(relative_key)
+            ):
+                self.error_log(self.location(), 1, "コピー元S3キーが不正です。")
+                return 1, None
+
+            target = root.joinpath(*relative_path.parts)
+            try:
+                target.resolve().relative_to(root)
+            except ValueError:
+                self.error_log(self.location(), 1, "コピー元S3キーが不正です。")
+                return 1, None
+
+            target_exists = target.exists() or target.is_symlink()
+            if target_exists and not target.is_file():
+                self.error_log(self.location(), 1, "コピー先にファイル以外が存在します。")
+                return 1, None
+            if target_exists and not over_write:
+                self.error_log(
+                    self.location(), 1,
+                    "コピー先ファイルが存在し、上書きが許可されていません。",
+                )
+                return 1, None
+
+            parent = target.parent
+            while parent != root:
+                if parent.exists() and not parent.is_dir():
+                    self.error_log(
+                        self.location(), 1,
+                        "コピー先にディレクトリ以外が存在します。",
+                    )
+                    return 1, None
+                parent = parent.parent
+
+            copies.append((object_key, target))
+        return 0, copies
+
+    def stage_s3_files(self, s3, bucket, copies, root, staged, created_dirs):
+        # 各S3オブジェクトを、コピー先ディレクトリ内の一時ファイル(.part)へ取得する。
+        # staged / created_dirs は呼び出し元が後始末できるよう、処理の途中でも更新する。
+        # 戻り値: 0 成功 / -1 コピー先に書き込めない。
+        for object_key, target in copies:
+            missing_dirs = []
+            parent = target.parent
+            while parent != root and not parent.exists():
+                missing_dirs.append(parent)
+                parent = parent.parent
+            # mkdirが途中で失敗しても後始末できるよう、作成前に記録する。
+            created_dirs.extend(reversed(missing_dirs))
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not os.access(target.parent, os.W_OK | os.X_OK):
+                self.error_log(
+                    self.location(), -1,
+                    "コピー先ディレクトリに書き込めません。",
+                )
                 return -1
 
-            s3 = create_s3_client()
+            fd, temporary_name = tempfile.mkstemp(
+                dir=target.parent,
+                prefix=f".{target.name}.",
+                suffix=".part",
+            )
+            os.close(fd)
+            temporary_path = Path(temporary_name)
+            staged.append((target, temporary_path))
+            s3.download_file(bucket, object_key, str(temporary_path))
+            os.chmod(temporary_path, 0o664)
+        return 0
 
-            
-            try:
-                keys = []
-                paginator = s3.get_paginator("list_objects_v2")
-                try:
-                    for page in paginator.paginate(Bucket=bucket, Prefix=key):
-                        keys.extend(
-                            obj["Key"]
-                            for obj in page.get("Contents", [])
-                            if not obj["Key"].endswith("/")
-                        )
-                except ClientError as exc:
-                    code = str(exc.response.get("Error", {}).get("Code", ""))
-                    if code in NOT_FOUND_CODES:
-                        self.error_log(self.location(), 1, "コピー元S3フォルダが存在しません。")
-                        return 1
-                    raise
+    def install_efs_files(self, staged, over_write):
+        # 一時ファイルをコピー先へ配置する。失敗時は配置済み分をロールバックする。
+        # 戻り値: 0 成功 / 1 別プロセスがコピー先を作成した。
+        # それ以外の失敗は、ロールバック後に例外を送出する。
+        targets = [target for target, _ in staged]
+        if over_write:
+            snapshots = self.snapshot_efs_targets(targets)
+        else:
+            # 上書きなしで配置するのは新規ファイルだけなので、退避は不要。
+            snapshots = {target: None for target in targets}
 
-                if not keys:
-                    self.error_log(self.location(), 1, "コピー元S3フォルダにファイルがありません。")
-                    return 1
-
-                root = destination_root.resolve()
-                copies = []
-                for object_key in keys:
-                    relative_key = object_key[len(key):] if key else object_key
-                    relative_path = PurePosixPath(relative_key)
-                    if (
-                        not relative_key
-                        or relative_path.is_absolute()
-                        or has_parent_reference(relative_key)
-                    ):
-                        self.error_log(self.location(), 1, "コピー元S3キーが不正です。")
-                        return 1
-
-                    target = root.joinpath(*relative_path.parts)
+        installed = []
+        conflict = False
+        try:
+            for target, temporary_path in staged:
+                if over_write:
+                    os.replace(temporary_path, target)
+                else:
                     try:
-                        target.resolve().relative_to(root)
-                    except ValueError:
-                        self.error_log(self.location(), 1, "コピー元S3キーが不正です。")
-                        return 1
+                        os.link(temporary_path, target)
+                    except FileExistsError:
+                        conflict = True
+                        break
+                installed.append(target)
+        except BaseException:
+            self.rollback_efs_targets(installed, snapshots)
+            raise
 
-                    target_exists = target.exists() or target.is_symlink()
-                    if target_exists and not target.is_file():
-                        self.error_log(self.location(), 1, "コピー先にファイル以外が存在します。")
-                        return 1
-                    if target_exists and not over_write:
-                        self.error_log(
-                            self.location(), 1,
-                            "コピー先ファイルが存在し、上書きが許可されていません。",
-                        )
-                        return 1
+        if conflict:
+            self.rollback_efs_targets(installed, snapshots)
+            self.error_log(
+                self.location(), 1,
+                "処理中に別プロセスがコピー先ファイルを作成しました。",
+            )
+            return 1
 
-                    parent = target.parent
-                    while parent != root:
-                        if parent.exists() and not parent.is_dir():
-                            self.error_log(
-                                self.location(), 1,
-                                "コピー先にディレクトリ以外が存在します。",
-                            )
-                            return 1
-                        parent = parent.parent
-                    copies.append((object_key, target))
+        self.discard_efs_snapshots(snapshots)
+        return 0
 
-                staged = []
-                created_dirs = []
-                completed = False
-                try:
-                    for object_key, target in copies:
-                        missing_dirs = []
-                        parent = target.parent
-                        while parent != root and not parent.exists():
-                            missing_dirs.append(parent)
-                            parent = parent.parent
-                        target.parent.mkdir(parents=True, exist_ok=True)
-                        created_dirs.extend(reversed(missing_dirs))
-                        if not os.access(target.parent, os.W_OK | os.X_OK):
-                            self.error_log(
-                                self.location(), -1,
-                                "コピー先ディレクトリに書き込めません。",
-                            )
-                            return -1
-
-                        fd, temporary_name = tempfile.mkstemp(
-                            dir=target.parent,
-                            prefix=f".{target.name}.",
-                            suffix=".part",
-                        )
-                        os.close(fd)
-                        temporary_path = Path(temporary_name)
-                        staged.append((target, temporary_path))
-                        s3.download_file(bucket, object_key, str(temporary_path))
-                        os.chmod(temporary_path, 0o664)
-
-                    snapshots = self.snapshot_efs_targets([target for target, _ in staged])
-                    installed = []
-                    try:
-                        for target, temporary_path in staged:
-                            if over_write:
-                                os.replace(temporary_path, target)
-                            else:
-                                try:
-                                    os.link(temporary_path, target)
-                                except FileExistsError:
-                                    rollback_errors = self.rollback_efs_targets(
-                                        {path: snapshots[path] for path in [item[0] for item in installed]}
-                                    )
-                                    if rollback_errors:
-                                        self.output_log(
-                                            self.location(), -1, 'e.p.9001',
-                                            [traceback.format_exc()],
-                                        )
-                                    self.remove_empty_efs_dirs(created_dirs)
-                                    self.error_log(
-                                        self.location(), 1,
-                                        "処理中に別プロセスがコピー先ファイルを作成しました。",
-                                    )
-                                    return 1
-                            installed.append((target, temporary_path))
-                    except Exception:
-                        rollback_errors = self.rollback_efs_targets(
-                            {target: snapshots[target] for target, _ in installed}
-                        )
-                        if rollback_errors:
-                            self.output_log(
-                                self.location(), -1, 'e.p.9001',
-                                [traceback.format_exc()],
-                            )
-                        self.remove_empty_efs_dirs(created_dirs)
-                        raise
-                    finally:
-                        for _, temporary_path in staged:
-                            temporary_path.unlink(missing_ok=True)
-                        for backup in snapshots.values():
-                            if backup is not None:
-                                backup.unlink(missing_ok=True)
-                    completed = True
-                    return 0
-                finally:
-                    for _, temporary_path in staged:
-                        temporary_path.unlink(missing_ok=True)
-                    if not completed:
-                        self.remove_empty_efs_dirs(created_dirs)
-            finally:
-                s3.close()
-
+    def copy_s3_file_to_efs(self, bucket: str, key: str, file_path: str, over_write: bool) -> int:
         # ディレクトリ指定ならS3キーの末尾をファイル名としてコピー先に追加する。
         filename = PurePosixPath(key).name
         destination_path = Path(file_path)
@@ -390,7 +438,7 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
         try:
             # ダウンロード前にS3上のコピー元を確認する。未存在は処理エラーとして返す。
             if not s3_exists(s3, bucket, key):
-                self.error_log(self.location(), 1, f"コピー元オブジェクトが存在しません。")
+                self.error_log(self.location(), 1, "コピー元オブジェクトが存在しません。")
                 return 1
 
             # 同じディレクトリに一時ファイルを作り、不完全なコピー先が残るのを防ぐ。
@@ -410,6 +458,9 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
         finally:
             s3.close()
 
+    # ------------------------------------------------------------------
+    # EFS -> S3
+    # ------------------------------------------------------------------
     def copy_efs_to_s3(self, file: str, file_path: str, over_write: bool) -> int:
         # EFSからS3へファイルまたはフォルダをコピーする。
 
@@ -462,128 +513,118 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
         s3 = create_s3_client()
         try:
             if is_directory:
-                destination_keys = {
-                    f"{key}{source_file.relative_to(source_path).as_posix()}"
-                    for source_file in source_files
-                }
-                if not over_write:
-                    try:
-                        existing_keys = set()
-                        paginator = s3.get_paginator("list_objects_v2")
-                        for page in paginator.paginate(Bucket=bucket, Prefix=key):
-                            existing_keys.update(
-                                obj["Key"] for obj in page.get("Contents", [])
-                            )
-                    except ClientError as exc:
-                        code = str(exc.response.get("Error", {}).get("Code", ""))
-                        if code == "NoSuchBucket":
-                            self.error_log(self.location(), 1, "コピー先バケットが存在しません。" )
-                            return 1
-                        raise
-
-                    if destination_keys & existing_keys:
-                        self.error_log(
-                            self.location(), 1,
-                            "コピー先オブジェクトが存在し、上書きが許可されていません。",
-                        )
-                        return 1
-
-                snapshots = {}
-                if over_write:
-                    for destination_key in destination_keys:
-                        try:
-                            snapshots[destination_key] = self.snapshot_s3_object(
-                                s3, bucket, destination_key
-                            )
-                        except (RuntimeError, AttributeError, TypeError):
-                            pass
-
-                uploaded_keys = []
-                try:
-                    for source_file in source_files:
-                        destination_key = (
-                            f"{key}{source_file.relative_to(source_path).as_posix()}"
-                        )
-                        try:
-                            s3.upload_file(str(source_file), bucket, destination_key)
-                        except S3UploadFailedError as exc:
-                            cause = get_upload_cause(exc)
-                            if isinstance(cause, ClientError):
-                                code = get_s3_error_code(cause)
-                                if code == "NoSuchBucket":
-                                    rollback_snapshots = {
-                                        destination_key: snapshots.get(destination_key)
-                                        for destination_key in uploaded_keys
-                                        if over_write
-                                    }
-                                    if not over_write:
-                                        rollback_snapshots = {
-                                            destination_key: None
-                                            for destination_key in uploaded_keys
-                                        }
-                                    self.rollback_s3_objects(
-                                        s3, bucket, rollback_snapshots
-                                    )
-                                    self.error_log(self.location(), 1, "コピー先バケットが存在しません。" )
-                                    return 1
-                            raise
-                        uploaded_keys.append(destination_key)
-                except Exception:
-                    rollback_snapshots = {
-                        destination_key: snapshots.get(destination_key)
-                        for destination_key in uploaded_keys
-                        if over_write
-                    }
-                    if not over_write:
-                        rollback_snapshots = {
-                            destination_key: None
-                            for destination_key in uploaded_keys
-                        }
-                    rollback_errors = self.rollback_s3_objects(
-                        s3, bucket, rollback_snapshots
-                    )
-                    if rollback_errors:
-                        self.output_log(
-                            self.location(), -1, 'e.p.9001',
-                            [traceback.format_exc()],
-                        )
-                    raise
-                return 0
-
-            # 上書きfalseの場合だけ、S3上に同じキーがないことを事前確認する。
-            if not over_write and s3_exists(s3, bucket, key):
-                self.error_log(self.location(), 1, f"コピー先オブジェクトが存在し、上書きが許可されていません。")
-                return 1
-
-            snapshot = None
-            can_restore = False
-            if over_write and s3_exists(s3, bucket, key):
-                try:
-                    snapshot = self.snapshot_s3_object(s3, bucket, key)
-                    can_restore = True
-                except (RuntimeError, AttributeError, TypeError):
-                    can_restore = False
-
-            # NoSuchBucketだけを処理エラーとして扱い、それ以外の転送失敗は呼び出し元へ送出する。
-            try:
-                s3.upload_file(str(source_path), bucket, key)
-            except S3UploadFailedError as exc:
-                cause = exc.__context__
-                if isinstance(cause, ClientError):
-                    code = str(cause.response.get("Error", {}).get("Code", ""))
-                    if code == "NoSuchBucket":
-                        self.error_log(self.location(), 1, "コピー先バケットが存在しません。" )
-                        return 1
-                if can_restore:
-                    self.rollback_s3_objects(s3, bucket, {key: snapshot})
-                raise
-            except Exception:
-                if can_restore:
-                    self.rollback_s3_objects(s3, bucket, {key: snapshot})
-                raise
-            return 0
+                return self.copy_efs_folder_to_s3(
+                    s3, source_path, source_files, bucket, key, over_write
+                )
+            return self.copy_efs_file_to_s3(s3, source_path, bucket, key, over_write)
         finally:
             s3.close()
+
+    def copy_efs_folder_to_s3(self, s3, source_path, source_files, bucket, prefix, over_write) -> int:
+        uploads = [
+            (source_file, f"{prefix}{source_file.relative_to(source_path).as_posix()}")
+            for source_file in source_files
+        ]
+
+        if over_write:
+            # ロールバックで「今回新規作成したキー」を判別するため、事前に既存キーを取得する。
+            # 取得できない場合(権限不足など)はNoneとし、ロールバックでは何も削除しない。
+            try:
+                existing_keys = set(list_s3_keys(s3, bucket, prefix))
+            except ClientError:
+                existing_keys = None
+        else:
+            try:
+                existing_keys = set(list_s3_keys(s3, bucket, prefix))
+            except ClientError as exc:
+                if get_s3_error_code(exc) == "NoSuchBucket":
+                    self.error_log(self.location(), 1, "コピー先バケットが存在しません。" )
+                    return 1
+                raise
+
+            if {key for _, key in uploads} & existing_keys:
+                self.error_log(
+                    self.location(), 1,
+                    "コピー先オブジェクトが存在し、上書きが許可されていません。",
+                )
+                return 1
+
+        uploaded_keys = []
+        completed = False
+        try:
+            for source_file, destination_key in uploads:
+                try:
+                    s3.upload_file(str(source_file), bucket, destination_key)
+                except S3UploadFailedError as exc:
+                    if is_no_such_bucket_upload_error(exc):
+                        self.error_log(self.location(), 1, "コピー先バケットが存在しません。" )
+                        return 1
+                    raise
+                uploaded_keys.append(destination_key)
+            completed = True
+            return 0
+        finally:
+            if not completed:
+                self.rollback_s3_uploads(s3, bucket, uploaded_keys, existing_keys)
+
+    def rollback_s3_uploads(self, s3, bucket, uploaded_keys, existing_keys):
+        # 今回新規作成したキーだけを削除する。
+        # 上書きしたキーはS3に旧データが残らないため復元できない(復元にはバージョニングが必要)。
+        # ここではログに残すだけで、削除も書き戻しもしない。
+        if not uploaded_keys:
+            return
+
+        if existing_keys is None:
+            self.error_log(
+                self.location(), -1,
+                f"既存キーを確認できないためロールバックしていません。"
+                f"アップロード済み{len(uploaded_keys)}件: {summarize_items(uploaded_keys)}",
+            )
+            return
+
+        new_keys = [key for key in uploaded_keys if key not in existing_keys]
+        overwritten_keys = [key for key in uploaded_keys if key in existing_keys]
+
+        delete_failed = []
+        for key in new_keys:
+            try:
+                s3.delete_object(Bucket=bucket, Key=key)
+            except Exception:
+                delete_failed.append(key)
+
+        if overwritten_keys or delete_failed:
+            parts = []
+            if overwritten_keys:
+                parts.append(
+                    f"上書き済みで復元できないキー{len(overwritten_keys)}件: "
+                    f"{summarize_items(overwritten_keys)}"
+                )
+            if delete_failed:
+                parts.append(
+                    f"削除に失敗したキー{len(delete_failed)}件: "
+                    f"{summarize_items(delete_failed)}"
+                )
+            self.error_log(
+                self.location(), -1,
+                "アップロード失敗後のロールバックが不完全です。" + " / ".join(parts),
+            )
+
+    def copy_efs_file_to_s3(self, s3, source_path, bucket, key, over_write) -> int:
+        # 上書きfalseの場合だけ、S3上に同じキーがないことを事前確認する。
+        if not over_write and s3_exists(s3, bucket, key):
+            self.error_log(self.location(), 1, "コピー先オブジェクトが存在し、上書きが許可されていません。")
+            return 1
+
+        # 1オブジェクトのアップロードはS3側で原子的なため、失敗時のロールバックは不要。
+        # NoSuchBucketだけを処理エラーとして扱い、それ以外の転送失敗は呼び出し元へ送出する。
+        try:
+            s3.upload_file(str(source_path), bucket, key)
+        except S3UploadFailedError as exc:
+            if is_no_such_bucket_upload_error(exc):
+                self.error_log(self.location(), 1, "コピー先バケットが存在しません。" )
+                return 1
+            raise
+        return 0
 
     def do_copy(self) -> int:
         # 引数を検証し、指定された方向でコピー処理を実行する。
@@ -598,7 +639,7 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
 
             # コピー元・コピー先と、任意の上書きオプションだけを受け付ける。
             if len(argv) < 2 or len(argv) > 3:
-                self.error_log(self.location(), 1, f"引数は2個または3個指定してください。")
+                self.error_log(self.location(), 1, "引数は2個または3個指定してください。")
                 return 1
 
             file = argv[0]
@@ -619,7 +660,7 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
 
             # コピー元・コピー先のワイルドカード指定を拒否する。
             if any(char in path for path in (file, file_path) for char in WILDCARD_CHARS):
-                self.error_log(self.location(), 1, f"ワイルドカードは指定できません。")
+                self.error_log(self.location(), 1, "ワイルドカードは指定できません。")
                 return 1
 
             # 上書き指定をboolに変換し、不正値は引数エラーとして返す。
@@ -634,7 +675,7 @@ class ApCopyFileS3EfsService(appBase.AppBaseClass):
             destination_is_s3 = file_path.startswith(S3_PREFIX)
 
             if source_is_s3 == destination_is_s3:
-                self.error_log(self.location(), 1, f"コピー元またはコピー先の一方だけにS3 URIを指定してください。")
+                self.error_log(self.location(), 1, "コピー元またはコピー先の一方だけにS3 URIを指定してください。")
                 return 1
 
             # 方向ごとの処理に委譲する。
